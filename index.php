@@ -87,11 +87,6 @@ $galleryImages = [
     ],
 ];
 
-$instagramWidget = [
-    'provider' => 'snapwidget',
-    'snapwidgetSrc' => '',
-    'elfsightAppId' => '',
-];
 ?>
 <!doctype html>
 <html lang="en">
@@ -256,8 +251,8 @@ $instagramWidget = [
 
       <section class="instagram-flow section-pad reveal" aria-labelledby="instagram-title">
         <div class="instagram-heading">
-          <p class="eyebrow">Latest Work</p>
-          <h2 id="instagram-title">From the studio feed.</h2>
+          <p class="eyebrow">Instagram</p>
+          <h2 id="instagram-title">Live from the studio.</h2>
           <a class="text-link instagram-heading-link" href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noreferrer">
             <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="5.2"></rect>
@@ -267,47 +262,7 @@ $instagramWidget = [
             <span>@dannyhirsch.arts</span>
           </a>
         </div>
-        <div class="instagram-strip" aria-label="Selected recent visual studies">
-          <a
-            class="instagram-profile-card"
-            href="https://www.instagram.com/dannyhirsch.arts/"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Open Danny Hirsch Arts on Instagram"
-          >
-            <span class="instagram-profile-top">
-              <span class="instagram-profile-mark">
-                <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="5.2"></rect>
-                  <circle cx="12" cy="12" r="4.1"></circle>
-                  <path d="M17.4 6.9h.1"></path>
-                </svg>
-              </span>
-              <span class="instagram-profile-kicker">Instagram</span>
-            </span>
-            <strong>@dannyhirsch.arts</strong>
-            <em>Follow the studio feed for new works, surface details, and process notes.</em>
-            <span class="instagram-profile-link">Open Instagram</span>
-          </a>
-          <?php foreach (array_slice($galleryImages, 0, 6) as $image): ?>
-            <a
-              class="instagram-tile js-lightbox-trigger"
-              href="<?php echo htmlspecialchars($image['image']); ?>"
-              data-lightbox-src="<?php echo htmlspecialchars($image['image']); ?>"
-              data-lightbox-title="<?php echo htmlspecialchars($image['title']); ?>"
-              data-lightbox-caption="Studio feed / <?php echo htmlspecialchars($image['caption']); ?>"
-              aria-label="Open <?php echo htmlspecialchars($image['title']); ?>"
-            >
-              <img src="<?php echo htmlspecialchars($image['image']); ?>" alt="<?php echo htmlspecialchars($image['title']); ?> studio feed image" loading="lazy" decoding="async">
-            </a>
-          <?php endforeach; ?>
-        </div>
-        <div
-          class="instagram-widget-panel"
-          data-instagram-provider="<?php echo htmlspecialchars($instagramWidget['provider']); ?>"
-          data-snapwidget-src="<?php echo htmlspecialchars($instagramWidget['snapwidgetSrc']); ?>"
-          data-elfsight-app-id="<?php echo htmlspecialchars($instagramWidget['elfsightAppId']); ?>"
-        >
+        <div class="instagram-widget-panel is-connected">
           <div class="instagram-widget-copy">
             <span class="instagram-profile-mark">
               <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -317,15 +272,16 @@ $instagramWidget = [
               </svg>
             </span>
             <div>
-              <p class="eyebrow">Live Instagram Widget</p>
-              <h3>Connect SnapWidget or Elfsight for an auto-updating feed.</h3>
+              <p class="eyebrow">Live Feed</p>
+              <h3>New works, close surfaces, and studio moments.</h3>
               <p>
-                This frame is ready for the free widget embed. Until the widget ID is added, the curated studio strip
-                above keeps the page polished and fast.
+                Follow the ongoing process and recent pieces directly through the live Instagram feed.
               </p>
             </div>
           </div>
-          <div class="instagram-widget-mount" aria-live="polite"></div>
+          <div class="instagram-widget-mount">
+            <div class="elfsight-app-33a958e6-feff-4490-a474-fe5a2f8f935a" data-elfsight-app-lazy></div>
+          </div>
         </div>
       </section>
 
@@ -392,6 +348,7 @@ $instagramWidget = [
       </figure>
     </div>
 
+    <script src="https://elfsightcdn.com/platform.js" async></script>
     <script src="script.js"></script>
   </body>
 </html>

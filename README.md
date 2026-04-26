@@ -30,45 +30,22 @@ php index.php > index.html
 - Glass-style header with refined logo treatment on scroll
 - Featured artwork grid with fullscreen lightbox preview
 - Additional image gallery with curated local artwork/detail images
-- SnapWidget/Elfsight-ready Instagram feed frame with styled fallback
+- Live Elfsight Instagram feed embedded for `@dannyhirsch.arts`
 - Lightbox close via X button, ESC key, or outside click
 - Scroll reveal animations and responsive layouts
 - Animated post-hero atmosphere with layered artwork texture and subtle leaf movement
 - GitHub Pages-ready static build
 
-## Connect A Live Instagram Widget
+## Live Instagram Widget
 
-The homepage has a ready-made widget frame in `index.php`.
+The page uses this Elfsight embed:
 
-For SnapWidget:
-
-1. Create a free Instagram widget at `https://snapwidget.com/`.
-2. Copy the iframe `src` URL, usually similar to `https://snapwidget.com/embed/XXXXXX`.
-3. In `index.php`, set:
-
-```php
-$instagramWidget = [
-    'provider' => 'snapwidget',
-    'snapwidgetSrc' => 'https://snapwidget.com/embed/XXXXXX',
-    'elfsightAppId' => '',
-];
+```html
+<script src="https://elfsightcdn.com/platform.js" async></script>
+<div class="elfsight-app-33a958e6-feff-4490-a474-fe5a2f8f935a" data-elfsight-app-lazy></div>
 ```
 
-For Elfsight:
-
-1. Create an Instagram Feed widget at `https://elfsight.com/instagram-feed-instashow/`.
-2. Copy the app ID from the embed class, for example `elfsight-app-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`.
-3. In `index.php`, set:
-
-```php
-$instagramWidget = [
-    'provider' => 'elfsight',
-    'snapwidgetSrc' => '',
-    'elfsightAppId' => 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-];
-```
-
-Then regenerate the static page:
+If the widget code changes later, replace it in `index.php`, then regenerate the static page:
 
 ```bash
 php index.php > index.html
@@ -78,7 +55,6 @@ php index.php > index.html
 
 - Artwork years, final titles, dimensions, and availability
 - Inquiry email: `studio@example.com`
-- Instagram link
 - Imprint/legal page link
 
 ## Run Locally
