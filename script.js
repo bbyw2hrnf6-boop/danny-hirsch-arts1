@@ -1,6 +1,12 @@
 const header = document.querySelector(".site-header");
 const heroImage = document.querySelector(".hero-image");
+const hero = document.querySelector(".hero");
+const scrollProgress = document.querySelector(".scroll-progress");
 const revealItems = document.querySelectorAll(".reveal");
+const navLinks = document.querySelectorAll(".site-nav a[href^='#']");
+const pageSections = Array.from(navLinks)
+  .map((link) => document.querySelector(link.getAttribute("href")))
+  .filter(Boolean);
 const lightbox = document.querySelector(".lightbox");
 const lightboxImage = document.querySelector(".lightbox-image");
 const lightboxTitle = document.querySelector(".lightbox-caption strong");
@@ -9,21 +15,56 @@ const lightboxClose = document.querySelector(".lightbox-close");
 const lightboxTriggers = document.querySelectorAll(".js-lightbox-trigger");
 let lightboxCloseTimer;
 let scrollTicking = false;
+let lastScrollY = window.scrollY;
+
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const setHeaderState = () => {
   if (!header) return;
-  header.classList.toggle("is-scrolled", window.scrollY > 24);
+
+  const currentScrollY = window.scrollY;
+  header.classList.toggle("is-scrolled", currentScrollY > 24);
+  header.classList.toggle("is-hidden", currentScrollY > lastScrollY && currentScrollY > 460);
+  lastScrollY = currentScrollY;
 };
 
 const setHeroMotion = () => {
-  if (!heroImage) return;
+  if (!heroImage || prefersReducedMotion) return;
   const shift = Math.min(window.scrollY * 0.12, 70);
+  const fade = Math.max(1 - window.scrollY / 620, 0.35);
   heroImage.style.setProperty("--hero-shift", `${shift}px`);
+  hero?.style.setProperty("--hero-grain-shift", `${Math.min(window.scrollY * 0.04, 24)}px`);
+  hero?.style.setProperty("--hero-content-shift", `${Math.min(window.scrollY * 0.05, 38)}px`);
+  hero?.style.setProperty("--hero-fade", fade.toFixed(3));
+};
+
+const setScrollProgress = () => {
+  if (!scrollProgress) return;
+
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
+  scrollProgress.style.setProperty("--scroll-progress", progress.toFixed(4));
+};
+
+const setActiveNav = () => {
+  if (!pageSections.length) return;
+
+  const offset = window.innerHeight * 0.38;
+  const activeSection = pageSections.reduce((current, section) => {
+    const rect = section.getBoundingClientRect();
+    return rect.top - offset <= 0 ? section : current;
+  }, pageSections[0]);
+
+  navLinks.forEach((link) => {
+    link.classList.toggle("is-active", link.getAttribute("href") === `#${activeSection.id}`);
+  });
 };
 
 const updateScrollEffects = () => {
   setHeaderState();
   setHeroMotion();
+  setScrollProgress();
+  setActiveNav();
   scrollTicking = false;
 };
 
@@ -107,6 +148,13 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-updateScrollEffects();
+navLinks.forEach((link) => {
+  link.addEventListener("click", () => {
+    header?.classList.remove("is-hidden");
+  });
+});
 
 window.addEventListener("scroll", requestScrollUpdate, { passive: true });
+window.addEventListener("resize", requestScrollUpdate);
+
+updateScrollEffects();
