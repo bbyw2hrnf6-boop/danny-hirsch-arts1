@@ -1,0 +1,283 @@
+<?php
+$artworks = [
+    [
+        'image' => 'assets/artwork-01.jpg',
+        'title' => 'Yellow Field, Veined',
+        'year' => '2026',
+        'medium' => 'Mixed Media on Canvas',
+        'description' => 'A charged botanical trace held inside a saturated field of light.',
+    ],
+    [
+        'image' => 'assets/artwork-02.jpg',
+        'title' => 'Black Current',
+        'year' => '2026',
+        'medium' => 'Acrylic on Canvas',
+        'description' => 'Dark movement breaks into mineral gold, fluid and deliberate.',
+    ],
+    [
+        'image' => 'assets/artwork-03.jpg',
+        'title' => 'Soft Terrain',
+        'year' => '2026',
+        'medium' => 'Mixed Media on Canvas',
+        'description' => 'Color drifts across the surface like atmosphere settling into matter.',
+    ],
+    [
+        'image' => 'assets/artwork-04.jpg',
+        'title' => 'Oxide Drift',
+        'year' => '2026',
+        'medium' => 'Acrylic and Mineral Pigment on Canvas',
+        'description' => 'A low, metallic landscape shaped by pressure, reflection, and restraint.',
+    ],
+    [
+        'image' => 'assets/artwork-05.jpg',
+        'title' => 'Blue Aperture',
+        'year' => '2026',
+        'medium' => 'Acrylic on Canvas',
+        'description' => 'Cool blues and silver tones open into a deep, architectural field.',
+    ],
+    [
+        'image' => 'assets/artwork-06.jpg',
+        'title' => 'Nocturne Relic',
+        'year' => '2026',
+        'medium' => 'Mixed Media Assemblage',
+        'description' => 'Raw material interrupts a luminous ground with sculptural tension.',
+    ],
+];
+
+$galleryImages = [
+    [
+        'image' => 'assets/gallery-01.jpg',
+        'title' => 'Surface Study I',
+        'caption' => 'A close reading of black, gold, and mineral movement.',
+    ],
+    [
+        'image' => 'assets/gallery-02.jpg',
+        'title' => 'Surface Study II',
+        'caption' => 'Fine organic structure held against a quiet grey field.',
+    ],
+    [
+        'image' => 'assets/gallery-03.jpg',
+        'title' => 'Surface Study III',
+        'caption' => 'Raw fibers and shadowed pigment create a tactile relief.',
+    ],
+    [
+        'image' => 'assets/gallery-04.jpg',
+        'title' => 'Surface Study IV',
+        'caption' => 'Linear fragments drift across a deep earth-toned ground.',
+    ],
+    [
+        'image' => 'assets/gallery-05.jpg',
+        'title' => 'Surface Study V',
+        'caption' => 'Blue, gold, and carved material meet in a dense color field.',
+    ],
+    [
+        'image' => 'assets/gallery-06.jpg',
+        'title' => 'Surface Study VI',
+        'caption' => 'An intimate vertical composition of pressure, texture, and light.',
+    ],
+    [
+        'image' => 'assets/gallery-07.jpg',
+        'title' => 'Surface Study VII',
+        'caption' => 'Dark atmospheric marks suspended over a quiet canvas plane.',
+    ],
+    [
+        'image' => 'assets/gallery-08.jpg',
+        'title' => 'Surface Study VIII',
+        'caption' => 'A controlled metallic surface with depth and quiet abrasion.',
+    ],
+];
+?>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Danny Hirsch Arts | Contemporary Abstract Art</title>
+    <meta
+      name="description"
+      content="Danny Hirsch Arts presents contemporary abstract works shaped by material, movement, atmosphere, and emotional depth."
+    >
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <header class="site-header" aria-label="Site header">
+      <a class="brand" href="#top" aria-label="Danny Hirsch Arts home">
+        <img src="assets/logo.png" alt="Danny Hirsch Arts">
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#collection">Collection</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#about">About</a>
+        <a href="#inquiry">Inquiry</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <img class="hero-image" src="assets/hero.jpg" alt="Textured abstract artwork by Danny Hirsch">
+        <div class="hero-shade" aria-hidden="true"></div>
+        <div class="hero-content reveal">
+          <p class="kicker">Contemporary Abstract Art</p>
+          <h1 id="hero-title">Danny Hirsch Arts</h1>
+          <div class="hero-actions" aria-label="Hero actions">
+            <a class="button button-primary" href="#collection">View Collection</a>
+            <a class="text-link" href="#about">About</a>
+          </div>
+        </div>
+      </section>
+
+      <div class="art-atmosphere" aria-hidden="true">
+        <span class="texture-wash texture-wash-one"></span>
+        <span class="texture-wash texture-wash-two"></span>
+        <span class="texture-wash texture-wash-three"></span>
+        <span class="floating-leaf leaf-one"></span>
+        <span class="floating-leaf leaf-two"></span>
+        <span class="floating-leaf leaf-three"></span>
+        <span class="floating-leaf leaf-four"></span>
+        <span class="floating-leaf leaf-five"></span>
+        <span class="floating-leaf leaf-six"></span>
+      </div>
+
+      <section class="intro section-pad reveal" aria-label="Artist introduction">
+        <p>
+          Abstraction becomes a physical language: pigment, embedded fragments, and shifting fields of darkness gather
+          into atmospheres that feel both unsettled and composed. Each work holds movement in suspension, inviting the
+          eye to read texture as memory, pressure, and emotional weather.
+        </p>
+      </section>
+
+      <section class="collection section-pad" id="collection" aria-labelledby="collection-title">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Featured Artworks</p>
+          <h2 id="collection-title">Statement works for quiet rooms and powerful spaces.</h2>
+        </div>
+
+        <div class="art-grid">
+          <?php foreach ($artworks as $index => $artwork): ?>
+            <article class="art-card reveal">
+              <a
+                class="art-image-link js-lightbox-trigger"
+                href="<?php echo htmlspecialchars($artwork['image']); ?>"
+                aria-label="View <?php echo htmlspecialchars($artwork['title']); ?>"
+                data-lightbox-src="<?php echo htmlspecialchars($artwork['image']); ?>"
+                data-lightbox-title="<?php echo htmlspecialchars($artwork['title']); ?>"
+                data-lightbox-caption="<?php echo htmlspecialchars($artwork['year'] . ' / ' . $artwork['medium']); ?>"
+              >
+                <img
+                  src="<?php echo htmlspecialchars($artwork['image']); ?>"
+                  alt="<?php echo htmlspecialchars($artwork['title']); ?> abstract artwork"
+                  loading="<?php echo $index === 0 ? 'eager' : 'lazy'; ?>"
+                >
+              </a>
+              <div class="art-meta">
+                <div>
+                  <h3><?php echo htmlspecialchars($artwork['title']); ?></h3>
+                  <p><?php echo htmlspecialchars($artwork['year']); ?> / <?php echo htmlspecialchars($artwork['medium']); ?></p>
+                </div>
+                <p><?php echo htmlspecialchars($artwork['description']); ?></p>
+                <span>Available on request</span>
+              </div>
+            </article>
+          <?php endforeach; ?>
+        </div>
+      </section>
+
+      <section class="gallery section-pad" id="gallery" aria-labelledby="gallery-title">
+        <div class="gallery-heading reveal">
+          <p class="eyebrow">Image Gallery</p>
+          <h2 id="gallery-title">Close surfaces, layered marks, and material atmosphere.</h2>
+          <p>
+            A curated sequence of additional works and details selected for texture, movement, and architectural mood.
+          </p>
+        </div>
+
+        <div class="gallery-grid">
+          <?php foreach ($galleryImages as $index => $image): ?>
+            <a
+              class="gallery-item reveal js-lightbox-trigger"
+              href="<?php echo htmlspecialchars($image['image']); ?>"
+              aria-label="Open <?php echo htmlspecialchars($image['title']); ?>"
+              data-lightbox-src="<?php echo htmlspecialchars($image['image']); ?>"
+              data-lightbox-title="<?php echo htmlspecialchars($image['title']); ?>"
+              data-lightbox-caption="<?php echo htmlspecialchars($image['caption']); ?>"
+            >
+              <img
+                src="<?php echo htmlspecialchars($image['image']); ?>"
+                alt="<?php echo htmlspecialchars($image['title']); ?> by Danny Hirsch Arts"
+                loading="lazy"
+              >
+              <span>
+                <strong><?php echo htmlspecialchars($image['title']); ?></strong>
+                <em><?php echo htmlspecialchars($image['caption']); ?></em>
+              </span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </section>
+
+      <section class="about section-pad reveal" id="about" aria-labelledby="about-title">
+        <div>
+          <p class="eyebrow">About</p>
+          <h2 id="about-title">Material works with architectural presence.</h2>
+        </div>
+        <div class="about-copy">
+          <p>
+            Danny Hirsch creates contemporary abstract works that operate between painting, surface, and object. Built
+            through layers of pigment, organic impressions, and controlled disruption, the pieces carry a sense of
+            depth that changes with distance and light.
+          </p>
+          <p>
+            Their scale and atmosphere make them natural companions to modern interiors: private residences, hospitality
+            spaces, architectural projects, and collections seeking work with emotional weight rather than decoration.
+          </p>
+        </div>
+      </section>
+
+      <section class="inquiry section-pad reveal" id="inquiry" aria-labelledby="inquiry-title">
+        <div class="inquiry-copy">
+          <p class="eyebrow">Collector Inquiry</p>
+          <h2 id="inquiry-title">For private viewings, commissions, or acquisition inquiries.</h2>
+          <a class="button button-primary" href="mailto:studio@example.com">Request Information</a>
+        </div>
+
+        <form class="inquiry-form" action="mailto:studio@example.com" method="post" enctype="text/plain">
+          <label>
+            <span>Name</span>
+            <input type="text" name="name" autocomplete="name" required>
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" autocomplete="email" required>
+          </label>
+          <label>
+            <span>Message</span>
+            <textarea name="message" rows="5" required></textarea>
+          </label>
+          <button class="button button-secondary" type="submit">Send Inquiry</button>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>&copy; <?php echo date('Y'); ?> Danny Hirsch Arts</span>
+      <nav aria-label="Footer navigation">
+        <a href="https://instagram.com/" rel="noreferrer">Instagram</a>
+        <a href="mailto:studio@example.com">Contact</a>
+        <a href="#">Imprint</a>
+      </nav>
+    </footer>
+
+    <div class="lightbox" role="dialog" aria-modal="true" aria-label="Artwork preview" aria-hidden="true">
+      <button class="lightbox-close" type="button" aria-label="Close image preview">X</button>
+      <figure class="lightbox-figure">
+        <img class="lightbox-image" src="" alt="">
+        <figcaption class="lightbox-caption">
+          <strong></strong>
+          <span></span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
