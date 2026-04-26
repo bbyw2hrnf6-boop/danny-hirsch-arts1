@@ -253,6 +253,18 @@ $galleryImages = [
           </a>
         </div>
         <div class="instagram-strip" aria-label="Selected recent visual studies">
+          <a
+            class="instagram-profile-card"
+            href="https://www.instagram.com/dannyhirsch.arts/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open Danny Hirsch Arts on Instagram"
+          >
+            <span class="instagram-profile-mark">IG</span>
+            <strong>@dannyhirsch.arts</strong>
+            <em>Follow the studio feed for new works, surface details, and process notes.</em>
+            <span class="instagram-profile-link">Open Instagram</span>
+          </a>
           <?php foreach (array_slice($galleryImages, 0, 6) as $image): ?>
             <a
               class="instagram-tile js-lightbox-trigger"
@@ -314,7 +326,7 @@ $galleryImages = [
     <footer class="site-footer">
       <span>&copy; <?php echo date('Y'); ?> Danny Hirsch Arts</span>
       <nav aria-label="Footer navigation">
-        <a href="https://instagram.com/" rel="noreferrer">Instagram</a>
+        <a href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noreferrer">Instagram</a>
         <a href="mailto:studio@example.com">Contact</a>
         <a href="#">Imprint</a>
       </nav>
