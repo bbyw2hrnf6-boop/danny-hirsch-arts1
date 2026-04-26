@@ -86,6 +86,12 @@ $galleryImages = [
         'caption' => 'A controlled metallic surface with depth and quiet abrasion.',
     ],
 ];
+
+$instagramWidget = [
+    'provider' => 'snapwidget',
+    'snapwidgetSrc' => '',
+    'elfsightAppId' => '',
+];
 ?>
 <!doctype html>
 <html lang="en">
@@ -295,6 +301,31 @@ $galleryImages = [
               <img src="<?php echo htmlspecialchars($image['image']); ?>" alt="<?php echo htmlspecialchars($image['title']); ?> studio feed image" loading="lazy" decoding="async">
             </a>
           <?php endforeach; ?>
+        </div>
+        <div
+          class="instagram-widget-panel"
+          data-instagram-provider="<?php echo htmlspecialchars($instagramWidget['provider']); ?>"
+          data-snapwidget-src="<?php echo htmlspecialchars($instagramWidget['snapwidgetSrc']); ?>"
+          data-elfsight-app-id="<?php echo htmlspecialchars($instagramWidget['elfsightAppId']); ?>"
+        >
+          <div class="instagram-widget-copy">
+            <span class="instagram-profile-mark">
+              <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="5.2"></rect>
+                <circle cx="12" cy="12" r="4.1"></circle>
+                <path d="M17.4 6.9h.1"></path>
+              </svg>
+            </span>
+            <div>
+              <p class="eyebrow">Live Instagram Widget</p>
+              <h3>Connect SnapWidget or Elfsight for an auto-updating feed.</h3>
+              <p>
+                This frame is ready for the free widget embed. Until the widget ID is added, the curated studio strip
+                above keeps the page polished and fast.
+              </p>
+            </div>
+          </div>
+          <div class="instagram-widget-mount" aria-live="polite"></div>
         </div>
       </section>
 

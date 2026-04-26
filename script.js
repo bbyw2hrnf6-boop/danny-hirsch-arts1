@@ -14,6 +14,7 @@ const lightboxTitle = document.querySelector(".lightbox-caption strong");
 const lightboxCaption = document.querySelector(".lightbox-caption span");
 const lightboxClose = document.querySelector(".lightbox-close");
 const lightboxTriggers = document.querySelectorAll(".js-lightbox-trigger");
+const instagramWidgetPanel = document.querySelector(".instagram-widget-panel");
 let lightboxCloseTimer;
 let scrollTicking = false;
 let lastScrollY = window.scrollY;
@@ -84,6 +85,46 @@ const requestScrollUpdate = () => {
   if (scrollTicking) return;
   scrollTicking = true;
   window.requestAnimationFrame(updateScrollEffects);
+};
+
+const mountInstagramWidget = () => {
+  if (!instagramWidgetPanel) return;
+
+  const mount = instagramWidgetPanel.querySelector(".instagram-widget-mount");
+  const provider = instagramWidgetPanel.dataset.instagramProvider || "snapwidget";
+  const snapwidgetSrc = instagramWidgetPanel.dataset.snapwidgetSrc || "";
+  const elfsightAppId = instagramWidgetPanel.dataset.elfsightAppId || "";
+
+  if (!mount) return;
+
+  if (provider === "elfsight" && elfsightAppId) {
+    const script = document.createElement("script");
+    script.src = "https://static.elfsight.com/platform/platform.js";
+    script.async = true;
+
+    const widget = document.createElement("div");
+    widget.className = `elfsight-app-${elfsightAppId}`;
+    widget.setAttribute("data-elfsight-app-lazy", "");
+
+    mount.replaceChildren(widget);
+    document.head.appendChild(script);
+    instagramWidgetPanel.classList.add("is-connected");
+    return;
+  }
+
+  if (provider === "snapwidget" && snapwidgetSrc) {
+    const iframe = document.createElement("iframe");
+    iframe.className = "instagram-widget-frame";
+    iframe.src = snapwidgetSrc;
+    iframe.title = "Danny Hirsch Arts Instagram feed";
+    iframe.loading = "lazy";
+    iframe.referrerPolicy = "no-referrer-when-downgrade";
+    iframe.setAttribute("allowtransparency", "true");
+    iframe.setAttribute("scrolling", "no");
+
+    mount.replaceChildren(iframe);
+    instagramWidgetPanel.classList.add("is-connected");
+  }
 };
 
 const openLightbox = (trigger) => {
@@ -169,4 +210,5 @@ navLinks.forEach((link) => {
 window.addEventListener("scroll", requestScrollUpdate, { passive: true });
 window.addEventListener("resize", requestScrollUpdate);
 
+mountInstagramWidget();
 updateScrollEffects();

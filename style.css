@@ -31,7 +31,7 @@ body {
   color: var(--ink);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent 520px),
-    linear-gradient(115deg, rgba(17, 16, 15, 0.055), transparent 42%),
+    linear-gradient(115deg, rgba(17, 16, 15, 0.04), transparent 42%),
     var(--paper);
   font-family: "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
@@ -305,6 +305,11 @@ main {
   transition: opacity 200ms linear;
 }
 
+.hero-content h1,
+.hero-content .kicker {
+  text-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+}
+
 .hero-cue {
   position: absolute;
   right: clamp(20px, 4vw, 72px);
@@ -420,9 +425,9 @@ main {
   background-position: center;
   background-size: cover;
   box-shadow: 0 40px 120px rgba(17, 16, 15, 0.06);
-  filter: blur(10px) saturate(0.76) contrast(1.04);
+  filter: blur(5px) saturate(0.86) contrast(1.08);
   mix-blend-mode: multiply;
-  opacity: 0.046;
+  opacity: 0.105;
   transform-origin: center;
   animation: artPanelFloat 40s var(--ease) infinite alternate;
 }
@@ -431,8 +436,8 @@ main {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(120deg, rgba(251, 248, 242, 0.38), transparent 52%),
-    linear-gradient(0deg, rgba(244, 240, 232, 0.5), transparent 68%);
+    linear-gradient(120deg, rgba(251, 248, 242, 0.2), transparent 52%),
+    linear-gradient(0deg, rgba(244, 240, 232, 0.24), transparent 68%);
   content: "";
 }
 
@@ -448,7 +453,7 @@ main {
   left: -12vw;
   background-image: url("assets/gallery-08.jpg");
   clip-path: polygon(0 12%, 84% 0, 100% 76%, 18% 100%);
-  opacity: 0.052;
+  opacity: 0.118;
   animation-duration: 48s;
 }
 
@@ -457,7 +462,7 @@ main {
   right: 4vw;
   background-image: url("assets/gallery-04.jpg");
   clip-path: polygon(18% 0, 100% 20%, 78% 100%, 0 70%);
-  opacity: 0.04;
+  opacity: 0.092;
   animation-direction: alternate-reverse;
 }
 
@@ -467,7 +472,7 @@ main {
   width: clamp(300px, 42vw, 820px);
   background-image: url("assets/wartrobe.jpg");
   clip-path: polygon(0 0, 92% 9%, 100% 84%, 12% 100%);
-  opacity: 0.038;
+  opacity: 0.086;
   animation-duration: 52s;
 }
 
@@ -679,7 +684,7 @@ h3 {
   content: "";
   filter: blur(34px) saturate(0.72);
   mix-blend-mode: multiply;
-  opacity: 0.035;
+  opacity: 0.07;
   pointer-events: none;
   transform: translate3d(0, var(--section-art-y), 0) scale(1.12);
 }
@@ -703,9 +708,9 @@ h3 {
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(17, 16, 15, 0.055), transparent 340px),
-    linear-gradient(118deg, rgba(251, 248, 242, 0.96), rgba(244, 240, 232, 0.84)),
-    rgba(251, 248, 242, 0.9);
+    linear-gradient(180deg, rgba(17, 16, 15, 0.04), transparent 340px),
+    linear-gradient(118deg, rgba(251, 248, 242, 0.8), rgba(244, 240, 232, 0.62)),
+    rgba(251, 248, 242, 0.7);
 }
 
 .collection::before {
@@ -811,9 +816,9 @@ h3 {
   position: relative;
   border-top: 1px solid rgba(17, 16, 15, 0.08);
   background:
-    linear-gradient(180deg, rgba(251, 248, 242, 0.82), rgba(216, 209, 197, 0.38)),
+    linear-gradient(180deg, rgba(251, 248, 242, 0.7), rgba(216, 209, 197, 0.24)),
     linear-gradient(135deg, rgba(17, 16, 15, 0.04), transparent 54%),
-    rgba(244, 240, 232, 0.88);
+    rgba(244, 240, 232, 0.68);
 }
 
 .gallery::before,
@@ -827,7 +832,7 @@ h3 {
   background-position: center;
   background-size: cover;
   filter: blur(28px) saturate(0.72);
-  opacity: 0.035;
+  opacity: 0.072;
   pointer-events: none;
   mix-blend-mode: multiply;
   transform: translate3d(0, var(--section-art-y), 0) scale(1.12);
@@ -966,14 +971,14 @@ h3 {
   align-items: center;
   overflow: hidden;
   background:
-    linear-gradient(120deg, rgba(251, 248, 242, 0.92), rgba(244, 240, 232, 0.78)),
-    rgba(244, 240, 232, 0.9);
+    linear-gradient(120deg, rgba(251, 248, 242, 0.82), rgba(244, 240, 232, 0.58)),
+    rgba(244, 240, 232, 0.68);
 }
 
 .wartrobe::before {
   background-image: url("assets/wartrobe.jpg");
   background-position: 50% 42%;
-  opacity: 0.04;
+  opacity: 0.098;
 }
 
 .wartrobe::after {
@@ -1040,8 +1045,8 @@ h3 {
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(120deg, rgba(244, 240, 232, 0.88), rgba(251, 248, 242, 0.72)),
-    rgba(244, 240, 232, 0.86);
+    linear-gradient(120deg, rgba(244, 240, 232, 0.72), rgba(251, 248, 242, 0.5)),
+    rgba(244, 240, 232, 0.62);
 }
 
 .instagram-flow::before {
@@ -1088,7 +1093,7 @@ h3 {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-auto-columns: minmax(260px, 27vw);
+  grid-auto-columns: minmax(310px, 26vw);
   grid-auto-flow: column;
   gap: clamp(12px, 2vw, 22px);
   overflow-x: auto;
@@ -1119,6 +1124,7 @@ h3 {
   min-height: clamp(330px, 34vw, 460px);
   aspect-ratio: 4 / 5;
   display: grid;
+  min-width: 0;
   align-content: space-between;
   gap: 18px;
   overflow: hidden;
@@ -1180,11 +1186,13 @@ h3 {
 }
 
 .instagram-profile-card strong {
+  display: block;
   font-family: Didot, "Bodoni 72", Georgia, "Times New Roman", serif;
-  font-size: clamp(1.34rem, 2.1vw, 2.34rem);
+  font-size: clamp(1.22rem, 1.62vw, 1.74rem);
   font-weight: 400;
   line-height: 1;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .instagram-profile-card em {
@@ -1204,6 +1212,81 @@ h3 {
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.instagram-widget-panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.36fr) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 44px);
+  align-items: stretch;
+  margin-top: clamp(24px, 4vw, 52px);
+  border: 1px solid rgba(17, 16, 15, 0.08);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(251, 248, 242, 0.76), rgba(251, 248, 242, 0.38)),
+    rgba(251, 248, 242, 0.44);
+  box-shadow: 0 26px 90px rgba(17, 16, 15, 0.08);
+  backdrop-filter: blur(24px) saturate(1.08);
+  overflow: hidden;
+}
+
+.instagram-widget-panel.is-connected .instagram-widget-copy {
+  border-right: 1px solid rgba(17, 16, 15, 0.08);
+}
+
+.instagram-widget-copy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-content: center;
+  padding: clamp(20px, 3vw, 36px);
+}
+
+.instagram-widget-copy h3 {
+  margin-bottom: 10px;
+  font-size: clamp(1.35rem, 2vw, 2.35rem);
+}
+
+.instagram-widget-copy p:last-child {
+  margin-bottom: 0;
+  color: var(--ash);
+}
+
+.instagram-widget-mount {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 3vw, 30px);
+  background:
+    linear-gradient(135deg, rgba(17, 16, 15, 0.055), transparent 48%),
+    linear-gradient(0deg, rgba(251, 248, 242, 0.68), transparent 72%);
+}
+
+.instagram-widget-panel:not(.is-connected) .instagram-widget-mount {
+  background:
+    linear-gradient(135deg, rgba(17, 16, 15, 0.055), transparent 48%),
+    url("assets/gallery-05.jpg") center / cover;
+}
+
+.instagram-widget-panel:not(.is-connected) .instagram-widget-mount::before {
+  max-width: 360px;
+  color: rgba(251, 248, 242, 0.86);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: uppercase;
+  content: "Paste your SnapWidget URL or Elfsight App ID in index.php";
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.34);
+}
+
+.instagram-widget-frame,
+.instagram-widget-mount iframe {
+  width: 100%;
+  min-height: 420px;
+  border: 0;
 }
 
 .instagram-profile-card:hover {
@@ -1456,6 +1539,11 @@ h3 {
   transform: translateY(0);
 }
 
+.hero-content.reveal {
+  opacity: var(--hero-fade);
+  transform: translate3d(0, var(--hero-content-shift), 0);
+}
+
 @keyframes heroBreath {
   from {
     transform: translate3d(0, var(--hero-shift, 0), 0) scale(1);
@@ -1686,8 +1774,9 @@ h3 {
   }
 
   h1 {
-    max-width: 10ch;
-    font-size: clamp(3.3rem, 17vw, 5.1rem);
+    max-width: 7ch;
+    font-size: clamp(3rem, 15.2vw, 4.45rem);
+    line-height: 0.95;
   }
 
   h2 {
@@ -1782,6 +1871,23 @@ h3 {
     min-height: min(390px, 112vw);
   }
 
+  .instagram-widget-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .instagram-widget-panel.is-connected .instagram-widget-copy {
+    border-right: 0;
+    border-bottom: 1px solid rgba(17, 16, 15, 0.08);
+  }
+
+  .instagram-widget-mount {
+    min-height: 300px;
+  }
+
+  .instagram-widget-copy {
+    grid-template-columns: 1fr;
+  }
+
   .lightbox {
     align-items: center;
     padding: max(16px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
@@ -1817,11 +1923,11 @@ h3 {
   }
 
   .site-nav {
-    font-size: 0.6rem;
+    font-size: 0.58rem;
   }
 
   h1 {
-    font-size: clamp(3rem, 16vw, 4.2rem);
+    font-size: clamp(2.8rem, 14.5vw, 3.8rem);
   }
 }
 
