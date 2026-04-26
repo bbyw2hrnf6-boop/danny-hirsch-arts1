@@ -97,6 +97,8 @@ $galleryImages = [
       name="description"
       content="Danny Hirsch Arts presents contemporary abstract works shaped by material, movement, atmosphere, and emotional depth."
     >
+    <meta name="theme-color" content="#11100f">
+    <link rel="preload" as="image" href="assets/hero.jpg" fetchpriority="high">
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
@@ -114,7 +116,7 @@ $galleryImages = [
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <img class="hero-image" src="assets/hero.jpg" alt="Textured abstract artwork by Danny Hirsch">
+        <img class="hero-image" src="assets/hero.jpg" alt="Textured abstract artwork by Danny Hirsch" fetchpriority="high">
         <div class="hero-shade" aria-hidden="true"></div>
         <div class="hero-content reveal">
           <p class="kicker">Contemporary Abstract Art</p>
@@ -166,6 +168,7 @@ $galleryImages = [
                 <img
                   src="<?php echo htmlspecialchars($artwork['image']); ?>"
                   alt="<?php echo htmlspecialchars($artwork['title']); ?> abstract artwork"
+                  decoding="async"
                   loading="<?php echo $index === 0 ? 'eager' : 'lazy'; ?>"
                 >
               </a>
@@ -204,6 +207,7 @@ $galleryImages = [
               <img
                 src="<?php echo htmlspecialchars($image['image']); ?>"
                 alt="<?php echo htmlspecialchars($image['title']); ?> by Danny Hirsch Arts"
+                decoding="async"
                 loading="lazy"
               >
               <span>
