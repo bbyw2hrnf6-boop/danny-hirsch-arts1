@@ -59,36 +59,57 @@ Then visit `http://localhost:8000`.
 Recommended repository name:
 
 ```text
-danny-hirsch-arts
+danny-hirsch-arts1
 ```
 
-Basic terminal workflow:
+The local project folder is:
+
+```bash
+~/Documents/homepagecodextest
+```
+
+This folder is already a local git repository with an initial commit.
+
+## Create The Repo Yourself From The Folder
+
+If you use GitHub Desktop:
+
+1. Open GitHub Desktop.
+2. Click `File`.
+3. Click `Add Local Repository`.
+4. Choose this folder: `~/Documents/homepagecodextest`.
+5. Click `Add Repository`.
+6. Click `Publish repository`.
+7. Repository name: `danny-hirsch-arts1`.
+8. For free GitHub Pages, leave `Keep this code private` unchecked so the repo is public.
+9. Click `Publish Repository`.
+
+If you use GitHub in the browser plus terminal:
+
+1. On GitHub, create a new repository named `danny-hirsch-arts1`.
+2. Choose `Public` if you want free GitHub Pages hosting.
+3. Do not add a README, `.gitignore`, or license on GitHub because this project already has local files.
+4. Then run:
 
 ```bash
 cd ~/Documents/homepagecodextest
-git init
-git add .
-git commit -m "Initial Danny Hirsch Arts homepage"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/danny-hirsch-arts.git
+git remote add origin https://github.com/YOUR-USERNAME/danny-hirsch-arts1.git
 git push -u origin main
 ```
 
 ## Enable GitHub Pages
 
-1. Create a new GitHub repository named `danny-hirsch-arts`.
+1. Open the GitHub repository named `danny-hirsch-arts1`.
 2. Choose `Public` if you want free GitHub Pages hosting.
-3. Do not add a README, `.gitignore`, or license on GitHub because this project already includes local files.
-4. Push this folder to the new repository.
-5. In the GitHub repo, open `Settings`.
-6. Open `Pages`.
-7. Under `Build and deployment`, choose `Deploy from a branch`.
-8. Under `Branch`, select `main`.
-9. Select folder `/root`.
-10. Click `Save`.
+3. In the GitHub repo, open `Settings`.
+4. Open `Pages`.
+5. Under `Build and deployment`, choose `Deploy from a branch`.
+6. Under `Branch`, select `main`.
+7. Select folder `/root`.
+8. Click `Save`.
 
 Your site will be available at:
 
 ```text
-https://YOUR-USERNAME.github.io/danny-hirsch-arts/
+https://YOUR-USERNAME.github.io/danny-hirsch-arts1/
 ```
