@@ -109,6 +109,7 @@ $galleryImages = [
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#collection">Collection</a>
         <a href="#gallery">Gallery</a>
+        <a href="#wartrobe">wARTrobe</a>
         <a href="#about">About</a>
         <a href="#inquiry">Inquiry</a>
       </nav>
@@ -222,6 +223,24 @@ $galleryImages = [
               </span>
             </a>
           <?php endforeach; ?>
+        </div>
+      </section>
+
+      <section class="wartrobe section-pad reveal" id="wartrobe" aria-labelledby="wartrobe-title">
+        <div class="wartrobe-visual">
+          <img src="assets/wartrobe.jpg" alt="wARTrobe painted wardrobe installation by Danny Hirsch Arts" loading="lazy" decoding="async">
+        </div>
+        <div class="wartrobe-copy">
+          <p class="eyebrow">wARTrobe</p>
+          <h2 id="wartrobe-title">A functional object turned into a private artwork.</h2>
+          <p>
+            The wARTrobe project transforms wardrobe doors into a large painted surface for the home. What begins as
+            storage becomes atmosphere: color, leaves, fluid movement, and found material bring art into everyday space.
+          </p>
+          <p>
+            It sits between painting, interior object, and personal memory, made for rooms where art is not only viewed,
+            but lived with.
+          </p>
         </div>
       </section>
 
