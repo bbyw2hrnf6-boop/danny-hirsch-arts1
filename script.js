@@ -1,6 +1,7 @@
 const header = document.querySelector(".site-header");
 const heroImage = document.querySelector(".hero-image");
 const hero = document.querySelector(".hero");
+const atmosphere = document.querySelector(".art-atmosphere");
 const scrollProgress = document.querySelector(".scroll-progress");
 const revealItems = document.querySelectorAll(".reveal");
 const navLinks = document.querySelectorAll(".site-nav a[href^='#']");
@@ -38,6 +39,16 @@ const setHeroMotion = () => {
   hero?.style.setProperty("--hero-fade", fade.toFixed(3));
 };
 
+const setAtmosphereMotion = () => {
+  if (prefersReducedMotion) return;
+
+  const ambientShift = Math.min(window.scrollY * 0.035, 180);
+  const sectionShift = Math.min(window.scrollY * 0.018, 96);
+
+  atmosphere?.style.setProperty("--ambient-y", `${ambientShift}px`);
+  document.documentElement.style.setProperty("--section-art-y", `${sectionShift}px`);
+};
+
 const setScrollProgress = () => {
   if (!scrollProgress) return;
 
@@ -63,6 +74,7 @@ const setActiveNav = () => {
 const updateScrollEffects = () => {
   setHeaderState();
   setHeroMotion();
+  setAtmosphereMotion();
   setScrollProgress();
   setActiveNav();
   scrollTicking = false;

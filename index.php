@@ -139,6 +139,10 @@ $galleryImages = [
         <span class="texture-wash texture-wash-one"></span>
         <span class="texture-wash texture-wash-two"></span>
         <span class="texture-wash texture-wash-three"></span>
+        <span class="background-art background-art-one"></span>
+        <span class="background-art background-art-two"></span>
+        <span class="background-art background-art-three"></span>
+        <span class="background-art background-art-four"></span>
         <span class="floating-leaf leaf-one"></span>
         <span class="floating-leaf leaf-two"></span>
         <span class="floating-leaf leaf-three"></span>
@@ -248,8 +252,13 @@ $galleryImages = [
         <div class="instagram-heading">
           <p class="eyebrow">Latest Work</p>
           <h2 id="instagram-title">From the studio feed.</h2>
-          <a class="text-link" href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noreferrer">
-            @dannyhirsch.arts
+          <a class="text-link instagram-heading-link" href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noreferrer">
+            <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="5.2"></rect>
+              <circle cx="12" cy="12" r="4.1"></circle>
+              <path d="M17.4 6.9h.1"></path>
+            </svg>
+            <span>@dannyhirsch.arts</span>
           </a>
         </div>
         <div class="instagram-strip" aria-label="Selected recent visual studies">
@@ -260,7 +269,16 @@ $galleryImages = [
             rel="noreferrer"
             aria-label="Open Danny Hirsch Arts on Instagram"
           >
-            <span class="instagram-profile-mark">IG</span>
+            <span class="instagram-profile-top">
+              <span class="instagram-profile-mark">
+                <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="5.2"></rect>
+                  <circle cx="12" cy="12" r="4.1"></circle>
+                  <path d="M17.4 6.9h.1"></path>
+                </svg>
+              </span>
+              <span class="instagram-profile-kicker">Instagram</span>
+            </span>
             <strong>@dannyhirsch.arts</strong>
             <em>Follow the studio feed for new works, surface details, and process notes.</em>
             <span class="instagram-profile-link">Open Instagram</span>
