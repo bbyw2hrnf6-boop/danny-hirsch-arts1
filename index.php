@@ -244,6 +244,30 @@ $galleryImages = [
         </div>
       </section>
 
+      <section class="instagram-flow section-pad reveal" aria-labelledby="instagram-title">
+        <div class="instagram-heading">
+          <p class="eyebrow">Latest Work</p>
+          <h2 id="instagram-title">From the studio feed.</h2>
+          <a class="text-link" href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noreferrer">
+            @dannyhirsch.arts
+          </a>
+        </div>
+        <div class="instagram-strip" aria-label="Selected recent visual studies">
+          <?php foreach (array_slice($galleryImages, 0, 6) as $image): ?>
+            <a
+              class="instagram-tile js-lightbox-trigger"
+              href="<?php echo htmlspecialchars($image['image']); ?>"
+              data-lightbox-src="<?php echo htmlspecialchars($image['image']); ?>"
+              data-lightbox-title="<?php echo htmlspecialchars($image['title']); ?>"
+              data-lightbox-caption="Studio feed / <?php echo htmlspecialchars($image['caption']); ?>"
+              aria-label="Open <?php echo htmlspecialchars($image['title']); ?>"
+            >
+              <img src="<?php echo htmlspecialchars($image['image']); ?>" alt="<?php echo htmlspecialchars($image['title']); ?> studio feed image" loading="lazy" decoding="async">
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </section>
+
       <section class="about section-pad reveal" id="about" aria-labelledby="about-title">
         <div>
           <p class="eyebrow">About</p>
