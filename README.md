@@ -27,6 +27,7 @@ php index.php > index.html
 ## Current Features
 
 - Fullscreen artwork hero with subtle motion
+- Dark luxury and light gallery theme system using CSS variables
 - Glass-style header with refined logo treatment on scroll
 - Featured artwork grid with fullscreen lightbox preview
 - Additional image gallery with curated local artwork/detail images

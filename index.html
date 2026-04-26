@@ -12,16 +12,19 @@
     <link rel="preload" as="image" href="assets/hero.jpg" fetchpriority="high">
     <link rel="stylesheet" href="style.css">
   </head>
-  <body>
+  <body data-theme="dark">
     <header class="site-header" aria-label="Site header">
       <a class="brand" href="#top" aria-label="Danny Hirsch Arts home">
         <img src="assets/logo.png" alt="Danny Hirsch Arts">
       </a>
+      <button class="theme-toggle" type="button" aria-label="Switch to light gallery theme" aria-pressed="false">
+        <span>Light</span>
+      </button>
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#collection">Collection</a>
         <a href="#gallery">Gallery</a>
-        <a href="#wartrobe">wARTrobe</a>
         <a href="#about">About</a>
+        <a href="#instagram">Instagram</a>
         <a href="#inquiry">Inquiry</a>
       </nav>
     </header>
@@ -413,7 +416,25 @@
         </div>
       </section>
 
-      <section class="instagram-flow section-pad reveal" aria-labelledby="instagram-title">
+      <section class="about section-pad reveal" id="about" aria-labelledby="about-title">
+        <div>
+          <p class="eyebrow">About</p>
+          <h2 id="about-title">Material works with architectural presence.</h2>
+        </div>
+        <div class="about-copy">
+          <p>
+            Danny Hirsch creates contemporary abstract works that operate between painting, surface, and object. Built
+            through layers of pigment, organic impressions, and controlled disruption, the pieces carry a sense of
+            depth that changes with distance and light.
+          </p>
+          <p>
+            Their scale and atmosphere make them natural companions to modern interiors: private residences, hospitality
+            spaces, architectural projects, and collections seeking work with emotional weight rather than decoration.
+          </p>
+        </div>
+      </section>
+
+      <section class="instagram-flow section-pad reveal" id="instagram" aria-labelledby="instagram-title">
         <div class="instagram-heading">
           <p class="eyebrow">Instagram</p>
           <h2 id="instagram-title">Live from the studio.</h2>
@@ -446,24 +467,6 @@
           <div class="instagram-widget-mount">
             <div class="elfsight-app-33a958e6-feff-4490-a474-fe5a2f8f935a" data-elfsight-app-lazy></div>
           </div>
-        </div>
-      </section>
-
-      <section class="about section-pad reveal" id="about" aria-labelledby="about-title">
-        <div>
-          <p class="eyebrow">About</p>
-          <h2 id="about-title">Material works with architectural presence.</h2>
-        </div>
-        <div class="about-copy">
-          <p>
-            Danny Hirsch creates contemporary abstract works that operate between painting, surface, and object. Built
-            through layers of pigment, organic impressions, and controlled disruption, the pieces carry a sense of
-            depth that changes with distance and light.
-          </p>
-          <p>
-            Their scale and atmosphere make them natural companions to modern interiors: private residences, hospitality
-            spaces, architectural projects, and collections seeking work with emotional weight rather than decoration.
-          </p>
         </div>
       </section>
 

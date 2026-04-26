@@ -5,6 +5,7 @@ const atmosphere = document.querySelector(".art-atmosphere");
 const scrollProgress = document.querySelector(".scroll-progress");
 const revealItems = document.querySelectorAll(".reveal");
 const navLinks = document.querySelectorAll(".site-nav a[href^='#']");
+const themeToggle = document.querySelector(".theme-toggle");
 const pageSections = Array.from(navLinks)
   .map((link) => document.querySelector(link.getAttribute("href")))
   .filter(Boolean);
@@ -19,6 +20,29 @@ let scrollTicking = false;
 let lastScrollY = window.scrollY;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const storedTheme = window.localStorage.getItem("dha-theme");
+
+const applyTheme = (theme) => {
+  const nextTheme = theme === "light" ? "light" : "dark";
+  document.body.dataset.theme = nextTheme;
+  document.querySelector("meta[name='theme-color']")?.setAttribute("content", nextTheme === "dark" ? "#090a0a" : "#f4f0e8");
+
+  if (themeToggle) {
+    const isLight = nextTheme === "light";
+    themeToggle.setAttribute("aria-pressed", String(isLight));
+    themeToggle.setAttribute("aria-label", `Switch to ${isLight ? "dark luxury" : "light gallery"} theme`);
+    const themeToggleText = themeToggle.querySelector("span");
+    if (themeToggleText) {
+      themeToggleText.textContent = isLight ? "Dark" : "Light";
+    }
+  }
+};
+
+if (storedTheme) {
+  applyTheme(storedTheme);
+} else {
+  applyTheme(document.body.dataset.theme);
+}
 
 const setHeaderState = () => {
   if (!header) return;
@@ -164,6 +188,12 @@ navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     header?.classList.remove("is-hidden");
   });
+});
+
+themeToggle?.addEventListener("click", () => {
+  const nextTheme = document.body.dataset.theme === "light" ? "dark" : "light";
+  applyTheme(nextTheme);
+  window.localStorage.setItem("dha-theme", nextTheme);
 });
 
 window.addEventListener("scroll", requestScrollUpdate, { passive: true });
