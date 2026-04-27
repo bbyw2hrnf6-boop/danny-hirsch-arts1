@@ -16,12 +16,16 @@ const lightboxCaption = document.querySelector(".lightbox-caption span");
 const lightboxClose = document.querySelector(".lightbox-close");
 const lightboxTriggers = document.querySelectorAll(".js-lightbox-trigger");
 let lightboxCloseTimer;
+let activeLightboxTrigger;
 let scrollTicking = false;
 let lastScrollY = window.scrollY;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const mobileHeaderQuery = window.matchMedia("(max-width: 900px)");
 const storedTheme = window.localStorage.getItem("dha-theme");
+const emptyImageSrc = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
 
+// Theme state is persisted so returning visitors keep their preferred gallery mode.
 const applyTheme = (theme) => {
   const nextTheme = theme === "light" ? "light" : "dark";
   document.body.dataset.theme = nextTheme;
@@ -49,10 +53,11 @@ const setHeaderState = () => {
 
   const currentScrollY = window.scrollY;
   header.classList.toggle("is-scrolled", currentScrollY > 24);
-  header.classList.toggle("is-hidden", currentScrollY > lastScrollY && currentScrollY > 460);
+  header.classList.toggle("is-hidden", !mobileHeaderQuery.matches && currentScrollY > lastScrollY && currentScrollY > 460);
   lastScrollY = currentScrollY;
 };
 
+// Subtle scroll motion adds depth without moving layout-critical elements.
 const setHeroMotion = () => {
   if (!heroImage || prefersReducedMotion) return;
   const shift = Math.min(window.scrollY * 0.12, 70);
@@ -110,10 +115,12 @@ const requestScrollUpdate = () => {
   window.requestAnimationFrame(updateScrollEffects);
 };
 
+// Shared artwork lightbox for collection and gallery images.
 const openLightbox = (trigger) => {
   if (!lightbox || !lightboxImage || !lightboxTitle || !lightboxCaption) return;
 
   window.clearTimeout(lightboxCloseTimer);
+  activeLightboxTrigger = trigger;
 
   const src = trigger.dataset.lightboxSrc || trigger.getAttribute("href");
   const title = trigger.dataset.lightboxTitle || "Danny Hirsch Arts";
@@ -140,12 +147,15 @@ const closeLightbox = () => {
   document.body.classList.remove("is-lightbox-open");
 
   lightboxCloseTimer = window.setTimeout(() => {
-    lightboxImage.src = "";
+    lightboxImage.src = emptyImageSrc;
     lightboxImage.alt = "";
   }, 320);
+
+  activeLightboxTrigger?.focus({ preventScroll: true });
 };
 
 if ("IntersectionObserver" in window) {
+  // Reveal items once, keeping scroll work light.
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -187,6 +197,13 @@ window.addEventListener("keydown", (event) => {
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     header?.classList.remove("is-hidden");
+
+    const target = document.querySelector(link.getAttribute("href"));
+    if (!target) return;
+
+    // Re-align after dynamic embeds, especially the Instagram widget, finish resizing.
+    window.setTimeout(() => target.scrollIntoView({ block: "start" }), 700);
+    window.setTimeout(() => target.scrollIntoView({ block: "start" }), 1600);
   });
 });
 

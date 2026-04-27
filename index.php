@@ -1,42 +1,42 @@
 <?php
 $artworks = [
     [
-        'image' => 'assets/artwork-01.jpg',
+        'image' => 'assets/artworks/artwork-01.jpg',
         'title' => 'Yellow Field, Veined',
         'year' => '2026',
         'medium' => 'Mixed Media on Canvas',
         'description' => 'A charged botanical trace held inside a saturated field of light.',
     ],
     [
-        'image' => 'assets/artwork-02.jpg',
+        'image' => 'assets/artworks/artwork-02.jpg',
         'title' => 'Black Current',
         'year' => '2026',
         'medium' => 'Acrylic on Canvas',
         'description' => 'Dark movement breaks into mineral gold, fluid and deliberate.',
     ],
     [
-        'image' => 'assets/artwork-03.jpg',
+        'image' => 'assets/artworks/artwork-03.jpg',
         'title' => 'Soft Terrain',
         'year' => '2026',
         'medium' => 'Mixed Media on Canvas',
         'description' => 'Color drifts across the surface like atmosphere settling into matter.',
     ],
     [
-        'image' => 'assets/artwork-04.jpg',
+        'image' => 'assets/artworks/artwork-04.jpg',
         'title' => 'Oxide Drift',
         'year' => '2026',
         'medium' => 'Acrylic and Mineral Pigment on Canvas',
         'description' => 'A low, metallic landscape shaped by pressure, reflection, and restraint.',
     ],
     [
-        'image' => 'assets/artwork-05.jpg',
+        'image' => 'assets/artworks/artwork-05.jpg',
         'title' => 'Blue Aperture',
         'year' => '2026',
         'medium' => 'Acrylic on Canvas',
         'description' => 'Cool blues and silver tones open into a deep, architectural field.',
     ],
     [
-        'image' => 'assets/artwork-06.jpg',
+        'image' => 'assets/artworks/artwork-06.jpg',
         'title' => 'Nocturne Relic',
         'year' => '2026',
         'medium' => 'Mixed Media Assemblage',
@@ -46,42 +46,42 @@ $artworks = [
 
 $galleryImages = [
     [
-        'image' => 'assets/gallery-01.jpg',
+        'image' => 'assets/gallery/gallery-01.jpg',
         'title' => 'Surface Study I',
         'caption' => 'A close reading of black, gold, and mineral movement.',
     ],
     [
-        'image' => 'assets/gallery-02.jpg',
+        'image' => 'assets/gallery/gallery-02.jpg',
         'title' => 'Surface Study II',
         'caption' => 'Fine organic structure held against a quiet grey field.',
     ],
     [
-        'image' => 'assets/gallery-03.jpg',
+        'image' => 'assets/gallery/gallery-03.jpg',
         'title' => 'Surface Study III',
         'caption' => 'Raw fibers and shadowed pigment create a tactile relief.',
     ],
     [
-        'image' => 'assets/gallery-04.jpg',
+        'image' => 'assets/gallery/gallery-04.jpg',
         'title' => 'Surface Study IV',
         'caption' => 'Linear fragments drift across a deep earth-toned ground.',
     ],
     [
-        'image' => 'assets/gallery-05.jpg',
+        'image' => 'assets/gallery/gallery-05.jpg',
         'title' => 'Surface Study V',
         'caption' => 'Blue, gold, and carved material meet in a dense color field.',
     ],
     [
-        'image' => 'assets/gallery-06.jpg',
+        'image' => 'assets/gallery/gallery-06.jpg',
         'title' => 'Surface Study VI',
         'caption' => 'An intimate vertical composition of pressure, texture, and light.',
     ],
     [
-        'image' => 'assets/gallery-07.jpg',
+        'image' => 'assets/gallery/gallery-07.jpg',
         'title' => 'Surface Study VII',
         'caption' => 'Dark atmospheric marks suspended over a quiet canvas plane.',
     ],
     [
-        'image' => 'assets/gallery-08.jpg',
+        'image' => 'assets/gallery/gallery-08.jpg',
         'title' => 'Surface Study VIII',
         'caption' => 'A controlled metallic surface with depth and quiet abrasion.',
     ],
@@ -99,13 +99,13 @@ $galleryImages = [
       content="Danny Hirsch Arts presents contemporary abstract works shaped by material, movement, atmosphere, and emotional depth."
     >
     <meta name="theme-color" content="#11100f">
-    <link rel="preload" as="image" href="assets/hero.jpg" fetchpriority="high">
+    <link rel="preload" as="image" href="assets/images/hero.jpg" fetchpriority="high">
     <link rel="stylesheet" href="style.css">
   </head>
   <body data-theme="dark">
     <header class="site-header" aria-label="Site header">
       <a class="brand" href="#top" aria-label="Danny Hirsch Arts home">
-        <img src="assets/logo.png" alt="Danny Hirsch Arts">
+        <img src="assets/brand/logo.png" alt="Danny Hirsch Arts">
       </a>
       <button class="theme-toggle" type="button" aria-label="Switch to light gallery theme" aria-pressed="false">
         <span>Light</span>
@@ -122,7 +122,7 @@ $galleryImages = [
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <img class="hero-image" src="assets/hero.jpg" alt="Textured abstract artwork by Danny Hirsch" fetchpriority="high">
+        <img class="hero-image" src="assets/images/hero.jpg" alt="Textured abstract artwork by Danny Hirsch" fetchpriority="high">
         <div class="hero-shade" aria-hidden="true"></div>
         <div class="hero-grain" aria-hidden="true"></div>
         <div class="hero-frame" aria-hidden="true"></div>
@@ -236,7 +236,7 @@ $galleryImages = [
 
       <section class="wartrobe section-pad reveal" id="wartrobe" aria-labelledby="wartrobe-title">
         <div class="wartrobe-visual">
-          <img src="assets/wartrobe.jpg" alt="wARTrobe painted wardrobe installation by Danny Hirsch Arts" loading="lazy" decoding="async">
+          <img src="assets/images/wartrobe.jpg" alt="wARTrobe painted wardrobe installation by Danny Hirsch Arts" loading="lazy" decoding="async">
         </div>
         <div class="wartrobe-copy">
           <p class="eyebrow">wARTrobe</p>
@@ -343,7 +343,7 @@ $galleryImages = [
     <div class="lightbox" role="dialog" aria-modal="true" aria-label="Artwork preview" aria-hidden="true">
       <button class="lightbox-close" type="button" aria-label="Close image preview">X</button>
       <figure class="lightbox-figure">
-        <img class="lightbox-image" alt="">
+        <img class="lightbox-image" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="">
         <figcaption class="lightbox-caption">
           <strong></strong>
           <span></span>
@@ -351,6 +351,7 @@ $galleryImages = [
       </figure>
     </div>
 
+    <!-- Elfsight mounts the live Instagram feed into the widget container above. -->
     <script src="https://elfsightcdn.com/platform.js" async></script>
     <script src="script.js"></script>
   </body>
