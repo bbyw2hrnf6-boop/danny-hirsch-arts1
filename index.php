@@ -176,8 +176,14 @@ $galleryImages = [
           <p>Soft light. Dark stone. Quiet movement.</p>
         </div>
         <div class="room-stage" aria-label="Digital gallery room">
+          <div class="room-ceiling" aria-hidden="true">
+            <span></span>
+            <span></span>
+          </div>
           <div class="room-wall" aria-hidden="true"></div>
           <div class="room-window-light" aria-hidden="true"></div>
+          <div class="room-spot room-spot-one" aria-hidden="true"></div>
+          <div class="room-spot room-spot-two" aria-hidden="true"></div>
           <a
             class="room-art room-art-one js-lightbox-trigger"
             href="assets/artworks/artwork-04.jpg"
@@ -187,6 +193,7 @@ $galleryImages = [
             data-lightbox-caption="Installed in a private gallery room"
           >
             <img src="assets/artworks/artwork-04.jpg" alt="Oxide Drift artwork in digital gallery setting" loading="lazy" decoding="async">
+            <span class="room-art-label">Oxide Drift</span>
           </a>
           <a
             class="room-art room-art-two js-lightbox-trigger"
@@ -197,13 +204,17 @@ $galleryImages = [
             data-lightbox-caption="Installed in a private gallery room"
           >
             <img src="assets/artworks/artwork-06.jpg" alt="Nocturne Relic artwork in digital gallery setting" loading="lazy" decoding="async">
+            <span class="room-art-label">Nocturne Relic</span>
           </a>
-          <div class="room-console" aria-hidden="true"></div>
+          <div class="room-console" aria-hidden="true">
+            <span></span>
+          </div>
           <div class="room-vase" aria-hidden="true">
             <span></span>
             <span></span>
             <span></span>
           </div>
+          <div class="room-plinth" aria-hidden="true"></div>
           <div class="room-sculpture" aria-hidden="true">
             <span></span>
             <span></span>

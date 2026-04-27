@@ -241,12 +241,25 @@ const updateAmbientButton = () => {
   }
 };
 
-const createNoiseSource = (context, seconds = 4) => {
+const createNoiseSource = (context, seconds = 4, color = "white") => {
   const buffer = context.createBuffer(1, context.sampleRate * seconds, context.sampleRate);
   const channel = buffer.getChannelData(0);
+  let low = 0;
+  let lower = 0;
 
   for (let i = 0; i < channel.length; i += 1) {
-    channel[i] = Math.random() * 2 - 1;
+    const white = Math.random() * 2 - 1;
+
+    if (color === "brown") {
+      low = (low + 0.025 * white) / 1.025;
+      channel[i] = low * 3.5;
+    } else if (color === "wave") {
+      lower = lower * 0.995 + white * 0.005;
+      low = low * 0.94 + lower * 0.06;
+      channel[i] = low * 5.4;
+    } else {
+      channel[i] = white;
+    }
   }
 
   const source = context.createBufferSource();
@@ -260,34 +273,54 @@ const createAmbientNodes = () => {
   const master = context.createGain();
   master.gain.value = 0;
 
-  const wind = createNoiseSource(context, 5);
+  const wind = createNoiseSource(context, 7, "brown");
   const windFilter = context.createBiquadFilter();
   const windGain = context.createGain();
   windFilter.type = "lowpass";
-  windFilter.frequency.value = 520;
-  windGain.gain.value = 0.055;
+  windFilter.frequency.value = 360;
+  windFilter.Q.value = 0.8;
+  windGain.gain.value = 0.032;
   wind.connect(windFilter).connect(windGain).connect(master);
 
-  const rain = createNoiseSource(context, 3);
+  const waves = createNoiseSource(context, 9, "wave");
+  const waveFilter = context.createBiquadFilter();
+  const waveGain = context.createGain();
+  const waveLfo = context.createOscillator();
+  const waveLfoGain = context.createGain();
+  waveFilter.type = "lowpass";
+  waveFilter.frequency.value = 180;
+  waveGain.gain.value = 0.014;
+  waveLfo.frequency.value = 0.075;
+  waveLfoGain.gain.value = 0.008;
+  waves.connect(waveFilter).connect(waveGain).connect(master);
+  waveLfo.connect(waveLfoGain).connect(waveGain.gain);
+
+  const rain = createNoiseSource(context, 5, "brown");
   const rainFilter = context.createBiquadFilter();
+  const rainSoften = context.createBiquadFilter();
   const rainGain = context.createGain();
-  rainFilter.type = "highpass";
-  rainFilter.frequency.value = 1900;
-  rainGain.gain.value = 0.014;
-  rain.connect(rainFilter).connect(rainGain).connect(master);
+  rainFilter.type = "bandpass";
+  rainFilter.frequency.value = 1250;
+  rainFilter.Q.value = 0.38;
+  rainSoften.type = "lowpass";
+  rainSoften.frequency.value = 1900;
+  rainGain.gain.value = 0.005;
+  rain.connect(rainFilter).connect(rainSoften).connect(rainGain).connect(master);
 
   const lfo = context.createOscillator();
   const lfoGain = context.createGain();
-  lfo.frequency.value = 0.055;
-  lfoGain.gain.value = 90;
+  lfo.frequency.value = 0.04;
+  lfoGain.gain.value = 58;
   lfo.connect(lfoGain).connect(windFilter.frequency);
 
   master.connect(context.destination);
   wind.start();
+  waves.start();
   rain.start();
+  waveLfo.start();
   lfo.start();
 
-  return { master, wind, rain, lfo };
+  return { master, wind, waves, rain, waveLfo, lfo };
 };
 
 // Ambient audio is opt-in because browsers block autoplay and quiet pages should stay quiet.
@@ -305,7 +338,7 @@ const toggleAmbient = async () => {
   ambientIsOn = !ambientIsOn;
   const now = ambientContext.currentTime;
   ambientMaster.gain.cancelScheduledValues(now);
-  ambientMaster.gain.setTargetAtTime(ambientIsOn ? 0.12 : 0, now, ambientIsOn ? 0.75 : 0.35);
+  ambientMaster.gain.setTargetAtTime(ambientIsOn ? 0.052 : 0, now, ambientIsOn ? 0.9 : 0.35);
   updateAmbientButton();
 
   if (ambientIsOn) {
