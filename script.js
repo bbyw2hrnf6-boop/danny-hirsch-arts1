@@ -6,6 +6,8 @@ const scrollProgress = document.querySelector(".scroll-progress");
 const revealItems = document.querySelectorAll(".reveal");
 const navLinks = document.querySelectorAll(".site-nav a[href^='#']");
 const themeToggle = document.querySelector(".theme-toggle");
+const ambientToggle = document.querySelector(".ambient-toggle");
+const installation = document.querySelector(".installation");
 const pageSections = Array.from(navLinks)
   .map((link) => document.querySelector(link.getAttribute("href")))
   .filter(Boolean);
@@ -19,6 +21,10 @@ let lightboxCloseTimer;
 let activeLightboxTrigger;
 let scrollTicking = false;
 let lastScrollY = window.scrollY;
+let ambientContext;
+let ambientMaster;
+let ambientNodes;
+let ambientIsOn = false;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const mobileHeaderQuery = window.matchMedia("(max-width: 900px)");
@@ -78,6 +84,22 @@ const setAtmosphereMotion = () => {
   document.documentElement.style.setProperty("--section-art-y", `${sectionShift}px`);
 };
 
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const setRoomMotion = () => {
+  if (!installation || prefersReducedMotion) return;
+
+  const rect = installation.getBoundingClientRect();
+  const progress = clamp((window.innerHeight - rect.top) / (window.innerHeight + rect.height), 0, 1);
+  const centered = progress - 0.5;
+
+  installation.style.setProperty("--room-turn", `${(-7 + progress * 14).toFixed(2)}deg`);
+  installation.style.setProperty("--room-tilt", `${(2.2 - progress * 3).toFixed(2)}deg`);
+  installation.style.setProperty("--room-lift", `${(centered * -34).toFixed(1)}px`);
+  installation.style.setProperty("--room-spin", `${(progress * 220).toFixed(1)}deg`);
+  installation.style.setProperty("--room-light-shift", `${(centered * 38).toFixed(1)}px`);
+};
+
 const setScrollProgress = () => {
   if (!scrollProgress) return;
 
@@ -104,6 +126,7 @@ const updateScrollEffects = () => {
   setHeaderState();
   setHeroMotion();
   setAtmosphereMotion();
+  setRoomMotion();
   setScrollProgress();
   setActiveNav();
   scrollTicking = false;
@@ -206,6 +229,91 @@ navLinks.forEach((link) => {
     window.setTimeout(() => target.scrollIntoView({ block: "start" }), 1600);
   });
 });
+
+const updateAmbientButton = () => {
+  if (!ambientToggle) return;
+
+  ambientToggle.setAttribute("aria-pressed", String(ambientIsOn));
+  ambientToggle.setAttribute("aria-label", ambientIsOn ? "Stop ambient gallery sound" : "Start ambient gallery sound");
+  const label = ambientToggle.querySelector("span");
+  if (label) {
+    label.textContent = ambientIsOn ? "Quiet" : "Sound";
+  }
+};
+
+const createNoiseSource = (context, seconds = 4) => {
+  const buffer = context.createBuffer(1, context.sampleRate * seconds, context.sampleRate);
+  const channel = buffer.getChannelData(0);
+
+  for (let i = 0; i < channel.length; i += 1) {
+    channel[i] = Math.random() * 2 - 1;
+  }
+
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+  return source;
+};
+
+const createAmbientNodes = () => {
+  const context = ambientContext;
+  const master = context.createGain();
+  master.gain.value = 0;
+
+  const wind = createNoiseSource(context, 5);
+  const windFilter = context.createBiquadFilter();
+  const windGain = context.createGain();
+  windFilter.type = "lowpass";
+  windFilter.frequency.value = 520;
+  windGain.gain.value = 0.055;
+  wind.connect(windFilter).connect(windGain).connect(master);
+
+  const rain = createNoiseSource(context, 3);
+  const rainFilter = context.createBiquadFilter();
+  const rainGain = context.createGain();
+  rainFilter.type = "highpass";
+  rainFilter.frequency.value = 1900;
+  rainGain.gain.value = 0.014;
+  rain.connect(rainFilter).connect(rainGain).connect(master);
+
+  const lfo = context.createOscillator();
+  const lfoGain = context.createGain();
+  lfo.frequency.value = 0.055;
+  lfoGain.gain.value = 90;
+  lfo.connect(lfoGain).connect(windFilter.frequency);
+
+  master.connect(context.destination);
+  wind.start();
+  rain.start();
+  lfo.start();
+
+  return { master, wind, rain, lfo };
+};
+
+// Ambient audio is opt-in because browsers block autoplay and quiet pages should stay quiet.
+const toggleAmbient = async () => {
+  if (!ambientToggle) return;
+
+  if (!ambientContext) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    ambientContext = new AudioContext();
+    ambientNodes = createAmbientNodes();
+    ambientMaster = ambientNodes.master;
+  }
+
+  ambientIsOn = !ambientIsOn;
+  const now = ambientContext.currentTime;
+  ambientMaster.gain.cancelScheduledValues(now);
+  ambientMaster.gain.setTargetAtTime(ambientIsOn ? 0.12 : 0, now, ambientIsOn ? 0.75 : 0.35);
+  updateAmbientButton();
+
+  if (ambientIsOn) {
+    ambientContext.resume().catch(() => {});
+  }
+};
+
+ambientToggle?.addEventListener("click", toggleAmbient);
 
 themeToggle?.addEventListener("click", () => {
   const nextTheme = document.body.dataset.theme === "light" ? "dark" : "light";

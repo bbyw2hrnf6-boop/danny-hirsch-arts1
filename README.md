@@ -7,7 +7,7 @@ Premium static artist homepage for Danny Hirsch Arts. The site is built with pla
 - `index.html` - static GitHub Pages entry file
 - `index.php` - editable PHP source version
 - `style.css` - visual system, responsive layouts, theme styles
-- `script.js` - theme toggle, scroll effects, reveal animation, lightbox
+- `script.js` - theme toggle, ambient sound, scroll effects, reveal animation, lightbox
 - `assets/brand/` - logo
 - `assets/images/` - hero and feature images
 - `assets/artworks/` - main artwork images
@@ -53,3 +53,7 @@ The live Instagram feed uses Elfsight:
 <script src="https://elfsightcdn.com/platform.js" async></script>
 <div class="elfsight-app-33a958e6-feff-4490-a474-fe5a2f8f935a" data-elfsight-app-lazy></div>
 ```
+
+## Ambient Sound
+
+The sound control uses browser-generated Web Audio. It is opt-in, low volume, and does not require audio files.

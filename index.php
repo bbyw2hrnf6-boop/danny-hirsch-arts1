@@ -107,10 +107,16 @@ $galleryImages = [
       <a class="brand" href="#top" aria-label="Danny Hirsch Arts home">
         <img src="assets/brand/logo.png" alt="Danny Hirsch Arts">
       </a>
-      <button class="theme-toggle" type="button" aria-label="Switch to light gallery theme" aria-pressed="false">
-        <span>Light</span>
-      </button>
+      <div class="site-controls" aria-label="Display and sound controls">
+        <button class="theme-toggle" type="button" aria-label="Switch to light gallery theme" aria-pressed="false">
+          <span>Light</span>
+        </button>
+        <button class="ambient-toggle" type="button" aria-label="Start ambient gallery sound" aria-pressed="false">
+          <span>Sound</span>
+        </button>
+      </div>
       <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#installation">Rooms</a>
         <a href="#collection">Collection</a>
         <a href="#gallery">Gallery</a>
         <a href="#about">About</a>
@@ -161,6 +167,51 @@ $galleryImages = [
           into atmospheres that feel both unsettled and composed. Each work holds movement in suspension, inviting the
           eye to read texture as memory, pressure, and emotional weather.
         </p>
+      </section>
+
+      <section class="installation section-pad reveal" id="installation" aria-labelledby="installation-title">
+        <div class="installation-copy">
+          <p class="eyebrow">Private Room</p>
+          <h2 id="installation-title">Art installed like atmosphere.</h2>
+          <p>Soft light. Dark stone. Quiet movement.</p>
+        </div>
+        <div class="room-stage" aria-label="Digital gallery room">
+          <div class="room-wall" aria-hidden="true"></div>
+          <div class="room-window-light" aria-hidden="true"></div>
+          <a
+            class="room-art room-art-one js-lightbox-trigger"
+            href="assets/artworks/artwork-04.jpg"
+            aria-label="View Oxide Drift in room setting"
+            data-lightbox-src="assets/artworks/artwork-04.jpg"
+            data-lightbox-title="Oxide Drift"
+            data-lightbox-caption="Installed in a private gallery room"
+          >
+            <img src="assets/artworks/artwork-04.jpg" alt="Oxide Drift artwork in digital gallery setting" loading="lazy" decoding="async">
+          </a>
+          <a
+            class="room-art room-art-two js-lightbox-trigger"
+            href="assets/artworks/artwork-06.jpg"
+            aria-label="View Nocturne Relic in room setting"
+            data-lightbox-src="assets/artworks/artwork-06.jpg"
+            data-lightbox-title="Nocturne Relic"
+            data-lightbox-caption="Installed in a private gallery room"
+          >
+            <img src="assets/artworks/artwork-06.jpg" alt="Nocturne Relic artwork in digital gallery setting" loading="lazy" decoding="async">
+          </a>
+          <div class="room-console" aria-hidden="true"></div>
+          <div class="room-vase" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="room-sculpture" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="room-floor" aria-hidden="true"></div>
+        </div>
       </section>
 
       <section class="collection section-pad" id="collection" aria-labelledby="collection-title">
