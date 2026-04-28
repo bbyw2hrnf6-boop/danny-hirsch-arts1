@@ -19,26 +19,70 @@
 
     if (!frames.length || !scrollArea || !spacer || !image) return;
 
-    let activeIndex = 0;
+    let activeIndex = -1;
+    let ticking = false;
+    const cache = new Map();
 
     player.style.setProperty("--sequence-count", String(frames.length));
     scrollArea.style.setProperty("--sequence-frame-height", `${frameHeight}px`);
     spacer.style.height = `${Math.max(frames.length - 1, 1) * frameHeight}px`;
 
-    frames.forEach((src) => {
+    const preloadFrame = (index) => {
+      if (index < 0 || index >= frames.length || cache.has(index)) return;
       const preload = new Image();
-      preload.src = src;
-    });
+      preload.decoding = "async";
+      preload.src = frames[index];
+      cache.set(index, preload);
+    };
+
+    const preloadAround = (index) => {
+      for (let offset = -1; offset <= 3; offset += 1) {
+        preloadFrame(index + offset);
+      }
+    };
+
+    const preloadRest = () => {
+      let nextIndex = 0;
+
+      const loadChunk = (deadline) => {
+        let loaded = 0;
+
+        while (
+          nextIndex < frames.length
+          && loaded < 3
+          && (!deadline || deadline.timeRemaining() > 8 || deadline.didTimeout)
+        ) {
+          preloadFrame(nextIndex);
+          nextIndex += 1;
+          loaded += 1;
+        }
+
+        if (nextIndex >= frames.length) return;
+
+        if ("requestIdleCallback" in window) {
+          window.requestIdleCallback(loadChunk, { timeout: 1200 });
+        } else {
+          window.setTimeout(() => loadChunk(), 160);
+        }
+      };
+
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(loadChunk, { timeout: 1200 });
+      } else {
+        window.setTimeout(() => loadChunk(), 160);
+      }
+    };
 
     const setFrame = (index) => {
       if (index === activeIndex) return;
       activeIndex = index;
       image.src = frames[index];
-      image.style.setProperty("--sequence-zoom", (1 + index * 0.004).toFixed(3));
 
       if (current) {
         current.textContent = String(index + 1).padStart(2, "0");
       }
+
+      preloadAround(index);
     };
 
     const updateFrame = () => {
@@ -46,10 +90,19 @@
       const progress = clamp(scrollArea.scrollTop / maxScroll, 0, 1);
       const nextIndex = clamp(Math.round(progress * (frames.length - 1)), 0, frames.length - 1);
       setFrame(nextIndex);
+      ticking = false;
+    };
+
+    const requestUpdate = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(updateFrame);
     };
 
     image.src = frames[0];
+    preloadAround(0);
+    preloadRest();
     updateFrame();
-    scrollArea.addEventListener("scroll", updateFrame, { passive: true });
+    scrollArea.addEventListener("scroll", requestUpdate, { passive: true });
   });
 })();

@@ -89,7 +89,7 @@ $galleryImages = [
 
 $processFrames = array_map(
     fn ($index) => sprintf('assets/process/process-%02d.jpg', $index),
-    range(1, 20)
+    range(1, 40)
 );
 
 ?>
@@ -179,7 +179,7 @@ $processFrames = array_map(
       <section class="process-sequence section-pad reveal" id="process" aria-labelledby="process-title">
         <div class="process-sequence-copy">
           <p class="eyebrow">Studio Process</p>
-          <h2 id="process-title">Twenty quiet stages. One finished surface.</h2>
+          <h2 id="process-title">Forty quiet stages. One finished surface.</h2>
           <p>Scroll inside the frame.</p>
         </div>
         <div
@@ -192,8 +192,8 @@ $processFrames = array_map(
               <img
                 class="sequence-frame"
                 src="assets/process/process-01.jpg"
-                width="960"
-                height="800"
+                width="3840"
+                height="3200"
                 alt="Artwork creation process"
                 loading="lazy"
                 decoding="async"
@@ -201,7 +201,7 @@ $processFrames = array_map(
               <div class="sequence-shade" aria-hidden="true"></div>
               <div class="sequence-counter" aria-hidden="true">
                 <span class="sequence-current">01</span>
-                <span>20</span>
+                <span>40</span>
               </div>
             </div>
             <div class="sequence-spacer" aria-hidden="true"></div>

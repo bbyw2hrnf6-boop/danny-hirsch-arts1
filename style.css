@@ -800,7 +800,7 @@ body[data-theme="dark"] .instagram-flow::before {
 }
 
 .process-sequence::before {
-  background-image: url("assets/process/process-20.jpg");
+  background-image: url("assets/process/process-40.jpg");
   opacity: 0.12;
 }
 
@@ -837,7 +837,9 @@ body[data-theme="dark"] .instagram-flow::before {
 
 .sequence-scroll {
   --sequence-frame-height: 78px;
-  height: min(72svh, 720px);
+  aspect-ratio: 6 / 5;
+  height: auto;
+  max-height: min(72svh, 720px);
   min-height: 430px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -862,7 +864,9 @@ body[data-theme="dark"] .instagram-flow::before {
 .sequence-sticky {
   position: sticky;
   top: 0;
-  height: min(72svh, 720px);
+  aspect-ratio: 6 / 5;
+  height: auto;
+  max-height: min(72svh, 720px);
   min-height: 430px;
   display: grid;
   place-items: center;
@@ -873,16 +877,16 @@ body[data-theme="dark"] .instagram-flow::before {
 }
 
 .sequence-frame {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   filter: contrast(1.03) saturate(0.96);
-  transform: scale(var(--sequence-zoom, 1));
-  transform-origin: 50% 50%;
-  will-change: transform;
 }
 
 .sequence-shade {
+  display: none;
   position: absolute;
   inset: 0;
   background:
@@ -913,7 +917,7 @@ body[data-theme="dark"] .instagram-flow::before {
 }
 
 .sequence-spacer {
-  height: 1482px;
+  height: 3042px;
 }
 
 .installation {
@@ -2286,8 +2290,9 @@ body[data-theme="light"] .room-floor {
 
   .sequence-scroll,
   .sequence-sticky {
-    height: min(68svh, 560px);
-    min-height: 390px;
+    aspect-ratio: 6 / 5;
+    height: auto;
+    min-height: 0;
   }
 
   .installation {
