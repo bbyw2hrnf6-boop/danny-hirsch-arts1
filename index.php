@@ -87,6 +87,11 @@ $galleryImages = [
     ],
 ];
 
+$processFrames = array_map(
+    fn ($index) => sprintf('assets/process/process-%02d.jpg', $index),
+    range(1, 20)
+);
+
 ?>
 <!doctype html>
 <html lang="en">
@@ -118,7 +123,9 @@ $galleryImages = [
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#installation">Rooms</a>
         <a href="#collection">Collection</a>
+        <a href="#process">Process</a>
         <a href="#gallery">Gallery</a>
+        <a href="#wartrobe">wARTrobe</a>
         <a href="#about">About</a>
         <a href="#instagram">Instagram</a>
         <a href="#inquiry">Inquiry</a>
@@ -167,6 +174,39 @@ $galleryImages = [
           into atmospheres that feel both unsettled and composed. Each work holds movement in suspension, inviting the
           eye to read texture as memory, pressure, and emotional weather.
         </p>
+      </section>
+
+      <section class="process-sequence section-pad reveal" id="process" aria-labelledby="process-title">
+        <div class="process-sequence-copy">
+          <p class="eyebrow">Studio Process</p>
+          <h2 id="process-title">Twenty quiet stages. One finished surface.</h2>
+          <p>Scroll inside the frame.</p>
+        </div>
+        <div
+          class="sequence-player js-sequence"
+          data-frame-height="78"
+          data-frames="<?php echo htmlspecialchars(implode(',', $processFrames)); ?>"
+        >
+          <div class="sequence-scroll" tabindex="0" aria-label="Scroll through artwork creation frames">
+            <div class="sequence-sticky">
+              <img
+                class="sequence-frame"
+                src="assets/process/process-01.jpg"
+                width="960"
+                height="800"
+                alt="Artwork creation process"
+                loading="lazy"
+                decoding="async"
+              >
+              <div class="sequence-shade" aria-hidden="true"></div>
+              <div class="sequence-counter" aria-hidden="true">
+                <span class="sequence-current">01</span>
+                <span>20</span>
+              </div>
+            </div>
+            <div class="sequence-spacer" aria-hidden="true"></div>
+          </div>
+        </div>
       </section>
 
       <section class="installation section-pad reveal" id="installation" aria-labelledby="installation-title">
@@ -415,6 +455,7 @@ $galleryImages = [
 
     <!-- Elfsight mounts the live Instagram feed into the widget container above. -->
     <script src="https://elfsightcdn.com/platform.js" async></script>
+    <script src="assets/js/sequence.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

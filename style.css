@@ -224,9 +224,9 @@ body[data-theme="dark"] .site-header.is-scrolled {
 
 .site-nav {
   justify-content: flex-end;
-  gap: clamp(16px, 3vw, 44px);
+  gap: clamp(12px, 2vw, 30px);
   color: inherit;
-  font-size: 0.73rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -738,6 +738,7 @@ body[data-theme="light"] .button-primary:hover {
 }
 
 .intro::after,
+.process-sequence::before,
 .installation::before,
 .collection::before,
 .gallery::before,
@@ -756,6 +757,7 @@ body[data-theme="light"] .button-primary:hover {
 }
 
 body[data-theme="dark"] .intro::after,
+body[data-theme="dark"] .process-sequence::before,
 body[data-theme="dark"] .installation::before,
 body[data-theme="dark"] .collection::before,
 body[data-theme="dark"] .gallery::before,
@@ -782,6 +784,136 @@ body[data-theme="dark"] .instagram-flow::before {
 
 .intro p::first-line {
   color: var(--accent);
+}
+
+.process-sequence {
+  min-height: clamp(760px, 94svh, 1080px);
+  display: grid;
+  grid-template-columns: minmax(280px, 0.42fr) minmax(0, 0.92fr);
+  gap: clamp(34px, 6vw, 120px);
+  align-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 74% 30%, rgba(183, 154, 104, 0.16), transparent 34%),
+    linear-gradient(180deg, var(--wall), var(--page-soft)),
+    var(--wall);
+}
+
+.process-sequence::before {
+  background-image: url("assets/process/process-20.jpg");
+  opacity: 0.12;
+}
+
+.process-sequence-copy,
+.sequence-player {
+  position: relative;
+  z-index: 1;
+}
+
+.process-sequence-copy {
+  max-width: 600px;
+}
+
+.process-sequence-copy h2 {
+  margin-bottom: 26px;
+}
+
+.process-sequence-copy p:not(.eyebrow) {
+  max-width: 320px;
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.12vw, 1.18rem);
+}
+
+.sequence-player {
+  width: min(100%, 920px);
+  justify-self: end;
+  border: 1px solid var(--line-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 34%),
+    rgba(7, 7, 6, 0.22);
+  box-shadow: var(--shadow), inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.sequence-scroll {
+  --sequence-frame-height: 78px;
+  height: min(72svh, 720px);
+  min-height: 430px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.sequence-scroll:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 8px;
+}
+
+.sequence-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sequence-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.sequence-sticky {
+  position: sticky;
+  top: 0;
+  height: min(72svh, 720px);
+  min-height: 430px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 42% 26%, rgba(255, 255, 255, 0.12), transparent 26%),
+    linear-gradient(115deg, #27211b, #0d0d0c 74%);
+}
+
+.sequence-frame {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: contrast(1.03) saturate(0.96);
+  transform: scale(var(--sequence-zoom, 1));
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.sequence-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, transparent 48%, rgba(0, 0, 0, 0.3)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.1), transparent 28%, rgba(0, 0, 0, 0.18));
+  pointer-events: none;
+}
+
+.sequence-counter {
+  position: absolute;
+  right: clamp(16px, 2vw, 28px);
+  bottom: clamp(14px, 2vw, 26px);
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: rgba(251, 248, 242, 0.82);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.sequence-counter::before {
+  width: 72px;
+  height: 1px;
+  background: rgba(251, 248, 242, 0.42);
+  content: "";
+}
+
+.sequence-spacer {
+  height: 1482px;
 }
 
 .installation {
@@ -1462,7 +1594,7 @@ body[data-theme="light"] .room-floor {
 
 .wartrobe {
   display: grid;
-  grid-template-columns: minmax(280px, 0.54fr) minmax(0, 0.72fr);
+  grid-template-columns: minmax(240px, 0.46fr) minmax(0, 0.76fr);
   gap: clamp(34px, 7vw, 120px);
   align-items: center;
   overflow: hidden;
@@ -1483,13 +1615,15 @@ body[data-theme="light"] .room-floor {
 }
 
 .wartrobe-visual {
+  width: min(100%, 520px);
+  justify-self: center;
   overflow: visible;
 }
 
 .wartrobe-visual img {
   width: 100%;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
+  height: auto;
+  object-fit: contain;
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow);
   transition: filter 700ms ease, transform 900ms var(--ease);
@@ -1950,14 +2084,14 @@ body[data-theme="light"] .room-floor {
 
   .site-header {
     inset: max(10px, env(safe-area-inset-top)) 10px auto;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr;
     gap: 12px;
     align-items: start;
     padding: 12px;
   }
 
   .brand {
-    width: 154px;
+    width: clamp(118px, 34vw, 154px);
     padding: 8px 10px;
   }
 
@@ -1965,12 +2099,22 @@ body[data-theme="light"] .room-floor {
     grid-column: 1 / -1;
     width: 100%;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-start;
     gap: 2px 16px;
-    overflow: visible;
-    padding-bottom: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
     font-size: 0.64rem;
+    scrollbar-width: none;
+  }
+
+  .site-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-nav a {
+    flex: 0 0 auto;
   }
 
   .site-controls {
@@ -1988,6 +2132,7 @@ body[data-theme="light"] .room-floor {
   }
 
   .section-heading,
+  .process-sequence,
   .installation,
   .gallery-heading,
   .wartrobe,
@@ -2004,6 +2149,15 @@ body[data-theme="light"] .room-floor {
   .installation-copy {
     max-width: 760px;
     padding-bottom: 0;
+  }
+
+  .process-sequence-copy {
+    max-width: 760px;
+  }
+
+  .sequence-player {
+    justify-self: start;
+    width: min(100%, 760px);
   }
 
   .room-stage {
@@ -2126,6 +2280,16 @@ body[data-theme="light"] .room-floor {
     line-height: 1.18;
   }
 
+  .process-sequence {
+    min-height: auto;
+  }
+
+  .sequence-scroll,
+  .sequence-sticky {
+    height: min(68svh, 560px);
+    min-height: 390px;
+  }
+
   .installation {
     min-height: auto;
   }
@@ -2228,7 +2392,9 @@ body[data-theme="light"] .room-floor {
   }
 
   .wartrobe-visual img {
-    aspect-ratio: 4 / 5;
+    height: auto;
+    max-height: 620px;
+    object-fit: contain;
   }
 
   .instagram-widget-copy {

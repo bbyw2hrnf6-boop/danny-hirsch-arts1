@@ -28,7 +28,9 @@
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="#installation">Rooms</a>
         <a href="#collection">Collection</a>
+        <a href="#process">Process</a>
         <a href="#gallery">Gallery</a>
+        <a href="#wartrobe">wARTrobe</a>
         <a href="#about">About</a>
         <a href="#instagram">Instagram</a>
         <a href="#inquiry">Inquiry</a>
@@ -77,6 +79,39 @@
           into atmospheres that feel both unsettled and composed. Each work holds movement in suspension, inviting the
           eye to read texture as memory, pressure, and emotional weather.
         </p>
+      </section>
+
+      <section class="process-sequence section-pad reveal" id="process" aria-labelledby="process-title">
+        <div class="process-sequence-copy">
+          <p class="eyebrow">Studio Process</p>
+          <h2 id="process-title">Twenty quiet stages. One finished surface.</h2>
+          <p>Scroll inside the frame.</p>
+        </div>
+        <div
+          class="sequence-player js-sequence"
+          data-frame-height="78"
+          data-frames="assets/process/process-01.jpg,assets/process/process-02.jpg,assets/process/process-03.jpg,assets/process/process-04.jpg,assets/process/process-05.jpg,assets/process/process-06.jpg,assets/process/process-07.jpg,assets/process/process-08.jpg,assets/process/process-09.jpg,assets/process/process-10.jpg,assets/process/process-11.jpg,assets/process/process-12.jpg,assets/process/process-13.jpg,assets/process/process-14.jpg,assets/process/process-15.jpg,assets/process/process-16.jpg,assets/process/process-17.jpg,assets/process/process-18.jpg,assets/process/process-19.jpg,assets/process/process-20.jpg"
+        >
+          <div class="sequence-scroll" tabindex="0" aria-label="Scroll through artwork creation frames">
+            <div class="sequence-sticky">
+              <img
+                class="sequence-frame"
+                src="assets/process/process-01.jpg"
+                width="960"
+                height="800"
+                alt="Artwork creation process"
+                loading="lazy"
+                decoding="async"
+              >
+              <div class="sequence-shade" aria-hidden="true"></div>
+              <div class="sequence-counter" aria-hidden="true">
+                <span class="sequence-current">01</span>
+                <span>20</span>
+              </div>
+            </div>
+            <div class="sequence-spacer" aria-hidden="true"></div>
+          </div>
+        </div>
       </section>
 
       <section class="installation section-pad reveal" id="installation" aria-labelledby="installation-title">
@@ -579,6 +614,7 @@
 
     <!-- Elfsight mounts the live Instagram feed into the widget container above. -->
     <script src="https://elfsightcdn.com/platform.js" async></script>
+    <script src="assets/js/sequence.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
