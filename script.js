@@ -17,6 +17,10 @@ const lightboxTitle = document.querySelector(".lightbox-caption strong");
 const lightboxCaption = document.querySelector(".lightbox-caption span");
 const lightboxClose = document.querySelector(".lightbox-close");
 const lightboxTriggers = document.querySelectorAll(".js-lightbox-trigger");
+const cookieConsent = document.querySelector("[data-cookie-consent]");
+const cookieAccept = document.querySelector("[data-cookie-accept]");
+const cookieReject = document.querySelector("[data-cookie-reject]");
+const instagramWidgetPanel = document.querySelector(".instagram-widget-panel");
 let lightboxCloseTimer;
 let activeLightboxTrigger;
 let scrollTicking = false;
@@ -28,7 +32,23 @@ let ambientIsOn = false;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const mobileHeaderQuery = window.matchMedia("(max-width: 900px)");
-const storedTheme = window.localStorage.getItem("dha-theme");
+const storage = {
+  get(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch (error) {
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (error) {
+      // Storage can be blocked in private modes. The page still works without persistence.
+    }
+  },
+};
+const storedTheme = storage.get("dha-theme");
 const emptyImageSrc = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
 
 // Theme state is persisted so returning visitors keep their preferred gallery mode.
@@ -52,6 +72,32 @@ if (storedTheme) {
   applyTheme(storedTheme);
 } else {
   applyTheme(document.body.dataset.theme);
+}
+
+const loadInstagramWidget = () => {
+  if (document.querySelector("script[data-elfsight-platform]")) return;
+
+  const script = document.createElement("script");
+  script.src = "https://elfsightcdn.com/platform.js";
+  script.async = true;
+  script.dataset.elfsightPlatform = "true";
+  script.onload = () => {
+    instagramWidgetPanel?.classList.add("is-connected");
+  };
+  document.body.append(script);
+};
+
+const hideCookieConsent = () => {
+  cookieConsent?.classList.add("is-hidden");
+};
+
+const thirdPartyConsent = storage.get("dha-third-party-consent");
+
+if (thirdPartyConsent === "accepted") {
+  hideCookieConsent();
+  loadInstagramWidget();
+} else if (thirdPartyConsent === "rejected") {
+  hideCookieConsent();
 }
 
 const setHeaderState = () => {
@@ -351,7 +397,18 @@ ambientToggle?.addEventListener("click", toggleAmbient);
 themeToggle?.addEventListener("click", () => {
   const nextTheme = document.body.dataset.theme === "light" ? "dark" : "light";
   applyTheme(nextTheme);
-  window.localStorage.setItem("dha-theme", nextTheme);
+  storage.set("dha-theme", nextTheme);
+});
+
+cookieAccept?.addEventListener("click", () => {
+  storage.set("dha-third-party-consent", "accepted");
+  hideCookieConsent();
+  loadInstagramWidget();
+});
+
+cookieReject?.addEventListener("click", () => {
+  storage.set("dha-third-party-consent", "rejected");
+  hideCookieConsent();
 });
 
 window.addEventListener("scroll", requestScrollUpdate, { passive: true });

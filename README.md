@@ -50,9 +50,10 @@ php index.php > index.html
 The live Instagram feed uses Elfsight:
 
 ```html
-<script src="https://elfsightcdn.com/platform.js" async></script>
 <div class="elfsight-app-33a958e6-feff-4490-a474-fe5a2f8f935a" data-elfsight-app-lazy></div>
 ```
+
+The Elfsight script is loaded only after the visitor enables Instagram in the consent prompt.
 
 ## Ambient Sound
 

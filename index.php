@@ -103,7 +103,26 @@ $processFrames = array_map(
       name="description"
       content="Danny Hirsch Arts presents contemporary abstract works shaped by material, movement, atmosphere, and emotional depth."
     >
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Danny Hirsch Arts">
+    <meta property="og:title" content="Danny Hirsch Arts | Contemporary Abstract Art">
+    <meta
+      property="og:description"
+      content="Contemporary abstract artworks shaped by material, movement, atmosphere, and emotional depth."
+    >
+    <meta property="og:url" content="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/">
+    <meta property="og:image" content="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/assets/images/hero.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Danny Hirsch Arts | Contemporary Abstract Art">
+    <meta
+      name="twitter:description"
+      content="Contemporary abstract artworks shaped by material, movement, atmosphere, and emotional depth."
+    >
+    <meta name="twitter:image" content="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/assets/images/hero.jpg">
     <meta name="theme-color" content="#11100f">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preload" as="image" href="assets/images/hero.jpg" fetchpriority="high">
     <link rel="stylesheet" href="style.css">
   </head>
@@ -376,7 +395,7 @@ $processFrames = array_map(
         <div class="instagram-heading">
           <p class="eyebrow">Instagram</p>
           <h2 id="instagram-title">Live from the studio.</h2>
-          <a class="text-link instagram-heading-link" href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noreferrer">
+          <a class="text-link instagram-heading-link" href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noopener noreferrer">
             <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="5.2"></rect>
               <circle cx="12" cy="12" r="4.1"></circle>
@@ -385,7 +404,7 @@ $processFrames = array_map(
             <span>@dannyhirsch.arts</span>
           </a>
         </div>
-        <div class="instagram-widget-panel is-connected">
+        <div class="instagram-widget-panel">
           <div class="instagram-widget-copy">
             <span class="instagram-profile-mark">
               <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -398,7 +417,7 @@ $processFrames = array_map(
               <p class="eyebrow">Live Feed</p>
               <h3>New works, close surfaces, and studio moments.</h3>
               <p>
-                Follow the ongoing process and recent pieces directly through the live Instagram feed.
+                Enable Instagram to view the live feed, or open the profile directly.
               </p>
             </div>
           </div>
@@ -412,10 +431,10 @@ $processFrames = array_map(
         <div class="inquiry-copy">
           <p class="eyebrow">Collector Inquiry</p>
           <h2 id="inquiry-title">For private viewings, commissions, or acquisition inquiries.</h2>
-          <a class="button button-primary" href="mailto:studio@example.com">Request Information</a>
+          <a class="button button-primary" href="mailto:dannyhirscharts@protonmail.com">Request Information</a>
         </div>
 
-        <form class="inquiry-form" action="mailto:studio@example.com" method="post" enctype="text/plain">
+        <form class="inquiry-form" action="mailto:dannyhirscharts@protonmail.com" method="post" enctype="text/plain">
           <label>
             <span>Name</span>
             <input type="text" name="name" autocomplete="name" required>
@@ -428,6 +447,7 @@ $processFrames = array_map(
             <span>Message</span>
             <textarea name="message" rows="5" required></textarea>
           </label>
+          <p class="form-note">Your data will only be used to respond to your request.</p>
           <button class="button button-secondary" type="submit">Send Inquiry</button>
         </form>
       </section>
@@ -436,9 +456,10 @@ $processFrames = array_map(
     <footer class="site-footer">
       <span>&copy; <?php echo date('Y'); ?> Danny Hirsch Arts</span>
       <nav aria-label="Footer navigation">
-        <a href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noreferrer">Instagram</a>
-        <a href="mailto:studio@example.com">Contact</a>
-        <a href="#">Imprint</a>
+        <a href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a href="mailto:dannyhirscharts@protonmail.com">Contact</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="imprint.html">Imprint</a>
       </nav>
     </footer>
 
@@ -453,8 +474,14 @@ $processFrames = array_map(
       </figure>
     </div>
 
-    <!-- Elfsight mounts the live Instagram feed into the widget container above. -->
-    <script src="https://elfsightcdn.com/platform.js" async></script>
+    <div class="cookie-consent" data-cookie-consent role="region" aria-label="Privacy choices">
+      <p>Instagram uses Elfsight, a third-party service. Enable it only if you agree to external content.</p>
+      <div class="cookie-consent-actions">
+        <button class="button button-secondary" type="button" data-cookie-reject>Keep off</button>
+        <button class="button button-primary" type="button" data-cookie-accept>Enable Instagram</button>
+      </div>
+    </div>
+
     <script src="assets/js/sequence.js"></script>
     <script src="script.js"></script>
   </body>
