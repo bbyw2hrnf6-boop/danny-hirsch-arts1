@@ -273,9 +273,15 @@ $processFrames = array_map(
             <span></span>
             <span></span>
           </div>
+          <div class="room-sofa" aria-hidden="true"></div>
           <div class="room-plinth" aria-hidden="true"></div>
           <div class="room-sculpture" aria-hidden="true">
             <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="room-side-shelf" aria-hidden="true">
             <span></span>
             <span></span>
             <span></span>
