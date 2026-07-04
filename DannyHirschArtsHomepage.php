@@ -214,16 +214,14 @@ $processFrames = array_map(
 
       <section class="intro section-pad reveal" aria-label="Artist introduction">
         <p>
-          Abstraction becomes a physical language: pigment, embedded fragments, and shifting fields of darkness gather
-          into atmospheres that feel both unsettled and composed. Each work holds movement in suspension, inviting the
-          eye to read texture as memory, pressure, and emotional weather.
+          Pigment and fragments turn surface into atmosphere—holding movement, memory, and emotional weather.
         </p>
       </section>
 
       <section class="process-sequence section-pad reveal" id="process" aria-labelledby="process-title">
         <div class="process-sequence-copy">
           <p class="eyebrow">Studio Process</p>
-          <h2 id="process-title">Forty quiet stages. One finished surface.</h2>
+          <h2 id="process-title">40 stages. One surface.</h2>
           <div class="process-scroll-hint" aria-hidden="true">
             <span>Explore the process</span>
             <svg viewBox="0 0 24 24" focusable="false">
@@ -261,18 +259,19 @@ $processFrames = array_map(
       <section class="installation section-pad reveal" id="installation" aria-labelledby="installation-title">
         <div class="installation-copy">
           <p class="eyebrow">Private Room</p>
-          <h2 id="installation-title">Art installed like atmosphere.</h2>
-          <p>Soft light. Dark stone. Quiet movement.</p>
+          <h2 id="installation-title">Art becomes atmosphere.</h2>
+          <p>Quiet light. Lasting presence.</p>
         </div>
         <div class="room-stage" aria-label="Digital gallery room">
-          <div class="room-ceiling" aria-hidden="true">
+          <div class="room-track" aria-hidden="true">
+            <span></span>
             <span></span>
             <span></span>
           </div>
           <div class="room-wall" aria-hidden="true"></div>
-          <div class="room-window-light" aria-hidden="true"></div>
           <div class="room-spot room-spot-one" aria-hidden="true"></div>
           <div class="room-spot room-spot-two" aria-hidden="true"></div>
+          <div class="room-spot room-spot-three" aria-hidden="true"></div>
           <a
             class="room-art room-art-one js-lightbox-trigger"
             href="assets/artworks/artwork-04.jpg"
@@ -282,7 +281,11 @@ $processFrames = array_map(
             data-lightbox-caption="Installed in a private gallery room"
           >
             <img src="assets/artworks/artwork-04.jpg" alt="Oxide Drift artwork in digital gallery setting" loading="lazy" decoding="async">
-            <span class="room-art-label">Oxide Drift</span>
+            <span class="room-art-label">
+              <strong>Oxide Drift</strong>
+              <small>40 × 50 cm</small>
+              <em>Available</em>
+            </span>
           </a>
           <a
             class="room-art room-art-two js-lightbox-trigger"
@@ -293,28 +296,33 @@ $processFrames = array_map(
             data-lightbox-caption="Installed in a private gallery room"
           >
             <img src="assets/artworks/artwork-06.jpg" alt="Nocturne Relic artwork in digital gallery setting" loading="lazy" decoding="async">
-            <span class="room-art-label">Nocturne Relic</span>
+            <span class="room-art-label">
+              <strong>Nocturne Relic</strong>
+              <small>40 × 50 cm</small>
+              <em>Available</em>
+            </span>
           </a>
           <div class="room-console" aria-hidden="true">
-            <span></span>
+            <span class="room-vessel"></span>
+            <span class="room-object"></span>
           </div>
-          <div class="room-vase" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div class="room-sofa" aria-hidden="true"></div>
-          <div class="room-plinth" aria-hidden="true"></div>
-          <div class="room-sculpture" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div class="room-side-shelf" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
+          <div class="room-curation" aria-hidden="true">
+            <span>
+              <svg viewBox="0 0 32 32"><rect x="7" y="7" width="18" height="18" rx="1"></rect><rect x="10" y="10" width="12" height="12"></rect></svg>
+              <b>Originals</b>
+            </span>
+            <span>
+              <svg viewBox="0 0 32 32"><path d="m5 12 11-6 11 6-11 6Z"></path><path d="m5 18 11 6 11-6"></path><path d="m5 23 11 6 11-6"></path></svg>
+              <b>Texture</b>
+            </span>
+            <span>
+              <svg viewBox="0 0 32 32"><path d="M16 27c6 0 11-4.9 11-11S22 5 16 5 5 9.9 5 16s5 11 11 11Z"></path><circle cx="12" cy="12" r="1.5"></circle><circle cx="18" cy="10" r="1.5"></circle><circle cx="22" cy="15" r="1.5"></circle><path d="M17 27c-2-4 0-7 4-8"></path></svg>
+              <b>Emotion</b>
+            </span>
+            <span>
+              <svg viewBox="0 0 32 32"><path d="m7 24 12-12 6 6-12 12H7Z"></path><path d="m18 13 4-7c1-2 4-2 5 0 1 1 1 3 0 4l-6 6"></path><path d="M7 24c-3 1-4 4-3 6 3 0 5-1 6-4"></path></svg>
+              <b>Movement</b>
+            </span>
           </div>
           <div class="room-floor" aria-hidden="true"></div>
         </div>
@@ -323,7 +331,7 @@ $processFrames = array_map(
       <section class="collection section-pad" id="collection" aria-labelledby="collection-title">
         <div class="section-heading reveal">
           <p class="eyebrow">Featured Artworks</p>
-          <h2 id="collection-title">Statement works for quiet rooms and powerful spaces.</h2>
+          <h2 id="collection-title">Works that hold the room.</h2>
         </div>
 
         <div class="art-grid">
@@ -360,10 +368,8 @@ $processFrames = array_map(
       <section class="gallery section-pad" id="gallery" aria-labelledby="gallery-title">
         <div class="gallery-heading reveal">
           <p class="eyebrow">Image Gallery</p>
-          <h2 id="gallery-title">Close surfaces, layered marks, and material atmosphere.</h2>
-          <p>
-            A curated sequence of additional works and details selected for texture, movement, and architectural mood.
-          </p>
+          <h2 id="gallery-title">Surface. Gesture. Material.</h2>
+          <p>Selected works and close details, presented without distraction.</p>
         </div>
 
         <div class="gallery-grid">
@@ -397,14 +403,10 @@ $processFrames = array_map(
         </div>
         <div class="wartrobe-copy">
           <p class="eyebrow">wARTrobe</p>
-          <h2 id="wartrobe-title">A functional object turned into a private artwork.</h2>
+          <h2 id="wartrobe-title">Furniture becomes art.</h2>
           <p>
-            The wARTrobe project transforms wardrobe doors into a large painted surface for the home. What begins as
-            storage becomes atmosphere: color, leaves, fluid movement, and found material bring art into everyday space.
-          </p>
-          <p>
-            It sits between painting, interior object, and personal memory, made for rooms where art is not only viewed,
-            but lived with.
+            Painted across wardrobe doors, wARTrobe turns an everyday object into a one-of-one artwork—made for the
+            room, and lived with every day.
           </p>
         </div>
       </section>
@@ -412,21 +414,16 @@ $processFrames = array_map(
       <section class="about section-pad reveal" id="about" aria-labelledby="about-title">
         <div>
           <p class="eyebrow">About</p>
-          <h2 id="about-title">I paint to make inner movement tangible.</h2>
+          <h2 id="about-title">I paint what cannot be said.</h2>
         </div>
         <div class="about-copy">
           <p>
-            My work begins with a feeling that has no clear image yet. I am drawn to the tension between control and
-            accident—between a deliberate mark and the moment material chooses its own direction.
+            My work begins with a feeling before it has an image. I am drawn to the tension between control and
+            accident—the moment material begins to choose its own direction.
           </p>
           <p>
-            Nature, weathered surfaces, architecture, and personal memory shape the visual language. In the studio I
-            build slowly through pigment, organic impressions, found fragments, and repeated acts of covering and
-            revealing. Each layer is allowed to leave a trace.
-          </p>
-          <p>
-            The finished works are made to change with distance and light: quiet from across a room, tactile and
-            unsettled up close. I want them to be lived with—not simply looked at.
+            Nature, weathered surfaces, architecture, and memory guide a slow process of layering, covering, and
+            revealing. From afar the works are quiet; up close, tactile and unsettled.
           </p>
         </div>
       </section>
@@ -470,7 +467,7 @@ $processFrames = array_map(
       <section class="inquiry section-pad reveal" id="inquiry" aria-labelledby="inquiry-title">
         <div class="inquiry-copy">
           <p class="eyebrow">Collector Inquiry</p>
-          <h2 id="inquiry-title">For private viewings, commissions, or acquisition inquiries.</h2>
+          <h2 id="inquiry-title">Viewings. Commissions. Acquisitions.</h2>
           <a class="button button-primary" href="mailto:dannyhirscharts@protonmail.com">Request Information</a>
         </div>
 
