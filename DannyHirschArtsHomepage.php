@@ -5,6 +5,8 @@ $artworks = [
         'title' => 'Yellow Field, Veined',
         'year' => '2026',
         'medium' => 'Mixed Media on Canvas',
+        'dimensions' => '40 × 50 cm',
+        'status' => 'Available',
         'description' => 'A charged botanical trace held inside a saturated field of light.',
     ],
     [
@@ -12,6 +14,8 @@ $artworks = [
         'title' => 'Black Current',
         'year' => '2026',
         'medium' => 'Acrylic on Canvas',
+        'dimensions' => '40 × 50 cm',
+        'status' => 'Available',
         'description' => 'Dark movement breaks into mineral gold, fluid and deliberate.',
     ],
     [
@@ -19,6 +23,8 @@ $artworks = [
         'title' => 'Soft Terrain',
         'year' => '2026',
         'medium' => 'Mixed Media on Canvas',
+        'dimensions' => '40 × 50 cm',
+        'status' => 'Available',
         'description' => 'Color drifts across the surface like atmosphere settling into matter.',
     ],
     [
@@ -26,6 +32,8 @@ $artworks = [
         'title' => 'Oxide Drift',
         'year' => '2026',
         'medium' => 'Acrylic and Mineral Pigment on Canvas',
+        'dimensions' => '40 × 50 cm',
+        'status' => 'Available',
         'description' => 'A low, metallic landscape shaped by pressure, reflection, and restraint.',
     ],
     [
@@ -33,6 +41,8 @@ $artworks = [
         'title' => 'Blue Aperture',
         'year' => '2026',
         'medium' => 'Acrylic on Canvas',
+        'dimensions' => '40 × 50 cm',
+        'status' => 'Available',
         'description' => 'Cool blues and silver tones open into a deep, architectural field.',
     ],
     [
@@ -40,6 +50,8 @@ $artworks = [
         'title' => 'Nocturne Relic',
         'year' => '2026',
         'medium' => 'Mixed Media Assemblage',
+        'dimensions' => '40 × 50 cm',
+        'status' => 'Available',
         'description' => 'Raw material interrupts a luminous ground with sculptural tension.',
     ],
 ];
@@ -124,22 +136,14 @@ $processFrames = array_map(
     <meta name="theme-color" content="#11100f">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preload" as="image" href="assets/images/hero.jpg" fetchpriority="high">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css">
   </head>
   <body data-theme="dark">
     <header class="site-header" aria-label="Site header">
       <a class="brand" href="#top" aria-label="Danny Hirsch Arts home">
         <img src="assets/brand/logo.png" alt="Danny Hirsch Arts">
       </a>
-      <div class="site-controls" aria-label="Display and sound controls">
-        <button class="theme-toggle" type="button" aria-label="Switch to light gallery theme" aria-pressed="false">
-          <span>Light</span>
-        </button>
-        <button class="ambient-toggle" type="button" aria-label="Start ambient gallery sound" aria-pressed="false">
-          <span>Sound</span>
-        </button>
-      </div>
-      <nav class="site-nav" aria-label="Primary navigation">
+      <nav class="site-nav" id="primary-navigation" aria-label="Primary navigation">
         <a href="#installation">Rooms</a>
         <a href="#collection">Collection</a>
         <a href="#process">Process</a>
@@ -149,6 +153,27 @@ $processFrames = array_map(
         <a href="#instagram">Instagram</a>
         <a href="#inquiry">Inquiry</a>
       </nav>
+      <div class="site-controls" aria-label="Display and sound controls">
+        <button class="theme-toggle" type="button" aria-label="Switch to light gallery theme" aria-pressed="false">
+          <span class="control-icon" aria-hidden="true">☀</span>
+          <span class="control-label">Light</span>
+        </button>
+        <button class="ambient-toggle" type="button" aria-label="Start ambient gallery sound" aria-pressed="false">
+          <span class="control-icon" aria-hidden="true">🔊</span>
+          <span class="control-label">Sound</span>
+        </button>
+      </div>
+      <button
+        class="menu-toggle"
+        type="button"
+        aria-controls="primary-navigation"
+        aria-expanded="false"
+        aria-label="Open navigation"
+      >
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span class="sr-only">Menu</span>
+      </button>
     </header>
     <div class="scroll-progress" aria-hidden="true"></div>
 
@@ -162,8 +187,8 @@ $processFrames = array_map(
           <p class="kicker">Contemporary Abstract Art</p>
           <h1 id="hero-title">Danny Hirsch Arts</h1>
           <div class="hero-actions" aria-label="Hero actions">
-            <a class="button button-primary" href="#collection">View Collection</a>
-            <a class="text-link" href="#about">About</a>
+            <a class="button button-primary" href="#collection">Explore Collection</a>
+            <a class="button button-ghost" href="#inquiry">Contact</a>
           </div>
         </div>
         <a class="hero-cue" href="#collection" aria-label="Scroll to collection">
@@ -199,7 +224,12 @@ $processFrames = array_map(
         <div class="process-sequence-copy">
           <p class="eyebrow">Studio Process</p>
           <h2 id="process-title">Forty quiet stages. One finished surface.</h2>
-          <p>Scroll inside the frame.</p>
+          <div class="process-scroll-hint" aria-hidden="true">
+            <span>Explore the process</span>
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M12 4v14M7 13l5 5 5-5"></path>
+            </svg>
+          </div>
         </div>
         <div
           class="sequence-player js-sequence"
@@ -311,16 +341,16 @@ $processFrames = array_map(
                   src="<?php echo htmlspecialchars($artwork['image']); ?>"
                   alt="<?php echo htmlspecialchars($artwork['title']); ?> abstract artwork"
                   decoding="async"
-                  loading="<?php echo $index === 0 ? 'eager' : 'lazy'; ?>"
+                  loading="lazy"
                 >
               </a>
               <div class="art-meta">
-                <div>
-                  <h3><?php echo htmlspecialchars($artwork['title']); ?></h3>
-                  <p><?php echo htmlspecialchars($artwork['year']); ?> / <?php echo htmlspecialchars($artwork['medium']); ?></p>
+                <h3><?php echo htmlspecialchars($artwork['title']); ?></h3>
+                <div class="art-details">
+                  <p><?php echo htmlspecialchars($artwork['medium']); ?></p>
+                  <p><?php echo htmlspecialchars($artwork['dimensions']); ?></p>
                 </div>
-                <p><?php echo htmlspecialchars($artwork['description']); ?></p>
-                <span>Available on request</span>
+                <span class="art-status"><?php echo htmlspecialchars($artwork['status']); ?></span>
               </div>
             </article>
           <?php endforeach; ?>
@@ -382,17 +412,21 @@ $processFrames = array_map(
       <section class="about section-pad reveal" id="about" aria-labelledby="about-title">
         <div>
           <p class="eyebrow">About</p>
-          <h2 id="about-title">Material works with architectural presence.</h2>
+          <h2 id="about-title">I paint to make inner movement tangible.</h2>
         </div>
         <div class="about-copy">
           <p>
-            Danny Hirsch creates contemporary abstract works that operate between painting, surface, and object. Built
-            through layers of pigment, organic impressions, and controlled disruption, the pieces carry a sense of
-            depth that changes with distance and light.
+            My work begins with a feeling that has no clear image yet. I am drawn to the tension between control and
+            accident—between a deliberate mark and the moment material chooses its own direction.
           </p>
           <p>
-            Their scale and atmosphere make them natural companions to modern interiors: private residences, hospitality
-            spaces, architectural projects, and collections seeking work with emotional weight rather than decoration.
+            Nature, weathered surfaces, architecture, and personal memory shape the visual language. In the studio I
+            build slowly through pigment, organic impressions, found fragments, and repeated acts of covering and
+            revealing. Each layer is allowed to leave a trace.
+          </p>
+          <p>
+            The finished works are made to change with distance and light: quiet from across a room, tactile and
+            unsettled up close. I want them to be lived with—not simply looked at.
           </p>
         </div>
       </section>
@@ -443,30 +477,50 @@ $processFrames = array_map(
         <form class="inquiry-form" action="mailto:dannyhirscharts@protonmail.com" method="post" enctype="text/plain">
           <label>
             <span>Name</span>
-            <input type="text" name="name" autocomplete="name" required>
+            <input type="text" name="name" autocomplete="name" aria-label="Your name" required>
           </label>
           <label>
             <span>Email</span>
-            <input type="email" name="email" autocomplete="email" required>
+            <input type="email" name="email" autocomplete="email" aria-label="Your email address" required>
           </label>
           <label>
             <span>Message</span>
-            <textarea name="message" rows="5" required></textarea>
+            <textarea name="message" rows="6" aria-label="Your inquiry" required></textarea>
           </label>
           <p class="form-note">Your data will only be used to respond to your request.</p>
           <button class="button button-secondary" type="submit">Send Inquiry</button>
+          <p class="response-note">Response usually within 24–48 hours.</p>
         </form>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>&copy; <?php echo date('Y'); ?> Danny Hirsch Arts</span>
-      <nav aria-label="Footer navigation">
+      <div class="footer-intro">
+        <a class="footer-brand" href="#top">Danny Hirsch Arts</a>
+        <p>Contemporary abstract works shaped by material, memory, and light.</p>
+      </div>
+      <div class="footer-group">
+        <p>Navigation</p>
+        <nav aria-label="Footer navigation">
+          <a href="#collection">Collection</a>
+          <a href="#process">Process</a>
+          <a href="#about">About</a>
+          <a href="#inquiry">Contact</a>
+        </nav>
+      </div>
+      <div class="footer-group">
+        <p>Follow</p>
         <a href="https://www.instagram.com/dannyhirsch.arts/" target="_blank" rel="noopener noreferrer">Instagram</a>
-        <a href="mailto:dannyhirscharts@protonmail.com">Contact</a>
+      </div>
+      <div class="footer-group">
+        <p>Legal</p>
         <a href="privacy.html">Privacy</a>
         <a href="imprint.html">Imprint</a>
-      </nav>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <?php echo date('Y'); ?> Danny Hirsch Arts</span>
+        <span>All rights reserved</span>
+      </div>
     </footer>
 
     <div class="lightbox" role="dialog" aria-modal="true" aria-label="Artwork preview" aria-hidden="true">
@@ -488,7 +542,7 @@ $processFrames = array_map(
       </div>
     </div>
 
-    <script src="assets/js/sequence.js"></script>
-    <script src="script.js"></script>
+    <script src="assets/js/DannyHirschArtsHomepageSequence.js" defer></script>
+    <script src="DannyHirschArtsHomepage.js" defer></script>
   </body>
 </html>

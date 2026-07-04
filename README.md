@@ -1,13 +1,14 @@
-# Danny Hirsch Arts
+# DannyHirschArtsHomepage
 
 Premium static artist homepage for Danny Hirsch Arts. The site is built with plain HTML, CSS, and JavaScript and is ready for GitHub Pages.
 
 ## Structure
 
 - `index.html` - static GitHub Pages entry file
-- `index.php` - editable PHP source version
-- `style.css` - visual system, responsive layouts, theme styles
-- `script.js` - theme toggle, ambient sound, scroll effects, reveal animation, lightbox
+- `DannyHirschArtsHomepage.php` - editable PHP source version
+- `DannyHirschArtsHomepage.css` - visual system, responsive layouts, theme styles
+- `DannyHirschArtsHomepage.js` - navigation, theme, sound, scroll effects, reveal animation, lightbox
+- `assets/js/DannyHirschArtsHomepageSequence.js` - process sequence player
 - `assets/brand/` - logo
 - `assets/images/` - hero and feature images
 - `assets/artworks/` - main artwork images
@@ -36,13 +37,13 @@ GitHub Pages serves `index.html` from the repository root.
 Keep the same filenames when swapping images, or update every matching path in:
 
 - `index.html`
-- `index.php`
-- `style.css`
+- `DannyHirschArtsHomepage.php`
+- `DannyHirschArtsHomepage.css`
 
-If you edit `index.php`, regenerate the static page before publishing:
+If you edit `DannyHirschArtsHomepage.php`, regenerate the static page before publishing:
 
 ```bash
-php index.php > index.html
+php DannyHirschArtsHomepage.php > index.html
 ```
 
 ## Instagram

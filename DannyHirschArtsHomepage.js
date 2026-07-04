@@ -1,4 +1,6 @@
 const header = document.querySelector(".site-header");
+const menuToggle = document.querySelector(".menu-toggle");
+const siteNav = document.querySelector(".site-nav");
 const heroImage = document.querySelector(".hero-image");
 const hero = document.querySelector(".hero");
 const atmosphere = document.querySelector(".art-atmosphere");
@@ -31,7 +33,7 @@ let ambientNodes;
 let ambientIsOn = false;
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const mobileHeaderQuery = window.matchMedia("(max-width: 900px)");
+const mobileHeaderQuery = window.matchMedia("(max-width: 1280px)");
 const storage = {
   get(key) {
     try {
@@ -61,9 +63,13 @@ const applyTheme = (theme) => {
     const isLight = nextTheme === "light";
     themeToggle.setAttribute("aria-pressed", String(isLight));
     themeToggle.setAttribute("aria-label", `Switch to ${isLight ? "dark luxury" : "light gallery"} theme`);
-    const themeToggleText = themeToggle.querySelector("span");
+    const themeToggleText = themeToggle.querySelector(".control-label");
+    const themeToggleIcon = themeToggle.querySelector(".control-icon");
     if (themeToggleText) {
       themeToggleText.textContent = isLight ? "Dark" : "Light";
+    }
+    if (themeToggleIcon) {
+      themeToggleIcon.textContent = isLight ? "🌙" : "☀";
     }
   }
 };
@@ -89,6 +95,21 @@ const loadInstagramWidget = () => {
 
 const hideCookieConsent = () => {
   cookieConsent?.classList.add("is-hidden");
+};
+
+const setMenuState = (isOpen, returnFocus = false) => {
+  if (!menuToggle || !header) return;
+
+  header.classList.toggle("is-menu-open", isOpen);
+  document.body.classList.toggle("is-menu-open", isOpen);
+  menuToggle.setAttribute("aria-expanded", String(isOpen));
+  menuToggle.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
+
+  if (isOpen) {
+    window.requestAnimationFrame(() => siteNav?.querySelector("a")?.focus({ preventScroll: true }));
+  } else if (returnFocus) {
+    menuToggle.focus({ preventScroll: true });
+  }
 };
 
 const thirdPartyConsent = storage.get("dha-third-party-consent");
@@ -261,11 +282,32 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && lightbox?.classList.contains("is-open")) {
     closeLightbox();
   }
+
+  if (event.key === "Escape" && header?.classList.contains("is-menu-open")) {
+    setMenuState(false, true);
+  }
+
+  if (event.key === "Tab" && header?.classList.contains("is-menu-open")) {
+    const focusable = Array.from(header.querySelectorAll("a, button")).filter(
+      (element) => !element.hasAttribute("disabled") && element.offsetParent !== null
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
 });
 
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     header?.classList.remove("is-hidden");
+    setMenuState(false);
 
     const target = document.querySelector(link.getAttribute("href"));
     if (!target) return;
@@ -281,9 +323,13 @@ const updateAmbientButton = () => {
 
   ambientToggle.setAttribute("aria-pressed", String(ambientIsOn));
   ambientToggle.setAttribute("aria-label", ambientIsOn ? "Stop ambient gallery sound" : "Start ambient gallery sound");
-  const label = ambientToggle.querySelector("span");
+  const label = ambientToggle.querySelector(".control-label");
+  const icon = ambientToggle.querySelector(".control-icon");
   if (label) {
-    label.textContent = ambientIsOn ? "Quiet" : "Sound";
+    label.textContent = ambientIsOn ? "Sound on" : "Sound";
+  }
+  if (icon) {
+    icon.textContent = ambientIsOn ? "🔊" : "🔊";
   }
 };
 
@@ -394,6 +440,10 @@ const toggleAmbient = async () => {
 
 ambientToggle?.addEventListener("click", toggleAmbient);
 
+menuToggle?.addEventListener("click", () => {
+  setMenuState(!header?.classList.contains("is-menu-open"));
+});
+
 themeToggle?.addEventListener("click", () => {
   const nextTheme = document.body.dataset.theme === "light" ? "dark" : "light";
   applyTheme(nextTheme);
@@ -413,5 +463,10 @@ cookieReject?.addEventListener("click", () => {
 
 window.addEventListener("scroll", requestScrollUpdate, { passive: true });
 window.addEventListener("resize", requestScrollUpdate);
+mobileHeaderQuery.addEventListener?.("change", (event) => {
+  if (!event.matches) {
+    setMenuState(false);
+  }
+});
 
 updateScrollEffects();
