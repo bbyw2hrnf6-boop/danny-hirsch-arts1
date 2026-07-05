@@ -741,7 +741,6 @@ body[data-theme="light"] .button-primary:hover {
 }
 
 .intro::after,
-.process-sequence::before,
 .installation::before,
 .collection::before,
 .gallery::before,
@@ -760,7 +759,6 @@ body[data-theme="light"] .button-primary:hover {
 }
 
 body[data-theme="dark"] .intro::after,
-body[data-theme="dark"] .process-sequence::before,
 body[data-theme="dark"] .installation::before,
 body[data-theme="dark"] .collection::before,
 body[data-theme="dark"] .gallery::before,
@@ -787,140 +785,6 @@ body[data-theme="dark"] .instagram-flow::before {
 
 .intro p::first-line {
   color: var(--accent);
-}
-
-.process-sequence {
-  min-height: clamp(760px, 94svh, 1080px);
-  display: grid;
-  grid-template-columns: minmax(280px, 0.42fr) minmax(0, 0.92fr);
-  gap: clamp(34px, 6vw, 120px);
-  align-items: center;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 74% 30%, rgba(183, 154, 104, 0.16), transparent 34%),
-    linear-gradient(180deg, var(--wall), var(--page-soft)),
-    var(--wall);
-}
-
-.process-sequence::before {
-  background-image: url("assets/process/process-40.jpg");
-  opacity: 0.12;
-}
-
-.process-sequence-copy,
-.sequence-player {
-  position: relative;
-  z-index: 1;
-}
-
-.process-sequence-copy {
-  max-width: 600px;
-}
-
-.process-sequence-copy h2 {
-  margin-bottom: 26px;
-}
-
-.process-sequence-copy p:not(.eyebrow) {
-  max-width: 320px;
-  margin-bottom: 0;
-  color: var(--muted);
-  font-size: clamp(1rem, 1.12vw, 1.18rem);
-}
-
-.sequence-player {
-  width: min(100%, 920px);
-  justify-self: end;
-  border: 1px solid var(--line-strong);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 34%),
-    rgba(7, 7, 6, 0.22);
-  box-shadow: var(--shadow), inset 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.sequence-scroll {
-  --sequence-frame-height: 78px;
-  aspect-ratio: 6 / 5;
-  height: auto;
-  max-height: min(72svh, 720px);
-  min-height: 430px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent) transparent;
-}
-
-.sequence-scroll:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 8px;
-}
-
-.sequence-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sequence-scroll::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: var(--accent);
-}
-
-.sequence-sticky {
-  position: sticky;
-  top: 0;
-  aspect-ratio: 6 / 5;
-  height: auto;
-  max-height: min(72svh, 720px);
-  min-height: 430px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 42% 26%, rgba(255, 255, 255, 0.12), transparent 26%),
-    linear-gradient(115deg, #27211b, #0d0d0c 74%);
-}
-
-.sequence-frame {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  filter: contrast(1.03) saturate(0.96);
-}
-
-.sequence-shade {
-  display: none;
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at center, transparent 48%, rgba(0, 0, 0, 0.3)),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.1), transparent 28%, rgba(0, 0, 0, 0.18));
-  pointer-events: none;
-}
-
-.sequence-counter {
-  position: absolute;
-  right: clamp(16px, 2vw, 28px);
-  bottom: clamp(14px, 2vw, 26px);
-  display: inline-flex;
-  gap: 10px;
-  align-items: center;
-  color: rgba(251, 248, 242, 0.82);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.sequence-counter::before {
-  width: 72px;
-  height: 1px;
-  background: rgba(251, 248, 242, 0.42);
-  content: "";
-}
-
-.sequence-spacer {
-  height: 3042px;
 }
 
 .installation {
@@ -2582,7 +2446,6 @@ body[data-theme="light"] .room-sofa {
   }
 
   .section-heading,
-  .process-sequence,
   .installation,
   .gallery-heading,
   .wartrobe,
@@ -2599,15 +2462,6 @@ body[data-theme="light"] .room-sofa {
   .installation-copy {
     max-width: 760px;
     padding-bottom: 0;
-  }
-
-  .process-sequence-copy {
-    max-width: 760px;
-  }
-
-  .sequence-player {
-    justify-self: start;
-    width: min(100%, 760px);
   }
 
   .room-stage {
@@ -2736,17 +2590,6 @@ body[data-theme="light"] .room-sofa {
   .intro p {
     font-size: clamp(1.7rem, 8.2vw, 2.34rem);
     line-height: 1.18;
-  }
-
-  .process-sequence {
-    min-height: auto;
-  }
-
-  .sequence-scroll,
-  .sequence-sticky {
-    aspect-ratio: 6 / 5;
-    height: auto;
-    min-height: 0;
   }
 
   .installation {
@@ -3197,16 +3040,6 @@ main section:not(.instagram-flow) h2 {
   line-height: 1.14;
 }
 
-.process-sequence {
-  grid-template-columns: minmax(300px, 0.36fr) minmax(0, 1fr);
-  gap: clamp(54px, 7vw, 150px);
-}
-
-.process-sequence-copy h2 {
-  max-width: 10ch;
-  font-size: clamp(2.65rem, 3.7vw, 4.7rem);
-}
-
 .installation-copy {
   min-width: 0;
 }
@@ -3219,39 +3052,6 @@ main section:not(.instagram-flow) h2 {
 .room-stage {
   width: 100%;
   min-width: 0;
-}
-
-.process-scroll-hint {
-  display: inline-flex;
-  gap: 16px;
-  align-items: center;
-  margin-top: 32px;
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.process-scroll-hint svg {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.35;
-  animation: processHint 1.8s var(--ease) infinite;
-}
-
-@keyframes processHint {
-  0%,
-  100% {
-    transform: translateY(-3px);
-  }
-  50% {
-    transform: translateY(5px);
-  }
 }
 
 .art-grid {
@@ -3630,21 +3430,18 @@ main section:not(.instagram-flow) h2 {
     transition: opacity 380ms ease, transform 460ms var(--ease), visibility 0s;
   }
 
-  .process-sequence,
   .installation,
   .wartrobe,
   .inquiry {
     grid-template-columns: 1fr;
   }
 
-  .process-sequence-copy,
   .installation-copy,
   .wartrobe-copy,
   .inquiry-copy {
     max-width: 860px;
   }
 
-  .sequence-player,
   .room-stage,
   .inquiry-form {
     justify-self: start;
@@ -3786,10 +3583,6 @@ main section:not(.instagram-flow) h2 {
     padding-top: 24px;
   }
 
-  .process-scroll-hint {
-    margin-top: 24px;
-  }
-
   .inquiry {
     min-height: 0;
     padding-top: var(--section-space);
@@ -3865,7 +3658,6 @@ body[data-theme="light"] main section:not(.instagram-flow) h2 {
 }
 
 .intro,
-.process-sequence,
 .collection,
 .gallery,
 .wartrobe,

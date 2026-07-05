@@ -99,11 +99,6 @@ $galleryImages = [
     ],
 ];
 
-$processFrames = array_map(
-    fn ($index) => sprintf('assets/process/process-%02d.jpg', $index),
-    range(1, 40)
-);
-
 ?>
 <!doctype html>
 <html lang="en">
@@ -146,7 +141,6 @@ $processFrames = array_map(
       <nav class="site-nav" id="primary-navigation" aria-label="Primary navigation">
         <a href="#installation">Rooms</a>
         <a href="#collection">Collection</a>
-        <a href="#process">Process</a>
         <a href="#gallery">Gallery</a>
         <a href="#wartrobe">wARTrobe</a>
         <a href="#about">About</a>
@@ -216,44 +210,6 @@ $processFrames = array_map(
         <p>
           Pigment and fragments turn surface into atmosphere—holding movement, memory, and emotional weather.
         </p>
-      </section>
-
-      <section class="process-sequence section-pad reveal" id="process" aria-labelledby="process-title">
-        <div class="process-sequence-copy">
-          <p class="eyebrow">Studio Process</p>
-          <h2 id="process-title">40 stages. One surface.</h2>
-          <div class="process-scroll-hint" aria-hidden="true">
-            <span>Explore the process</span>
-            <svg viewBox="0 0 24 24" focusable="false">
-              <path d="M12 4v14M7 13l5 5 5-5"></path>
-            </svg>
-          </div>
-        </div>
-        <div
-          class="sequence-player js-sequence"
-          data-frame-height="78"
-          data-frames="<?php echo htmlspecialchars(implode(',', $processFrames)); ?>"
-        >
-          <div class="sequence-scroll" tabindex="0" aria-label="Scroll through artwork creation frames">
-            <div class="sequence-sticky">
-              <img
-                class="sequence-frame"
-                src="assets/process/process-01.jpg"
-                width="3840"
-                height="3200"
-                alt="Artwork creation process"
-                loading="lazy"
-                decoding="async"
-              >
-              <div class="sequence-shade" aria-hidden="true"></div>
-              <div class="sequence-counter" aria-hidden="true">
-                <span class="sequence-current">01</span>
-                <span>40</span>
-              </div>
-            </div>
-            <div class="sequence-spacer" aria-hidden="true"></div>
-          </div>
-        </div>
       </section>
 
       <section class="installation section-pad reveal" id="installation" aria-labelledby="installation-title">
@@ -500,7 +456,6 @@ $processFrames = array_map(
         <p>Navigation</p>
         <nav aria-label="Footer navigation">
           <a href="#collection">Collection</a>
-          <a href="#process">Process</a>
           <a href="#about">About</a>
           <a href="#inquiry">Contact</a>
         </nav>
@@ -539,7 +494,6 @@ $processFrames = array_map(
       </div>
     </div>
 
-    <script src="assets/js/DannyHirschArtsHomepageSequence.js" defer></script>
     <script src="DannyHirschArtsHomepage.js" defer></script>
   </body>
 </html>
