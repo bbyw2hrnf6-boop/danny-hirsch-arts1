@@ -102,7 +102,7 @@ $galleryImages = [
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260720-cinematic-12">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260720-cinematic-13">
   </head>
   <body data-theme="dark" class="opening-pending">
     <a class="skip-link" href="#collection">Skip to collection</a>
@@ -190,7 +190,7 @@ $galleryImages = [
       <section class="installation" id="installation" aria-labelledby="installation-title">
         <div class="installation-heading reveal">
           <p class="eyebrow">Private Room</p>
-          <h2 id="installation-title">Art becomes<br>atmosphere.</h2>
+          <h2 id="installation-title"><span>Art</span><span>becomes</span><span>atmosphere.</span></h2>
           <p>Quiet light. Lasting presence.</p>
         </div>
 
@@ -399,6 +399,6 @@ $galleryImages = [
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260720-cinematic-12" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260720-cinematic-13" defer></script>
   </body>
 </html>

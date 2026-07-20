@@ -891,8 +891,8 @@ html:not(.has-js) .opening-pending .site-header {
   position: relative;
   min-height: 112svh;
   display: grid;
-  grid-template-columns: minmax(250px, 0.28fr) minmax(620px, 1fr);
-  gap: clamp(48px, 5vw, 96px);
+  grid-template-columns: minmax(320px, 0.4fr) minmax(560px, 1fr);
+  gap: clamp(42px, 4.5vw, 88px);
   align-items: center;
   padding: var(--section) var(--gutter);
   overflow: hidden;
@@ -913,6 +913,7 @@ html:not(.has-js) .opening-pending .site-header {
 .installation-heading {
   position: relative;
   z-index: 3;
+  min-width: 0;
   align-self: center;
 }
 
@@ -921,10 +922,14 @@ html:not(.has-js) .opening-pending .site-header {
 }
 
 .installation-heading h2 {
-  max-width: 7ch;
+  width: 100%;
   margin-bottom: 30px;
   color: #f1ede4;
-  font-size: clamp(3.6rem, 6vw, 7.4rem);
+  font-size: clamp(3.7rem, 4.45vw, 5.5rem);
+}
+
+.installation-heading h2 span {
+  display: block;
 }
 
 .installation-heading > p:last-child {
@@ -940,6 +945,7 @@ html:not(.has-js) .opening-pending .site-header {
   --room-y: 0px;
   position: relative;
   z-index: 2;
+  min-width: 0;
   width: 100%;
   perspective: 1700px;
 }
@@ -1460,6 +1466,7 @@ html:not(.has-js) .opening-pending .site-header {
 .gallery-heading h2 {
   justify-self: end;
   width: fit-content;
+  padding-right: 2px;
   font-size: clamp(5.2rem, 7.65vw, 9rem);
   line-height: 0.82;
 }
@@ -1708,6 +1715,7 @@ html:not(.has-js) .opening-pending .site-header {
 .wartrobe-copy {
   position: relative;
   z-index: 5;
+  min-width: 0;
   max-width: 540px;
 }
 
@@ -1718,7 +1726,7 @@ html:not(.has-js) .opening-pending .site-header {
 .wartrobe-copy h2 {
   margin-bottom: 38px;
   color: #f1ede4;
-  font-size: clamp(4rem, 7.2vw, 8rem);
+  font-size: clamp(3.8rem, 6.6vw, 7.25rem);
 }
 
 .wartrobe-copy > p:not(.eyebrow) {
@@ -1757,6 +1765,7 @@ html:not(.has-js) .opening-pending .site-header {
 .about-copy {
   position: relative;
   z-index: 2;
+  min-width: 0;
   height: fit-content;
 }
 
@@ -2422,6 +2431,26 @@ body[data-theme="light"] .inquiry-form textarea {
   .inquiry-form { width: min(100%, 760px); }
 }
 
+@media (max-width: 900px) {
+  .gallery-heading {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 42px;
+    margin-bottom: 108px;
+    padding: 12px 0;
+  }
+
+  .gallery-heading__intro { display: contents; }
+  .gallery-heading .eyebrow { grid-row: 1; margin-bottom: 0; }
+  .gallery-heading h2 {
+    grid-row: 2;
+    justify-self: start;
+    width: 100%;
+    font-size: clamp(4rem, 13vw, 6.2rem);
+  }
+  .gallery-heading__intro > p:last-child { grid-row: 3; max-width: 40ch; }
+}
+
 @media (max-width: 760px) {
   :root {
     --gutter: 21px;
@@ -2487,7 +2516,7 @@ body[data-theme="light"] .inquiry-form textarea {
   .manifesto-note { margin-bottom: 0; }
 
   .installation { gap: 54px; }
-  .installation-heading h2 { font-size: clamp(3.4rem, 14vw, 5.2rem); }
+  .installation-heading h2 { font-size: clamp(3.05rem, 13.2vw, 4.7rem); }
   .room-stage { aspect-ratio: 4 / 5; }
   .room-wall { bottom: 17%; }
   .room-floor { height: 17%; }
@@ -2499,17 +2528,7 @@ body[data-theme="light"] .inquiry-form textarea {
   .section-heading { grid-template-columns: 1fr; gap: 44px; margin-bottom: 94px; }
   .section-heading > p { max-width: 40ch; }
 
-  .gallery-heading {
-    min-height: 0;
-    grid-template-columns: 1fr;
-    gap: 42px;
-    margin-bottom: 108px;
-    padding: 12px 0;
-  }
-  .gallery-heading__intro { display: contents; }
-  .gallery-heading .eyebrow { grid-row: 1; margin-bottom: 0; }
-  .gallery-heading h2 { grid-row: 2; justify-self: start; font-size: clamp(4.2rem, 16vw, 6.6rem); }
-  .gallery-heading__intro > p:last-child { grid-row: 3; max-width: 40ch; }
+  .gallery-heading h2 { font-size: clamp(3.25rem, 14vw, 5.6rem); }
 
   .art-chapters { gap: 150px; }
   .art-chapter { gap: 48px; padding: 0; }
@@ -2538,9 +2557,9 @@ body[data-theme="light"] .inquiry-form textarea {
   .wartrobe-detail { right: -4%; width: 34%; }
   .wartrobe-copy h2 { font-size: clamp(4rem, 16vw, 6rem); }
 
-  .about-copy h2 { font-size: clamp(3.35rem, 12.7vw, 5.2rem); }
-  .instagram-heading h2,
-  .inquiry-copy h2 { font-size: clamp(3.8rem, 15vw, 5.8rem); }
+  .about-copy h2 { font-size: clamp(2.85rem, 12vw, 5.2rem); }
+  .instagram-heading h2 { font-size: clamp(3.5rem, 14vw, 5.8rem); }
+  .inquiry-copy h2 { font-size: clamp(3.15rem, 13vw, 5.4rem); }
   .about-text { padding-left: 22px; }
   .material-study { gap: 14px; }
   .material-study__feature { aspect-ratio: 4 / 3; }
