@@ -102,7 +102,7 @@ $galleryImages = [
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260720-cinematic-11">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260720-cinematic-12">
   </head>
   <body data-theme="dark" class="opening-pending">
     <a class="skip-link" href="#collection">Skip to collection</a>
@@ -399,6 +399,6 @@ $galleryImages = [
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260720-cinematic-11" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260720-cinematic-12" defer></script>
   </body>
 </html>

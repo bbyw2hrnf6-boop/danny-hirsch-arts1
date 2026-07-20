@@ -2176,6 +2176,163 @@ body[data-theme="light"] .art-chapter::before {
   opacity: 0.45;
 }
 
+body[data-theme="light"] .hero {
+  color: var(--ink);
+  background: #d9d1c4;
+}
+
+body[data-theme="light"] .hero-room {
+  background: #d8d0c3;
+}
+
+body[data-theme="light"] .hero-room__wall {
+  background:
+    linear-gradient(90deg, rgba(63, 52, 39, 0.2), transparent 22%, transparent 78%, rgba(63, 52, 39, 0.18)),
+    linear-gradient(180deg, #ddd6ca, #c9c0b2 82%);
+  box-shadow: inset 0 0 140px rgba(63, 52, 39, 0.18);
+}
+
+body[data-theme="light"] .hero-room__ceiling {
+  background: linear-gradient(180deg, #d7cfc2, #bdb3a3);
+}
+
+body[data-theme="light"] .hero-room__floor {
+  background:
+    linear-gradient(90deg, rgba(63, 52, 39, 0.22), transparent 24%, transparent 74%, rgba(63, 52, 39, 0.2)),
+    repeating-linear-gradient(93deg, rgba(24, 23, 19, 0.045) 0 1px, transparent 1px 84px),
+    linear-gradient(180deg, #c2b7a8, #9f9382);
+}
+
+body[data-theme="light"] .hero-artwork img {
+  filter: brightness(0.98) saturate(0.94) contrast(1.04);
+}
+
+body[data-theme="light"] .hero-film {
+  background:
+    linear-gradient(90deg, rgba(238, 233, 223, 0.78), transparent 48%, rgba(238, 233, 223, 0.12)),
+    linear-gradient(0deg, rgba(238, 233, 223, 0.92), transparent 54%),
+    radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(184, 149, 95, 0.14), transparent 26%);
+}
+
+body[data-theme="light"] .hero-content h1 {
+  text-shadow: 0 26px 80px rgba(63, 52, 39, 0.18);
+}
+
+body[data-theme="light"] .hero-statement,
+body[data-theme="light"] .hero-scroll,
+body[data-theme="light"] .opening-chapters {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .hero .button-line {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+body[data-theme="light"] .hero-scroll span {
+  background: linear-gradient(180deg, rgba(24, 23, 19, 0.12), var(--ink));
+}
+
+body[data-theme="light"] .installation {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 70% 20%, rgba(184, 149, 95, 0.13), transparent 30%),
+    var(--page);
+}
+
+body[data-theme="light"] .installation::before {
+  background: linear-gradient(112deg, rgba(24, 23, 19, 0.025), transparent 32%, transparent 70%, rgba(184, 149, 95, 0.05));
+}
+
+body[data-theme="light"] .installation-heading h2 {
+  color: var(--ink);
+}
+
+body[data-theme="light"] .installation-heading > p:last-child,
+body[data-theme="light"] .room-caption {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .wartrobe {
+  color: var(--ink);
+  background: var(--page-raised);
+}
+
+body[data-theme="light"] .wartrobe::before {
+  background:
+    radial-gradient(circle at 28% 42%, rgba(54, 113, 119, 0.09), transparent 34%),
+    radial-gradient(circle at 68% 28%, rgba(184, 149, 95, 0.14), transparent 28%);
+}
+
+body[data-theme="light"] .wartrobe-stage::before {
+  background:
+    linear-gradient(90deg, rgba(73, 59, 44, 0.12), transparent 28%, transparent 76%, rgba(73, 59, 44, 0.1)),
+    linear-gradient(180deg, transparent 74%, rgba(73, 59, 44, 0.13));
+}
+
+body[data-theme="light"] .wartrobe-object {
+  border-color: rgba(24, 23, 19, 0.16);
+  box-shadow: 0 46px 100px rgba(63, 52, 39, 0.24);
+}
+
+body[data-theme="light"] .wartrobe-detail {
+  border-color: rgba(24, 23, 19, 0.2);
+  box-shadow: 0 28px 64px rgba(63, 52, 39, 0.22);
+}
+
+body[data-theme="light"] .wartrobe-shadow {
+  background: rgba(63, 52, 39, 0.32);
+}
+
+body[data-theme="light"] .wartrobe-copy h2,
+body[data-theme="light"] .wartrobe .text-link {
+  color: var(--ink);
+}
+
+body[data-theme="light"] .wartrobe-copy > p:not(.eyebrow) {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .inquiry {
+  color: var(--ink);
+  background: var(--page-raised);
+}
+
+body[data-theme="light"] .inquiry-atmosphere {
+  background:
+    linear-gradient(90deg, rgba(246, 242, 234, 0.86), rgba(246, 242, 234, 0.98) 72%),
+    url("assets/optimized/images/hero.webp") center / cover;
+  filter: grayscale(0.5) sepia(0.12) contrast(0.94);
+  opacity: 0.58;
+}
+
+body[data-theme="light"] .inquiry-copy h2,
+body[data-theme="light"] .inquiry .direct-email {
+  color: var(--ink);
+}
+
+body[data-theme="light"] .inquiry-copy > p:not(.eyebrow) {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .inquiry-form {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.46);
+  box-shadow: 0 30px 90px rgba(63, 52, 39, 0.12);
+}
+
+body[data-theme="light"] .inquiry-form label > span,
+body[data-theme="light"] .form-note,
+body[data-theme="light"] .response-note {
+  color: var(--quiet);
+}
+
+body[data-theme="light"] .inquiry-form input,
+body[data-theme="light"] .inquiry-form textarea {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
 /* Responsive */
 
 @media (max-width: 1120px) {

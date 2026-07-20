@@ -184,8 +184,8 @@ const pageSections = Array.from(navLinks)
 const updateActiveNavigation = () => {
   if (!pageSections.length) return;
   const marker = window.innerHeight * 0.42;
-  const current = pageSections.reduce((active, section) => section.getBoundingClientRect().top <= marker ? section : active, pageSections[0]);
-  navLinks.forEach((link) => link.classList.toggle("is-active", link.getAttribute("href") === `#${current.id}`));
+  const current = pageSections.reduce((active, section) => section.getBoundingClientRect().top <= marker ? section : active, null);
+  navLinks.forEach((link) => link.classList.toggle("is-active", Boolean(current) && link.getAttribute("href") === `#${current.id}`));
 };
 
 const updateScrollProgress = () => {
