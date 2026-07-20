@@ -174,12 +174,14 @@ $galleryImages = [
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
         <img class="hero-image" src="assets/images/hero.jpg" alt="Textured abstract artwork by Danny Hirsch" fetchpriority="high">
+        <div class="hero-aura" aria-hidden="true"></div>
         <div class="hero-shade" aria-hidden="true"></div>
         <div class="hero-grain" aria-hidden="true"></div>
         <div class="hero-frame" aria-hidden="true"></div>
         <div class="hero-content reveal">
           <p class="kicker">Contemporary Abstract Art</p>
           <h1 id="hero-title">Danny Hirsch Arts</h1>
+          <p class="hero-meta"><span>Original works</span><span>Private viewings</span><span>2026 collection</span></p>
           <div class="hero-actions" aria-label="Hero actions">
             <a class="button button-primary" href="#collection">Explore Collection</a>
             <a class="button button-ghost" href="#inquiry">Contact</a>
@@ -219,6 +221,7 @@ $galleryImages = [
           <p>Quiet light. Lasting presence.</p>
         </div>
         <div class="room-stage" aria-label="Digital gallery room">
+          <div class="room-ceiling" aria-hidden="true"><span></span><span></span></div>
           <div class="room-track" aria-hidden="true">
             <span></span>
             <span></span>
@@ -281,6 +284,7 @@ $galleryImages = [
             </span>
           </div>
           <div class="room-floor" aria-hidden="true"></div>
+          <div class="room-bench" aria-hidden="true"><span></span></div>
         </div>
       </section>
 

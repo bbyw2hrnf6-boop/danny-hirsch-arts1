@@ -23,6 +23,8 @@ const cookieConsent = document.querySelector("[data-cookie-consent]");
 const cookieAccept = document.querySelector("[data-cookie-accept]");
 const cookieReject = document.querySelector("[data-cookie-reject]");
 const instagramWidgetPanel = document.querySelector(".instagram-widget-panel");
+const motionCards = document.querySelectorAll(".art-image-link, .gallery-item");
+const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 let lightboxCloseTimer;
 let activeLightboxTrigger;
 let scrollTicking = false;
@@ -140,6 +142,53 @@ const setHeroMotion = () => {
   hero?.style.setProperty("--hero-content-shift", `${Math.min(window.scrollY * 0.05, 38)}px`);
   hero?.style.setProperty("--hero-fade", fade.toFixed(3));
 };
+
+// Pointer-responsive depth stays deliberately restrained: the artwork moves like
+// a physical surface under changing gallery light, never like a novelty effect.
+const setPointerDepth = (element, event, strength = 5) => {
+  const rect = element.getBoundingClientRect();
+  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+  element.style.setProperty("--pointer-x", `${(x * 100).toFixed(1)}%`);
+  element.style.setProperty("--pointer-y", `${(y * 100).toFixed(1)}%`);
+  element.style.setProperty("--tilt-x", `${((0.5 - y) * strength).toFixed(2)}deg`);
+  element.style.setProperty("--tilt-y", `${((x - 0.5) * strength).toFixed(2)}deg`);
+};
+
+const resetPointerDepth = (element) => {
+  element.style.setProperty("--tilt-x", "0deg");
+  element.style.setProperty("--tilt-y", "0deg");
+};
+
+if (!prefersReducedMotion && finePointer) {
+  hero?.addEventListener("pointermove", (event) => {
+    const x = event.clientX / window.innerWidth - 0.5;
+    const y = event.clientY / window.innerHeight - 0.5;
+    hero.style.setProperty("--hero-pan-x", `${(x * -14).toFixed(1)}px`);
+    hero.style.setProperty("--hero-pan-y", `${(y * -10).toFixed(1)}px`);
+    hero.style.setProperty("--hero-light-x", `${(event.clientX / window.innerWidth * 100).toFixed(1)}%`);
+    hero.style.setProperty("--hero-light-y", `${(event.clientY / window.innerHeight * 100).toFixed(1)}%`);
+  });
+
+  hero?.addEventListener("pointerleave", () => {
+    hero.style.setProperty("--hero-pan-x", "0px");
+    hero.style.setProperty("--hero-pan-y", "0px");
+  });
+
+  motionCards.forEach((card) => {
+    card.addEventListener("pointermove", (event) => setPointerDepth(card, event, card.classList.contains("gallery-item") ? 3 : 6));
+    card.addEventListener("pointerleave", () => resetPointerDepth(card));
+  });
+
+  installation?.addEventListener("pointermove", (event) => {
+    const room = installation.querySelector(".room-stage");
+    if (room) setPointerDepth(room, event, 2.4);
+  });
+  installation?.addEventListener("pointerleave", () => {
+    const room = installation.querySelector(".room-stage");
+    if (room) resetPointerDepth(room);
+  });
+}
 
 const setAtmosphereMotion = () => {
   if (prefersReducedMotion) return;
@@ -470,3 +519,4 @@ mobileHeaderQuery.addEventListener?.("change", (event) => {
 });
 
 updateScrollEffects();
+window.requestAnimationFrame(() => document.body.classList.add("is-ready"));
