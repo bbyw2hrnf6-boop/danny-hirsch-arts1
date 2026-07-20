@@ -1,109 +1,142 @@
+const root = document.documentElement;
+const body = document.body;
 const header = document.querySelector(".site-header");
+const hero = document.querySelector(".hero");
 const menuToggle = document.querySelector(".menu-toggle");
 const siteNav = document.querySelector(".site-nav");
-const heroImage = document.querySelector(".hero-image");
-const hero = document.querySelector(".hero");
-const atmosphere = document.querySelector(".art-atmosphere");
-const scrollProgress = document.querySelector(".scroll-progress");
-const revealItems = document.querySelectorAll(".reveal");
-const navLinks = document.querySelectorAll(".site-nav a[href^='#']");
 const themeToggle = document.querySelector(".theme-toggle");
 const ambientToggle = document.querySelector(".ambient-toggle");
+const scrollProgress = document.querySelector(".scroll-progress");
+const openingSkip = document.querySelector(".opening-skip");
 const installation = document.querySelector(".installation");
-const pageSections = Array.from(navLinks)
-  .map((link) => document.querySelector(link.getAttribute("href")))
-  .filter(Boolean);
+const roomCamera = document.querySelector("[data-room-camera]");
+const manifesto = document.querySelector(".manifesto");
+const wartrobeStage = document.querySelector("[data-wartrobe-stage]");
+const revealItems = document.querySelectorAll(".reveal");
+const navLinks = document.querySelectorAll(".site-nav a[href^='#']");
 const lightbox = document.querySelector(".lightbox");
 const lightboxImage = document.querySelector(".lightbox-image");
 const lightboxTitle = document.querySelector(".lightbox-caption strong");
 const lightboxCaption = document.querySelector(".lightbox-caption span");
 const lightboxClose = document.querySelector(".lightbox-close");
-const lightboxTriggers = document.querySelectorAll(".js-lightbox-trigger");
+const lightboxPrev = document.querySelector(".lightbox-prev");
+const lightboxNext = document.querySelector(".lightbox-next");
+const lightboxTriggers = Array.from(document.querySelectorAll(".js-lightbox-trigger"));
 const cookieConsent = document.querySelector("[data-cookie-consent]");
 const cookieAccept = document.querySelector("[data-cookie-accept]");
 const cookieReject = document.querySelector("[data-cookie-reject]");
+const instagramSection = document.querySelector("#instagram");
 const instagramWidgetPanel = document.querySelector(".instagram-widget-panel");
-const motionCards = document.querySelectorAll(".art-image-link, .gallery-item");
-const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-let lightboxCloseTimer;
-let activeLightboxTrigger;
-let scrollTicking = false;
+const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const mobileNavigation = window.matchMedia("(max-width: 1120px)");
+const emptyImageSrc = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
 let lastScrollY = window.scrollY;
-let ambientContext;
-let ambientMaster;
-let ambientNodes;
+let scrollTicking = false;
+let openingFinished = false;
+let openingTimers = [];
+let activeLightboxIndex = -1;
+let activeLightboxTrigger = null;
+let lightboxCloseTimer = null;
+let ambientContext = null;
+let ambientMaster = null;
 let ambientIsOn = false;
 
-const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const mobileHeaderQuery = window.matchMedia("(max-width: 1280px)");
 const storage = {
-  get(key) {
+  get(key, session = false) {
     try {
-      return window.localStorage.getItem(key);
+      return (session ? window.sessionStorage : window.localStorage).getItem(key);
     } catch (error) {
       return null;
     }
   },
-  set(key, value) {
+  set(key, value, session = false) {
     try {
-      window.localStorage.setItem(key, value);
+      (session ? window.sessionStorage : window.localStorage).setItem(key, value);
     } catch (error) {
-      // Storage can be blocked in private modes. The page still works without persistence.
+      // The experience remains functional when browser storage is unavailable.
     }
   },
 };
-const storedTheme = storage.get("dha-theme");
-const emptyImageSrc = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
 
-// Theme state is persisted so returning visitors keep their preferred gallery mode.
+if ((navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 4)) {
+  root.classList.add("low-power");
+}
+
 const applyTheme = (theme) => {
   const nextTheme = theme === "light" ? "light" : "dark";
-  document.body.dataset.theme = nextTheme;
-  document.querySelector("meta[name='theme-color']")?.setAttribute("content", nextTheme === "dark" ? "#090a0a" : "#f4f0e8");
+  body.dataset.theme = nextTheme;
+  document.querySelector("meta[name='theme-color']")?.setAttribute("content", nextTheme === "dark" ? "#090909" : "#eee9df");
 
   if (themeToggle) {
     const isLight = nextTheme === "light";
     themeToggle.setAttribute("aria-pressed", String(isLight));
-    themeToggle.setAttribute("aria-label", `Switch to ${isLight ? "dark luxury" : "light gallery"} theme`);
-    const themeToggleText = themeToggle.querySelector(".control-label");
-    const themeToggleIcon = themeToggle.querySelector(".control-icon");
-    if (themeToggleText) {
-      themeToggleText.textContent = isLight ? "Dark" : "Light";
-    }
-    if (themeToggleIcon) {
-      themeToggleIcon.textContent = isLight ? "🌙" : "☀";
-    }
+    themeToggle.setAttribute("aria-label", `Switch to ${isLight ? "dark" : "light"} gallery theme`);
+    themeToggle.querySelector(".control-label").textContent = isLight ? "Dark" : "Light";
   }
 };
 
-if (storedTheme) {
-  applyTheme(storedTheme);
-} else {
-  applyTheme(document.body.dataset.theme);
-}
+applyTheme(storage.get("dha-theme") || body.dataset.theme);
 
-const loadInstagramWidget = () => {
-  if (document.querySelector("script[data-elfsight-platform]")) return;
-
-  const script = document.createElement("script");
-  script.src = "https://elfsightcdn.com/platform.js";
-  script.async = true;
-  script.dataset.elfsightPlatform = "true";
-  script.onload = () => {
-    instagramWidgetPanel?.classList.add("is-connected");
-  };
-  document.body.append(script);
+const clearOpeningTimers = () => {
+  openingTimers.forEach((timer) => window.clearTimeout(timer));
+  openingTimers = [];
 };
 
-const hideCookieConsent = () => {
-  cookieConsent?.classList.add("is-hidden");
+const setOpeningPhase = (phase) => {
+  body.dataset.openingPhase = phase;
+  document.querySelectorAll("[data-opening-label]").forEach((label) => {
+    label.classList.toggle("is-active", label.dataset.openingLabel === phase);
+  });
 };
+
+const finishOpening = (remember = true) => {
+  if (openingFinished) return;
+  openingFinished = true;
+  clearOpeningTimers();
+  setOpeningPhase("identity");
+  body.classList.remove("opening-pending", "opening-active");
+  body.classList.add("opening-complete");
+  if (remember) storage.set("dha-opening-seen", "true", true);
+};
+
+const startOpening = () => {
+  const forceOpening = new URLSearchParams(window.location.search).get("intro") === "1";
+  const shouldSkip = reducedMotion.matches || window.location.hash || (storage.get("dha-opening-seen", true) && !forceOpening);
+
+  if (shouldSkip) {
+    finishOpening(false);
+    return;
+  }
+
+  body.classList.add("opening-active");
+  setOpeningPhase("surface");
+  openingTimers.push(window.setTimeout(() => setOpeningPhase("work"), 1150));
+  openingTimers.push(window.setTimeout(() => setOpeningPhase("room"), 3400));
+  openingTimers.push(window.setTimeout(() => setOpeningPhase("identity"), 5600));
+  openingTimers.push(window.setTimeout(() => finishOpening(), 7600));
+};
+
+openingSkip?.addEventListener("click", () => finishOpening());
+
+const skipOpeningOnIntent = () => {
+  if (body.classList.contains("opening-active")) finishOpening();
+};
+
+window.addEventListener("wheel", skipOpeningOnIntent, { passive: true, once: true });
+window.addEventListener("touchmove", skipOpeningOnIntent, { passive: true, once: true });
+window.addEventListener("keydown", (event) => {
+  if (["ArrowDown", "PageDown", " ", "Enter"].includes(event.key) && body.classList.contains("opening-active")) {
+    finishOpening();
+  }
+});
 
 const setMenuState = (isOpen, returnFocus = false) => {
   if (!menuToggle || !header) return;
-
   header.classList.toggle("is-menu-open", isOpen);
-  document.body.classList.toggle("is-menu-open", isOpen);
+  body.classList.toggle("is-menu-open", isOpen);
   menuToggle.setAttribute("aria-expanded", String(isOpen));
   menuToggle.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
 
@@ -114,137 +147,90 @@ const setMenuState = (isOpen, returnFocus = false) => {
   }
 };
 
-const thirdPartyConsent = storage.get("dha-third-party-consent");
+const focusableWithin = (element) => Array.from(element.querySelectorAll("a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex='-1'])"))
+  .filter((item) => item.offsetParent !== null);
 
-if (thirdPartyConsent === "accepted") {
-  hideCookieConsent();
-  loadInstagramWidget();
-} else if (thirdPartyConsent === "rejected") {
-  hideCookieConsent();
-}
+const trapFocus = (event, container) => {
+  const focusable = focusableWithin(container);
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!first || !last) return;
 
-const setHeaderState = () => {
-  if (!header) return;
-
-  const currentScrollY = window.scrollY;
-  header.classList.toggle("is-scrolled", currentScrollY > 24);
-  header.classList.toggle("is-hidden", !mobileHeaderQuery.matches && currentScrollY > lastScrollY && currentScrollY > 460);
-  lastScrollY = currentScrollY;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 };
 
-// Subtle scroll motion adds depth without moving layout-critical elements.
-const setHeroMotion = () => {
-  if (!heroImage || prefersReducedMotion) return;
-  const shift = Math.min(window.scrollY * 0.12, 70);
-  const fade = Math.max(1 - window.scrollY / 620, 0.35);
-  heroImage.style.setProperty("--hero-shift", `${shift}px`);
-  hero?.style.setProperty("--hero-grain-shift", `${Math.min(window.scrollY * 0.04, 24)}px`);
-  hero?.style.setProperty("--hero-content-shift", `${Math.min(window.scrollY * 0.05, 38)}px`);
-  hero?.style.setProperty("--hero-fade", fade.toFixed(3));
-};
+menuToggle?.addEventListener("click", () => setMenuState(!header.classList.contains("is-menu-open")));
+mobileNavigation.addEventListener?.("change", (event) => {
+  if (!event.matches) setMenuState(false);
+});
 
-// Pointer-responsive depth stays deliberately restrained: the artwork moves like
-// a physical surface under changing gallery light, never like a novelty effect.
-const setPointerDepth = (element, event, strength = 5) => {
-  const rect = element.getBoundingClientRect();
-  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-  const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
-  element.style.setProperty("--pointer-x", `${(x * 100).toFixed(1)}%`);
-  element.style.setProperty("--pointer-y", `${(y * 100).toFixed(1)}%`);
-  element.style.setProperty("--tilt-x", `${((0.5 - y) * strength).toFixed(2)}deg`);
-  element.style.setProperty("--tilt-y", `${((x - 0.5) * strength).toFixed(2)}deg`);
-};
-
-const resetPointerDepth = (element) => {
-  element.style.setProperty("--tilt-x", "0deg");
-  element.style.setProperty("--tilt-y", "0deg");
-};
-
-if (!prefersReducedMotion && finePointer) {
-  hero?.addEventListener("pointermove", (event) => {
-    const x = event.clientX / window.innerWidth - 0.5;
-    const y = event.clientY / window.innerHeight - 0.5;
-    hero.style.setProperty("--hero-pan-x", `${(x * -14).toFixed(1)}px`);
-    hero.style.setProperty("--hero-pan-y", `${(y * -10).toFixed(1)}px`);
-    hero.style.setProperty("--hero-light-x", `${(event.clientX / window.innerWidth * 100).toFixed(1)}%`);
-    hero.style.setProperty("--hero-light-y", `${(event.clientY / window.innerHeight * 100).toFixed(1)}%`);
+navLinks.forEach((link) => {
+  link.addEventListener("click", () => {
+    header?.classList.remove("is-hidden");
+    setMenuState(false);
   });
+});
 
-  hero?.addEventListener("pointerleave", () => {
-    hero.style.setProperty("--hero-pan-x", "0px");
-    hero.style.setProperty("--hero-pan-y", "0px");
-  });
+const pageSections = Array.from(navLinks)
+  .map((link) => document.querySelector(link.getAttribute("href")))
+  .filter(Boolean);
 
-  motionCards.forEach((card) => {
-    card.addEventListener("pointermove", (event) => setPointerDepth(card, event, card.classList.contains("gallery-item") ? 3 : 6));
-    card.addEventListener("pointerleave", () => resetPointerDepth(card));
-  });
-
-  installation?.addEventListener("pointermove", (event) => {
-    const room = installation.querySelector(".room-stage");
-    if (room) setPointerDepth(room, event, 2.4);
-  });
-  installation?.addEventListener("pointerleave", () => {
-    const room = installation.querySelector(".room-stage");
-    if (room) resetPointerDepth(room);
-  });
-}
-
-const setAtmosphereMotion = () => {
-  if (prefersReducedMotion) return;
-
-  const ambientShift = Math.min(window.scrollY * 0.035, 180);
-  const sectionShift = Math.min(window.scrollY * 0.018, 96);
-
-  atmosphere?.style.setProperty("--ambient-y", `${ambientShift}px`);
-  document.documentElement.style.setProperty("--section-art-y", `${sectionShift}px`);
-};
-
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-const setRoomMotion = () => {
-  if (!installation || prefersReducedMotion) return;
-
-  const rect = installation.getBoundingClientRect();
-  const progress = clamp((window.innerHeight - rect.top) / (window.innerHeight + rect.height), 0, 1);
-  const centered = progress - 0.5;
-
-  installation.style.setProperty("--room-turn", `${(-7 + progress * 14).toFixed(2)}deg`);
-  installation.style.setProperty("--room-tilt", `${(2.2 - progress * 3).toFixed(2)}deg`);
-  installation.style.setProperty("--room-lift", `${(centered * -34).toFixed(1)}px`);
-  installation.style.setProperty("--room-spin", `${(progress * 220).toFixed(1)}deg`);
-  installation.style.setProperty("--room-light-shift", `${(centered * 38).toFixed(1)}px`);
-};
-
-const setScrollProgress = () => {
-  if (!scrollProgress) return;
-
-  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-  const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
-  scrollProgress.style.setProperty("--scroll-progress", progress.toFixed(4));
-};
-
-const setActiveNav = () => {
+const updateActiveNavigation = () => {
   if (!pageSections.length) return;
+  const marker = window.innerHeight * 0.42;
+  const current = pageSections.reduce((active, section) => section.getBoundingClientRect().top <= marker ? section : active, pageSections[0]);
+  navLinks.forEach((link) => link.classList.toggle("is-active", link.getAttribute("href") === `#${current.id}`));
+};
 
-  const offset = window.innerHeight * 0.38;
-  const activeSection = pageSections.reduce((current, section) => {
-    const rect = section.getBoundingClientRect();
-    return rect.top - offset <= 0 ? section : current;
-  }, pageSections[0]);
+const updateScrollProgress = () => {
+  if (!scrollProgress) return;
+  const maximum = document.documentElement.scrollHeight - window.innerHeight;
+  scrollProgress.style.setProperty("--progress", maximum > 0 ? String(window.scrollY / maximum) : "0");
+};
 
-  navLinks.forEach((link) => {
-    link.classList.toggle("is-active", link.getAttribute("href") === `#${activeSection.id}`);
-  });
+const updateHeader = () => {
+  if (!header) return;
+  const currentY = window.scrollY;
+  header.classList.toggle("is-scrolled", currentY > 30);
+  header.classList.toggle("is-hidden", !mobileNavigation.matches && currentY > lastScrollY && currentY > window.innerHeight * 0.7);
+  lastScrollY = currentY;
+};
+
+const updateHero = () => {
+  if (!hero || reducedMotion.matches) return;
+  const progress = clamp(window.scrollY / Math.max(hero.offsetHeight, 1), 0, 1);
+  hero.style.setProperty("--hero-scroll", progress.toFixed(4));
+};
+
+const updateManifesto = () => {
+  if (!manifesto || reducedMotion.matches) return;
+  const rect = manifesto.getBoundingClientRect();
+  const progress = clamp((window.innerHeight - rect.top) / (window.innerHeight + rect.height * 0.35), 0, 1);
+  manifesto.style.setProperty("--manifesto-progress", progress.toFixed(4));
+};
+
+const updateRoom = () => {
+  if (!roomCamera || reducedMotion.matches) return;
+  const rect = roomCamera.getBoundingClientRect();
+  const progress = clamp((window.innerHeight - rect.top) / (window.innerHeight + rect.height), 0, 1);
+  roomCamera.style.setProperty("--room-progress", progress.toFixed(4));
+  roomCamera.style.setProperty("--room-scale", (0.94 + progress * 0.06).toFixed(4));
+  roomCamera.style.setProperty("--room-y", `${((0.5 - progress) * 24).toFixed(1)}px`);
 };
 
 const updateScrollEffects = () => {
-  setHeaderState();
-  setHeroMotion();
-  setAtmosphereMotion();
-  setRoomMotion();
-  setScrollProgress();
-  setActiveNav();
+  updateHeader();
+  updateHero();
+  updateManifesto();
+  updateRoom();
+  updateScrollProgress();
+  updateActiveNavigation();
   scrollTicking = false;
 };
 
@@ -254,24 +240,65 @@ const requestScrollUpdate = () => {
   window.requestAnimationFrame(updateScrollEffects);
 };
 
-// Shared artwork lightbox for collection and gallery images.
-const openLightbox = (trigger) => {
-  if (!lightbox || !lightboxImage || !lightboxTitle || !lightboxCaption) return;
+window.addEventListener("scroll", requestScrollUpdate, { passive: true });
+window.addEventListener("resize", requestScrollUpdate);
 
+if ("IntersectionObserver" in window) {
+  const revealObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-visible");
+        if (entry.target.classList.contains("wartrobe-object")) {
+          document.querySelector(".wartrobe-detail")?.classList.add("is-visible");
+        }
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.05, rootMargin: "0px 0px -5%" });
+  revealItems.forEach((item) => revealObserver.observe(item));
+} else {
+  revealItems.forEach((item) => item.classList.add("is-visible"));
+}
+
+const setPointerPosition = (element, event, strength = 1) => {
+  const rect = element.getBoundingClientRect();
+  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+  element.style.setProperty("--pointer-x", `${(x * 100).toFixed(2)}%`);
+  element.style.setProperty("--pointer-y", `${(y * 100).toFixed(2)}%`);
+  element.style.setProperty("--shift-x", `${((x - 0.5) * strength).toFixed(2)}px`);
+  element.style.setProperty("--shift-y", `${((y - 0.5) * strength).toFixed(2)}px`);
+};
+
+if (finePointer.matches && !reducedMotion.matches) {
+  hero?.addEventListener("pointermove", (event) => setPointerPosition(hero, event, 24));
+  roomCamera?.addEventListener("pointermove", (event) => setPointerPosition(roomCamera, event, 10));
+  wartrobeStage?.addEventListener("pointermove", (event) => setPointerPosition(wartrobeStage, event, 12));
+  document.querySelectorAll("[data-art-light]").forEach((artwork) => {
+    artwork.addEventListener("pointermove", (event) => setPointerPosition(artwork, event, 7));
+  });
+  document.querySelectorAll("[data-surface-light]").forEach((surface) => {
+    surface.addEventListener("pointermove", (event) => setPointerPosition(surface, event));
+  });
+}
+
+const updateLightbox = (index) => {
+  if (!lightboxImage || !lightboxTitle || !lightboxCaption || !lightboxTriggers.length) return;
+  activeLightboxIndex = (index + lightboxTriggers.length) % lightboxTriggers.length;
+  const trigger = lightboxTriggers[activeLightboxIndex];
+  lightboxImage.src = trigger.dataset.lightboxSrc || trigger.href;
+  lightboxImage.alt = trigger.dataset.lightboxTitle || "Artwork by Danny Hirsch";
+  lightboxTitle.textContent = trigger.dataset.lightboxTitle || "Danny Hirsch Arts";
+  lightboxCaption.textContent = trigger.dataset.lightboxCaption || "";
+};
+
+const openLightbox = (trigger) => {
+  if (!lightbox) return;
   window.clearTimeout(lightboxCloseTimer);
   activeLightboxTrigger = trigger;
-
-  const src = trigger.dataset.lightboxSrc || trigger.getAttribute("href");
-  const title = trigger.dataset.lightboxTitle || "Danny Hirsch Arts";
-  const caption = trigger.dataset.lightboxCaption || "";
-
-  lightboxImage.src = src;
-  lightboxImage.alt = title;
-  lightboxTitle.textContent = title;
-  lightboxCaption.textContent = caption;
+  updateLightbox(lightboxTriggers.indexOf(trigger));
   lightbox.setAttribute("aria-hidden", "false");
-  document.body.classList.add("is-lightbox-open");
-
+  body.classList.add("is-lightbox-open");
   window.requestAnimationFrame(() => {
     lightbox.classList.add("is-open");
     lightboxClose?.focus({ preventScroll: true });
@@ -280,37 +307,15 @@ const openLightbox = (trigger) => {
 
 const closeLightbox = () => {
   if (!lightbox || !lightboxImage) return;
-
   lightbox.classList.remove("is-open");
   lightbox.setAttribute("aria-hidden", "true");
-  document.body.classList.remove("is-lightbox-open");
-
+  body.classList.remove("is-lightbox-open");
   lightboxCloseTimer = window.setTimeout(() => {
     lightboxImage.src = emptyImageSrc;
     lightboxImage.alt = "";
-  }, 320);
-
+  }, 420);
   activeLightboxTrigger?.focus({ preventScroll: true });
 };
-
-if ("IntersectionObserver" in window) {
-  // Reveal items once, keeping scroll work light.
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.16 }
-  );
-
-  revealItems.forEach((item) => observer.observe(item));
-} else {
-  revealItems.forEach((item) => item.classList.add("is-visible"));
-}
 
 lightboxTriggers.forEach((trigger) => {
   trigger.addEventListener("click", (event) => {
@@ -320,184 +325,135 @@ lightboxTriggers.forEach((trigger) => {
 });
 
 lightboxClose?.addEventListener("click", closeLightbox);
-
+lightboxPrev?.addEventListener("click", () => updateLightbox(activeLightboxIndex - 1));
+lightboxNext?.addEventListener("click", () => updateLightbox(activeLightboxIndex + 1));
 lightbox?.addEventListener("click", (event) => {
-  if (event.target === lightbox) {
-    closeLightbox();
-  }
+  if (event.target === lightbox) closeLightbox();
 });
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && lightbox?.classList.contains("is-open")) {
     closeLightbox();
+    return;
   }
+  if (event.key === "ArrowLeft" && lightbox?.classList.contains("is-open")) updateLightbox(activeLightboxIndex - 1);
+  if (event.key === "ArrowRight" && lightbox?.classList.contains("is-open")) updateLightbox(activeLightboxIndex + 1);
+  if (event.key === "Tab" && lightbox?.classList.contains("is-open")) trapFocus(event, lightbox);
 
-  if (event.key === "Escape" && header?.classList.contains("is-menu-open")) {
-    setMenuState(false, true);
-  }
-
-  if (event.key === "Tab" && header?.classList.contains("is-menu-open")) {
-    const focusable = Array.from(header.querySelectorAll("a, button")).filter(
-      (element) => !element.hasAttribute("disabled") && element.offsetParent !== null
-    );
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last?.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first?.focus();
-    }
-  }
-});
-
-navLinks.forEach((link) => {
-  link.addEventListener("click", () => {
-    header?.classList.remove("is-hidden");
-    setMenuState(false);
-
-    const target = document.querySelector(link.getAttribute("href"));
-    if (!target) return;
-
-    // Re-align after dynamic embeds, especially the Instagram widget, finish resizing.
-    window.setTimeout(() => target.scrollIntoView({ block: "start" }), 700);
-    window.setTimeout(() => target.scrollIntoView({ block: "start" }), 1600);
-  });
+  if (event.key === "Escape" && header?.classList.contains("is-menu-open")) setMenuState(false, true);
+  if (event.key === "Tab" && header?.classList.contains("is-menu-open")) trapFocus(event, header);
 });
 
 const updateAmbientButton = () => {
   if (!ambientToggle) return;
-
   ambientToggle.setAttribute("aria-pressed", String(ambientIsOn));
   ambientToggle.setAttribute("aria-label", ambientIsOn ? "Stop ambient gallery sound" : "Start ambient gallery sound");
-  const label = ambientToggle.querySelector(".control-label");
-  const icon = ambientToggle.querySelector(".control-icon");
-  if (label) {
-    label.textContent = ambientIsOn ? "Sound on" : "Sound";
-  }
-  if (icon) {
-    icon.textContent = ambientIsOn ? "🔊" : "🔊";
-  }
+  ambientToggle.querySelector(".control-label").textContent = ambientIsOn ? "Sound on" : "Sound";
 };
 
-const createNoiseSource = (context, seconds = 4, color = "white") => {
+const createNoiseSource = (context, seconds, brown = false) => {
   const buffer = context.createBuffer(1, context.sampleRate * seconds, context.sampleRate);
   const channel = buffer.getChannelData(0);
   let low = 0;
-  let lower = 0;
-
-  for (let i = 0; i < channel.length; i += 1) {
+  for (let index = 0; index < channel.length; index += 1) {
     const white = Math.random() * 2 - 1;
-
-    if (color === "brown") {
-      low = (low + 0.025 * white) / 1.025;
-      channel[i] = low * 3.5;
-    } else if (color === "wave") {
-      lower = lower * 0.995 + white * 0.005;
-      low = low * 0.94 + lower * 0.06;
-      channel[i] = low * 5.4;
-    } else {
-      channel[i] = white;
-    }
+    low = (low + 0.025 * white) / 1.025;
+    channel[index] = brown ? low * 3.5 : white;
   }
-
   const source = context.createBufferSource();
   source.buffer = buffer;
   source.loop = true;
   return source;
 };
 
-const createAmbientNodes = () => {
-  const context = ambientContext;
-  const master = context.createGain();
+const createAmbientSound = () => {
+  const master = ambientContext.createGain();
   master.gain.value = 0;
 
-  const wind = createNoiseSource(context, 7, "brown");
-  const windFilter = context.createBiquadFilter();
-  const windGain = context.createGain();
-  windFilter.type = "lowpass";
-  windFilter.frequency.value = 360;
-  windFilter.Q.value = 0.8;
-  windGain.gain.value = 0.032;
-  wind.connect(windFilter).connect(windGain).connect(master);
+  const air = createNoiseSource(ambientContext, 7, true);
+  const airFilter = ambientContext.createBiquadFilter();
+  const airGain = ambientContext.createGain();
+  airFilter.type = "lowpass";
+  airFilter.frequency.value = 310;
+  airGain.gain.value = 0.035;
+  air.connect(airFilter).connect(airGain).connect(master);
 
-  const waves = createNoiseSource(context, 9, "wave");
-  const waveFilter = context.createBiquadFilter();
-  const waveGain = context.createGain();
-  const waveLfo = context.createOscillator();
-  const waveLfoGain = context.createGain();
-  waveFilter.type = "lowpass";
-  waveFilter.frequency.value = 180;
-  waveGain.gain.value = 0.014;
-  waveLfo.frequency.value = 0.075;
-  waveLfoGain.gain.value = 0.008;
-  waves.connect(waveFilter).connect(waveGain).connect(master);
-  waveLfo.connect(waveLfoGain).connect(waveGain.gain);
+  const texture = createNoiseSource(ambientContext, 5);
+  const textureFilter = ambientContext.createBiquadFilter();
+  const textureGain = ambientContext.createGain();
+  textureFilter.type = "bandpass";
+  textureFilter.frequency.value = 1180;
+  textureFilter.Q.value = 0.35;
+  textureGain.gain.value = 0.004;
+  texture.connect(textureFilter).connect(textureGain).connect(master);
 
-  const rain = createNoiseSource(context, 5, "brown");
-  const rainFilter = context.createBiquadFilter();
-  const rainSoften = context.createBiquadFilter();
-  const rainGain = context.createGain();
-  rainFilter.type = "bandpass";
-  rainFilter.frequency.value = 1250;
-  rainFilter.Q.value = 0.38;
-  rainSoften.type = "lowpass";
-  rainSoften.frequency.value = 1900;
-  rainGain.gain.value = 0.005;
-  rain.connect(rainFilter).connect(rainSoften).connect(rainGain).connect(master);
+  const pulse = ambientContext.createOscillator();
+  const pulseGain = ambientContext.createGain();
+  pulse.frequency.value = 0.052;
+  pulseGain.gain.value = 42;
+  pulse.connect(pulseGain).connect(airFilter.frequency);
 
-  const lfo = context.createOscillator();
-  const lfoGain = context.createGain();
-  lfo.frequency.value = 0.04;
-  lfoGain.gain.value = 58;
-  lfo.connect(lfoGain).connect(windFilter.frequency);
-
-  master.connect(context.destination);
-  wind.start();
-  waves.start();
-  rain.start();
-  waveLfo.start();
-  lfo.start();
-
-  return { master, wind, waves, rain, waveLfo, lfo };
+  master.connect(ambientContext.destination);
+  air.start();
+  texture.start();
+  pulse.start();
+  return master;
 };
 
-// Ambient audio is opt-in because browsers block autoplay and quiet pages should stay quiet.
 const toggleAmbient = async () => {
   if (!ambientToggle) return;
-
   if (!ambientContext) {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
     ambientContext = new AudioContext();
-    ambientNodes = createAmbientNodes();
-    ambientMaster = ambientNodes.master;
+    ambientMaster = createAmbientSound();
   }
 
   ambientIsOn = !ambientIsOn;
   const now = ambientContext.currentTime;
   ambientMaster.gain.cancelScheduledValues(now);
-  ambientMaster.gain.setTargetAtTime(ambientIsOn ? 0.052 : 0, now, ambientIsOn ? 0.9 : 0.35);
+  ambientMaster.gain.setTargetAtTime(ambientIsOn ? 0.05 : 0, now, ambientIsOn ? 0.8 : 0.25);
+  if (ambientIsOn) await ambientContext.resume().catch(() => {});
   updateAmbientButton();
-
-  if (ambientIsOn) {
-    ambientContext.resume().catch(() => {});
-  }
 };
 
-ambientToggle?.addEventListener("click", toggleAmbient);
-
-menuToggle?.addEventListener("click", () => {
-  setMenuState(!header?.classList.contains("is-menu-open"));
-});
-
 themeToggle?.addEventListener("click", () => {
-  const nextTheme = document.body.dataset.theme === "light" ? "dark" : "light";
+  const nextTheme = body.dataset.theme === "light" ? "dark" : "light";
   applyTheme(nextTheme);
   storage.set("dha-theme", nextTheme);
 });
+
+ambientToggle?.addEventListener("click", toggleAmbient);
+
+const hideCookieConsent = () => cookieConsent?.classList.add("is-hidden");
+const loadInstagramWidget = () => {
+  if (document.querySelector("script[data-elfsight-platform]")) return;
+  const script = document.createElement("script");
+  script.src = "https://elfsightcdn.com/platform.js";
+  script.async = true;
+  script.dataset.elfsightPlatform = "true";
+  script.onload = () => instagramWidgetPanel?.classList.add("is-connected");
+  document.body.append(script);
+};
+
+const thirdPartyConsent = storage.get("dha-third-party-consent");
+if (thirdPartyConsent === "accepted") {
+  hideCookieConsent();
+  loadInstagramWidget();
+} else if (thirdPartyConsent === "rejected") {
+  hideCookieConsent();
+} else if (cookieConsent && instagramSection) {
+  if ("IntersectionObserver" in window) {
+    const consentObserver = new IntersectionObserver((entries, observer) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      cookieConsent.classList.remove("is-hidden");
+      observer.disconnect();
+    }, { rootMargin: "220px 0px" });
+    consentObserver.observe(instagramSection);
+  } else {
+    cookieConsent.classList.remove("is-hidden");
+  }
+}
 
 cookieAccept?.addEventListener("click", () => {
   storage.set("dha-third-party-consent", "accepted");
@@ -510,13 +466,11 @@ cookieReject?.addEventListener("click", () => {
   hideCookieConsent();
 });
 
-window.addEventListener("scroll", requestScrollUpdate, { passive: true });
-window.addEventListener("resize", requestScrollUpdate);
-mobileHeaderQuery.addEventListener?.("change", (event) => {
-  if (!event.matches) {
-    setMenuState(false);
-  }
+reducedMotion.addEventListener?.("change", () => {
+  if (reducedMotion.matches) finishOpening(false);
+  requestScrollUpdate();
 });
 
+startOpening();
 updateScrollEffects();
-window.requestAnimationFrame(() => document.body.classList.add("is-ready"));
+window.requestAnimationFrame(() => body.classList.add("site-ready"));
