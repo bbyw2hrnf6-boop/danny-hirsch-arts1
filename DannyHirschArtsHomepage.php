@@ -114,8 +114,8 @@ function imageSizeAttributes(string $path): string
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260721-threshold-8">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260721-threshold-8">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260721-threshold-10">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260721-threshold-10">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -441,6 +441,6 @@ function imageSizeAttributes(string $path): string
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260721-threshold-8" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260721-threshold-10" defer></script>
   </body>
 </html>

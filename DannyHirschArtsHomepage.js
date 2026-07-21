@@ -123,7 +123,7 @@ const finishOpening = (remember = true) => {
 
 const shouldSkipOpening = () => {
   const forceOpening = new URLSearchParams(window.location.search).get("intro") === "1";
-  return reducedMotion.matches || window.location.hash || (storage.get("dha-opening-seen", true) && !forceOpening);
+  return reducedMotion.matches || (!forceOpening && (window.location.hash || storage.get("dha-opening-seen", true)));
 };
 
 const playCinematicOpening = () => {

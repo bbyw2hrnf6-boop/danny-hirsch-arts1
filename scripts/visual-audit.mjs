@@ -185,6 +185,16 @@ for (const [selector, name] of [
 await recordLayout('desktop-content');
 
 await viewport(390, 844, true);
+await navigate('?intro=1&audit=mobile-opening', 650);
+await capture('audit-mobile-intro-surface.png');
+await pause(1650);
+await capture('audit-mobile-intro-work.png');
+await pause(2000);
+await capture('audit-mobile-intro-room.png');
+await pause(3100);
+await capture('audit-mobile-hero-final.png');
+await recordLayout('mobile-hero');
+
 await navigate('?mobile=1#installation', 1500);
 await scrollTo('#installation', 2800);
 await decodeImagesWithin('#installation');
