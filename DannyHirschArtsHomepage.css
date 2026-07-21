@@ -2594,7 +2594,20 @@ body[data-theme="light"] .inquiry-form textarea {
   .hero-actions { grid-template-columns: 1fr; }
   .hero-content { bottom: 44px; }
   .opening-chapters { display: none; }
-  .cookie-consent-actions { grid-template-columns: 1fr; }
+  .cookie-consent {
+    gap: 12px;
+    padding: 14px;
+  }
+  .cookie-consent p {
+    font-size: 0.7rem;
+    line-height: 1.5;
+  }
+  .cookie-consent-actions { grid-template-columns: 0.82fr 1.18fr; }
+  .cookie-consent .button {
+    min-height: 44px;
+    padding: 10px 8px;
+    font-size: 0.55rem;
+  }
 }
 
 /* Weaker devices retain composition while removing costly continuous layers. */

@@ -1,0 +1,243 @@
+{
+  "layoutReports": [
+    {
+      "label": "desktop-hero",
+      "size": [
+        1440,
+        1000
+      ],
+      "scrollY": 0,
+      "pageHeight": 18559,
+      "fontLoaded": true,
+      "theme": "dark",
+      "horizontalOverflow": 0,
+      "outsideHeadings": [],
+      "lightboxInert": true
+    },
+    {
+      "label": "desktop-room-light",
+      "size": [
+        1440,
+        1000
+      ],
+      "scrollY": 1880,
+      "pageHeight": 18559,
+      "fontLoaded": true,
+      "theme": "light",
+      "privateRoomState": "loading",
+      "horizontalOverflow": 0,
+      "outsideHeadings": [],
+      "lightboxInert": true
+    },
+    {
+      "label": "desktop-room-dark",
+      "size": [
+        1440,
+        1000
+      ],
+      "scrollY": 1880,
+      "pageHeight": 18559,
+      "fontLoaded": true,
+      "theme": "dark",
+      "privateRoomState": "ready",
+      "horizontalOverflow": 0,
+      "outsideHeadings": [],
+      "lightboxInert": true
+    },
+    {
+      "label": "desktop-content",
+      "size": [
+        1440,
+        1000
+      ],
+      "scrollY": 17119,
+      "pageHeight": 18559,
+      "fontLoaded": true,
+      "theme": "dark",
+      "privateRoomState": "ready",
+      "horizontalOverflow": 0,
+      "outsideHeadings": [],
+      "lightboxInert": true
+    },
+    {
+      "label": "mobile-room",
+      "size": [
+        390,
+        844
+      ],
+      "scrollY": 1570,
+      "pageHeight": 19368,
+      "fontLoaded": true,
+      "theme": "dark",
+      "privateRoomState": "skipped",
+      "horizontalOverflow": 0,
+      "outsideHeadings": [],
+      "lightboxInert": true
+    },
+    {
+      "label": "mobile-content",
+      "size": [
+        390,
+        844
+      ],
+      "scrollY": 15290,
+      "pageHeight": 19368,
+      "fontLoaded": true,
+      "theme": "dark",
+      "privateRoomState": "skipped",
+      "horizontalOverflow": 0,
+      "outsideHeadings": [],
+      "lightboxInert": true
+    }
+  ],
+  "finalState": {
+    "size": [
+      390,
+      844
+    ],
+    "fontLoaded": true,
+    "theme": "dark",
+    "reducedMotion": true,
+    "horizontalOverflow": 0,
+    "headings": [
+      {
+        "text": "Danny HirschArts",
+        "width": 348,
+        "height": 111,
+        "scrollWidth": 348,
+        "lineHeight": "55.341px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Enter thematerial.",
+        "width": 348,
+        "height": 104,
+        "scrollWidth": 348,
+        "lineHeight": "52.026px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Six materialencounters.",
+        "width": 233,
+        "height": 102,
+        "scrollWidth": 233,
+        "lineHeight": "51.1056px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Yellow Field, Veined",
+        "width": 223,
+        "height": 100,
+        "scrollWidth": 223,
+        "lineHeight": "50.0526px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Black Current",
+        "width": 223,
+        "height": 50,
+        "scrollWidth": 223,
+        "lineHeight": "50.0526px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Soft Terrain",
+        "width": 223,
+        "height": 50,
+        "scrollWidth": 223,
+        "lineHeight": "50.0526px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Oxide Drift",
+        "width": 223,
+        "height": 50,
+        "scrollWidth": 223,
+        "lineHeight": "50.0526px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Blue Aperture",
+        "width": 223,
+        "height": 50,
+        "scrollWidth": 223,
+        "lineHeight": "50.0526px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Nocturne Relic",
+        "width": 223,
+        "height": 100,
+        "scrollWidth": 223,
+        "lineHeight": "50.0526px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Near enoughto feel it.",
+        "width": 226,
+        "height": 98,
+        "scrollWidth": 226,
+        "lineHeight": "49.14px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Furniturebecomes art.",
+        "width": 348,
+        "height": 108,
+        "scrollWidth": 348,
+        "lineHeight": "53.82px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "I paint whatcannot be said.",
+        "width": 237,
+        "height": 96,
+        "scrollWidth": 237,
+        "lineHeight": "47.8764px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Live fromthe studio.",
+        "width": 348,
+        "height": 103,
+        "scrollWidth": 348,
+        "lineHeight": "51.52px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "New works, close surfaces, and studio moments.",
+        "width": 238,
+        "height": 89,
+        "scrollWidth": 238,
+        "lineHeight": "29.792px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
+      {
+        "text": "Begin a privateconversation.",
+        "width": 348,
+        "height": 98,
+        "scrollWidth": 348,
+        "lineHeight": "48.9762px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      }
+    ],
+    "visibleFocusableCount": 46,
+    "lightboxInert": true
+  },
+  "browserIssues": []
+}

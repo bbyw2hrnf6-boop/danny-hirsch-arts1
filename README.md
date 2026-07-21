@@ -6,8 +6,14 @@ Premium static artist homepage for Danny Hirsch Arts. The site is built with pla
 
 - `index.html` - static GitHub Pages entry file
 - `DannyHirschArtsHomepage.php` - editable PHP source version
-- `DannyHirschArtsHomepage.css` - visual system, responsive layouts, theme styles
-- `DannyHirschArtsHomepage.js` - navigation, theme, sound, scroll effects, reveal animation, lightbox
+- `DannyHirschArtsHomepage.css` - base visual system, responsive layouts, and theme styles
+- `DannyHirschArtsCinematic.css` - cinematic editorial layer, collision-safe type, and responsive refinements
+- `DannyHirschArtsHomepage.js` - navigation, theme, sound, intro, scroll effects, lightbox, and progressive 3D loading
+- `DannyHirschArts3D.js` - lightweight Three.js Private Room renderer
+- `blender/create_material_threshold.py` - reproducible Blender scene, GLB, poster, and film generator
+- `assets/cinematic/` - Blender GLB, poster, MP4, and WebM intro assets
+- `assets/fonts/` - self-hosted Instrument Serif and Manrope fonts with licenses
+- `assets/vendor/three/` - pinned local Three.js runtime; no CDN is required
 - `assets/brand/` - logo
 - `assets/images/` - hero and feature images
 - `assets/artworks/` - main artwork images
@@ -17,10 +23,10 @@ Premium static artist homepage for Danny Hirsch Arts. The site is built with pla
 
 ## Run Locally
 
-Open `index.html` directly, or run a local server:
+Run a local server that supports byte-range requests so the cinematic video can seek correctly:
 
 ```bash
-python3 -m http.server 8000
+npx http-server . -p 8000 -c-1
 ```
 
 Then visit `http://localhost:8000`.
@@ -48,6 +54,16 @@ If you edit `DannyHirschArtsHomepage.php`, regenerate the static page before pub
 ```bash
 php DannyHirschArtsHomepage.php > index.html
 ```
+
+## Rebuilding the Blender experience
+
+Blender 5.2 LTS was used to create the room from genuine local wARTrobe photographs. The room is an artistic spatial interpretation, not a forensic 3D scan.
+
+```bash
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/create_material_threshold.py
+```
+
+Add `-- --render-video` to also rebuild both browser film formats. The WebGL room is requested only near the Private Room section and is skipped for reduced motion, data-saver, low-memory, or unsupported devices; the cinematic poster/CSS room remains the fallback.
 
 ## Instagram
 

@@ -2,6 +2,9 @@ const root = document.documentElement;
 const body = document.body;
 const header = document.querySelector(".site-header");
 const hero = document.querySelector(".hero");
+const heroVideo = document.querySelector("[data-cinematic-video]");
+const heroVideoSources = Array.from(heroVideo?.querySelectorAll("source[data-src]") || []);
+const heroContent = document.querySelector(".hero-content");
 const menuToggle = document.querySelector(".menu-toggle");
 const siteNav = document.querySelector(".site-nav");
 const themeToggle = document.querySelector(".theme-toggle");
@@ -27,6 +30,10 @@ const cookieAccept = document.querySelector("[data-cookie-accept]");
 const cookieReject = document.querySelector("[data-cookie-reject]");
 const instagramSection = document.querySelector("#instagram");
 const instagramWidgetPanel = document.querySelector(".instagram-widget-panel");
+const pageMain = document.querySelector("main");
+const pageFooter = document.querySelector(".site-footer");
+const privateRoomStage = document.querySelector("[data-private-room-stage]");
+const privateRoomStatus = document.querySelector(".private-room-loader small");
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const mobileNavigation = window.matchMedia("(max-width: 1120px)");
@@ -43,6 +50,8 @@ let lightboxCloseTimer = null;
 let ambientContext = null;
 let ambientMaster = null;
 let ambientIsOn = false;
+let privateRoomController = null;
+let privateRoomImportObserver = null;
 
 const storage = {
   get(key, session = false) {
@@ -76,6 +85,8 @@ const applyTheme = (theme) => {
     themeToggle.setAttribute("aria-label", `Switch to ${isLight ? "dark" : "light"} gallery theme`);
     themeToggle.querySelector(".control-label").textContent = isLight ? "Dark" : "Light";
   }
+
+  privateRoomController?.setTheme?.(nextTheme);
 };
 
 applyTheme(storage.get("dha-theme") || body.dataset.theme);
@@ -87,6 +98,9 @@ const clearOpeningTimers = () => {
 
 const setOpeningPhase = (phase) => {
   body.dataset.openingPhase = phase;
+  const hidesInterface = phase !== "identity" && body.classList.contains("opening-active");
+  if (header) header.inert = hidesInterface;
+  if (heroContent) heroContent.inert = hidesInterface;
   document.querySelectorAll("[data-opening-label]").forEach((label) => {
     label.classList.toggle("is-active", label.dataset.openingLabel === phase);
   });
@@ -99,24 +113,69 @@ const finishOpening = (remember = true) => {
   setOpeningPhase("identity");
   body.classList.remove("opening-pending", "opening-active");
   body.classList.add("opening-complete");
+  if (header) header.inert = false;
+  if (heroContent) heroContent.inert = false;
+  if (openingSkip) openingSkip.inert = true;
+  heroVideo?.pause();
+  heroVideo?.classList.remove("is-playing");
   if (remember) storage.set("dha-opening-seen", "true", true);
 };
 
-const startOpening = () => {
+const shouldSkipOpening = () => {
   const forceOpening = new URLSearchParams(window.location.search).get("intro") === "1";
-  const shouldSkip = reducedMotion.matches || window.location.hash || (storage.get("dha-opening-seen", true) && !forceOpening);
+  return reducedMotion.matches || window.location.hash || (storage.get("dha-opening-seen", true) && !forceOpening);
+};
 
-  if (shouldSkip) {
+const playCinematicOpening = () => {
+  if (!heroVideo || !body.classList.contains("opening-active")) return;
+  heroVideo.currentTime = 0;
+  heroVideo.play().then(() => {
+    heroVideo.classList.add("is-playing");
+    body.classList.add("cinematic-video-active");
+  }).catch(() => {
+    body.classList.remove("cinematic-video-active");
+  });
+};
+
+const prepareCinematicOpening = () => {
+  if (!heroVideo || !heroVideoSources.length || shouldSkipOpening()) return;
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const canUseFilm = window.innerWidth > 760
+    && !reducedMotion.matches
+    && !connection?.saveData;
+
+  if (!canUseFilm) return;
+
+  heroVideoSources.forEach((source) => {
+    source.src = source.dataset.src;
+  });
+  heroVideo.addEventListener("canplay", () => {
+    body.classList.add("cinematic-video-ready");
+    playCinematicOpening();
+  }, { once: true });
+  heroVideo.addEventListener("ended", () => finishOpening(), { once: true });
+  heroVideo.addEventListener("error", () => {
+    body.classList.remove("cinematic-video-ready", "cinematic-video-active");
+    heroVideo.classList.remove("is-playing");
+  }, { once: true });
+  heroVideo.load();
+};
+
+const startOpening = () => {
+  if (shouldSkipOpening()) {
     finishOpening(false);
     return;
   }
 
   body.classList.add("opening-active");
+  if (header) header.inert = true;
+  if (openingSkip) openingSkip.inert = false;
   setOpeningPhase("surface");
-  openingTimers.push(window.setTimeout(() => setOpeningPhase("work"), 1150));
-  openingTimers.push(window.setTimeout(() => setOpeningPhase("room"), 3400));
-  openingTimers.push(window.setTimeout(() => setOpeningPhase("identity"), 5600));
-  openingTimers.push(window.setTimeout(() => finishOpening(), 7600));
+  playCinematicOpening();
+  openingTimers.push(window.setTimeout(() => setOpeningPhase("work"), 1200));
+  openingTimers.push(window.setTimeout(() => setOpeningPhase("room"), 3200));
+  openingTimers.push(window.setTimeout(() => setOpeningPhase("identity"), 5400));
+  openingTimers.push(window.setTimeout(() => finishOpening(), 7200));
 };
 
 openingSkip?.addEventListener("click", () => finishOpening());
@@ -139,9 +198,10 @@ const setMenuState = (isOpen, returnFocus = false) => {
   body.classList.toggle("is-menu-open", isOpen);
   menuToggle.setAttribute("aria-expanded", String(isOpen));
   menuToggle.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
+  if (siteNav) siteNav.inert = mobileNavigation.matches && !isOpen;
 
   if (isOpen) {
-    window.requestAnimationFrame(() => siteNav?.querySelector("a")?.focus({ preventScroll: true }));
+    siteNav?.querySelector("a")?.focus({ preventScroll: true });
   } else if (returnFocus) {
     menuToggle.focus({ preventScroll: true });
   }
@@ -168,7 +228,10 @@ const trapFocus = (event, container) => {
 menuToggle?.addEventListener("click", () => setMenuState(!header.classList.contains("is-menu-open")));
 mobileNavigation.addEventListener?.("change", (event) => {
   if (!event.matches) setMenuState(false);
+  else if (siteNav) siteNav.inert = !header?.classList.contains("is-menu-open");
 });
+
+if (siteNav) siteNav.inert = mobileNavigation.matches;
 
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
@@ -243,7 +306,7 @@ const requestScrollUpdate = () => {
 window.addEventListener("scroll", requestScrollUpdate, { passive: true });
 window.addEventListener("resize", requestScrollUpdate);
 
-if ("IntersectionObserver" in window) {
+if ("IntersectionObserver" in window && !document.hidden) {
   const revealObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
@@ -297,19 +360,21 @@ const openLightbox = (trigger) => {
   window.clearTimeout(lightboxCloseTimer);
   activeLightboxTrigger = trigger;
   updateLightbox(lightboxTriggers.indexOf(trigger));
+  [header, pageMain, pageFooter].forEach((element) => { if (element) element.inert = true; });
+  lightbox.inert = false;
   lightbox.setAttribute("aria-hidden", "false");
   body.classList.add("is-lightbox-open");
-  window.requestAnimationFrame(() => {
-    lightbox.classList.add("is-open");
-    lightboxClose?.focus({ preventScroll: true });
-  });
+  lightbox.classList.add("is-open");
+  lightboxClose?.focus({ preventScroll: true });
 };
 
 const closeLightbox = () => {
   if (!lightbox || !lightboxImage) return;
   lightbox.classList.remove("is-open");
   lightbox.setAttribute("aria-hidden", "true");
+  lightbox.inert = true;
   body.classList.remove("is-lightbox-open");
+  [header, pageMain, pageFooter].forEach((element) => { if (element) element.inert = false; });
   lightboxCloseTimer = window.setTimeout(() => {
     lightboxImage.src = emptyImageSrc;
     lightboxImage.alt = "";
@@ -467,10 +532,80 @@ cookieReject?.addEventListener("click", () => {
 });
 
 reducedMotion.addEventListener?.("change", () => {
-  if (reducedMotion.matches) finishOpening(false);
+  if (reducedMotion.matches) {
+    finishOpening(false);
+    privateRoomController?.destroy?.();
+  }
   requestScrollUpdate();
 });
 
+const setPrivateRoomFallback = (reason = "fallback") => {
+  if (!installation) return;
+  installation.classList.remove("private-room--3d-idle", "private-room--3d-loading", "private-room--3d-ready");
+  installation.classList.add("private-room--3d-skipped");
+  installation.dataset.privateRoom3d = "skipped";
+  installation.dataset.privateRoomFallback = reason;
+};
+
+const loadPrivateRoomExperience = async () => {
+  if (!installation || !privateRoomStage || privateRoomController) return;
+  privateRoomImportObserver?.disconnect();
+
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const compactViewport = window.matchMedia("(max-width: 760px)").matches;
+  if (reducedMotion.matches || connection?.saveData || compactViewport) {
+    const reason = reducedMotion.matches
+      ? "reduced-motion"
+      : connection?.saveData
+        ? "save-data"
+        : "compact-curated-fallback";
+    setPrivateRoomFallback(reason);
+    return;
+  }
+
+  try {
+    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260721-threshold-6");
+    privateRoomController = initPrivateRoom3D({
+      root: installation,
+      stage: privateRoomStage,
+      modelUrl: "assets/cinematic/threshold-room.glb",
+      minimumDeviceMemory: 3,
+      minimumHardwareConcurrency: 4,
+      pixelRatioCap: finePointer.matches ? 1.5 : 1,
+      cameraTravel: 0.018,
+      pointerRotation: 0.014,
+      scrollRotation: 0.01,
+      onLoading: ({ progress }) => {
+        if (!privateRoomStatus) return;
+        privateRoomStatus.textContent = progress === null
+          ? "Preparing spatial room"
+          : `Preparing spatial room · ${Math.round(progress * 100)}%`;
+      },
+      onReady: () => {
+        if (privateRoomStatus) privateRoomStatus.textContent = "Spatial room ready";
+      },
+      onSkip: ({ reason }) => setPrivateRoomFallback(reason),
+      onError: () => setPrivateRoomFallback("load-error")
+    });
+  } catch (error) {
+    setPrivateRoomFallback("module-error");
+  }
+};
+
+if (installation && privateRoomStage) {
+  if ("IntersectionObserver" in window) {
+    privateRoomImportObserver = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) loadPrivateRoomExperience();
+    }, { rootMargin: "500px 0px", threshold: 0.01 });
+    privateRoomImportObserver.observe(installation);
+  } else {
+    loadPrivateRoomExperience();
+  }
+}
+
+window.addEventListener("pagehide", () => privateRoomController?.destroy?.(), { once: true });
+
+prepareCinematicOpening();
 startOpening();
 updateScrollEffects();
 window.requestAnimationFrame(() => body.classList.add("site-ready"));

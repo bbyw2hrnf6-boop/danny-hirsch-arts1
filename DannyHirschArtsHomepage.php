@@ -69,15 +69,25 @@ $artworks = [
 ];
 
 $galleryImages = [
-    ['image' => 'assets/gallery/gallery-01.jpg', 'optimized' => 'assets/optimized/gallery/gallery-01.webp', 'title' => 'Surface Study I', 'caption' => 'A close reading of black, gold, and mineral movement.'],
-    ['image' => 'assets/gallery/gallery-02.jpg', 'optimized' => 'assets/optimized/gallery/gallery-02.webp', 'title' => 'Surface Study II', 'caption' => 'Fine organic structure held against a quiet grey field.'],
-    ['image' => 'assets/gallery/gallery-03.jpg', 'optimized' => 'assets/optimized/gallery/gallery-03.webp', 'title' => 'Surface Study III', 'caption' => 'Raw fibers and shadowed pigment create a tactile relief.'],
-    ['image' => 'assets/gallery/gallery-04.jpg', 'optimized' => 'assets/optimized/gallery/gallery-04.webp', 'title' => 'Surface Study IV', 'caption' => 'Linear fragments drift across a deep earth-toned ground.'],
-    ['image' => 'assets/gallery/gallery-05.jpg', 'optimized' => 'assets/optimized/gallery/gallery-05.webp', 'title' => 'Surface Study V', 'caption' => 'Blue, gold, and carved material meet in a dense color field.'],
-    ['image' => 'assets/gallery/gallery-06.jpg', 'optimized' => 'assets/optimized/gallery/gallery-06.webp', 'title' => 'Surface Study VI', 'caption' => 'An intimate vertical composition of pressure, texture, and light.'],
-    ['image' => 'assets/gallery/gallery-07.jpg', 'optimized' => 'assets/optimized/gallery/gallery-07.webp', 'title' => 'Surface Study VII', 'caption' => 'Dark atmospheric marks suspended over a quiet canvas plane.'],
-    ['image' => 'assets/gallery/gallery-08.jpg', 'optimized' => 'assets/optimized/gallery/gallery-08.webp', 'title' => 'Surface Study VIII', 'caption' => 'A controlled metallic surface with depth and quiet abrasion.'],
+    ['image' => 'assets/gallery/gallery-01.jpg', 'optimized' => 'assets/optimized/gallery/gallery-01.webp', 'title' => 'Found Material', 'caption' => 'A loose painted fragment, held between object and surface.'],
+    ['image' => 'assets/gallery/gallery-02.jpg', 'optimized' => 'assets/optimized/gallery/gallery-02.webp', 'title' => 'Pigment Field', 'caption' => 'Black pigment, mineral gold, and fine organic structure.'],
+    ['image' => 'assets/gallery/gallery-03.jpg', 'optimized' => 'assets/optimized/gallery/gallery-03.webp', 'title' => 'Fiber Relief', 'caption' => 'Raw fibers and shadowed pigment create a tactile relief.'],
+    ['image' => 'assets/gallery/gallery-04.jpg', 'optimized' => 'assets/optimized/gallery/gallery-04.webp', 'title' => 'wARTrobe · Front', 'caption' => 'The complete three-panel painted frontage, photographed directly.'],
+    ['image' => 'assets/gallery/gallery-05.jpg', 'optimized' => 'assets/optimized/gallery/gallery-05.webp', 'title' => 'Mineral Fault', 'caption' => 'A close reading of black, white, and mineral gold.'],
+    ['image' => 'assets/gallery/gallery-06.jpg', 'optimized' => 'assets/optimized/gallery/gallery-06.webp', 'title' => 'Botanical Vein', 'caption' => 'A vertical study of leaf structure, pressure, and colour.'],
+    ['image' => 'assets/gallery/gallery-07.jpg', 'optimized' => 'assets/optimized/gallery/gallery-07.webp', 'title' => 'Work in Space', 'caption' => 'An original work seen at room scale in a lived interior.'],
+    ['image' => 'assets/gallery/gallery-08.jpg', 'optimized' => 'assets/optimized/gallery/gallery-08.webp', 'title' => 'wARTrobe · Handle', 'caption' => 'Painted panels and hand-formed handles at intimate range.'],
 ];
+
+function imageSizeAttributes(string $path): string
+{
+    $size = @getimagesize(__DIR__ . '/' . $path);
+    if (!$size) {
+        return '';
+    }
+
+    return ' width="' . (int) $size[0] . '" height="' . (int) $size[1] . '"';
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -100,9 +110,15 @@ $galleryImages = [
     <meta name="twitter:image" content="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/assets/images/hero.jpg">
     <meta name="theme-color" content="#090909">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="preload" as="font" href="assets/fonts/instrument-serif-400.woff2" type="font/woff2" crossorigin>
+    <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260720-cinematic-13">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260721-threshold-8">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260721-threshold-8">
+    <script type="importmap">
+      {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
+    </script>
   </head>
   <body data-theme="dark" class="opening-pending">
     <a class="skip-link" href="#collection">Skip to collection</a>
@@ -141,8 +157,18 @@ $galleryImages = [
     <div class="scroll-progress" aria-hidden="true"></div>
 
     <main id="top">
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-scene">
+      <section class="hero" aria-labelledby="hero-title" data-cinematic-hero data-chapter="00 · Threshold">
+        <div class="hero-cinematic" aria-hidden="true">
+          <img class="hero-cinematic__poster" src="assets/cinematic/threshold-poster.webp" alt="" width="1600" height="900" fetchpriority="high">
+          <video class="hero-cinematic__film" muted playsinline preload="none" poster="assets/cinematic/threshold-poster.webp" data-cinematic-video>
+            <source data-src="assets/cinematic/threshold-intro.webm" type="video/webm">
+            <source data-src="assets/cinematic/threshold-intro.mp4" type="video/mp4">
+          </video>
+          <span class="hero-cinematic__veil"></span>
+          <span class="hero-cinematic__light"></span>
+        </div>
+
+        <div class="hero-scene hero-scene--fallback">
           <div class="hero-room" aria-hidden="true">
             <span class="hero-room__ceiling"></span>
             <span class="hero-room__wall"></span>
@@ -159,7 +185,7 @@ $galleryImages = [
         </div>
 
         <div class="hero-content">
-          <p class="kicker">Contemporary Abstract Art</p>
+          <p class="kicker"><span>Contemporary Abstract Art</span><span>Material · Memory · Space</span></p>
           <h1 id="hero-title"><span>Danny Hirsch</span><em>Arts</em></h1>
           <p class="hero-statement">Material becomes movement.<br>Movement becomes memory.</p>
           <div class="hero-actions" aria-label="Hero actions">
@@ -167,6 +193,8 @@ $galleryImages = [
             <a class="button button-line" href="#installation">Enter the room</a>
           </div>
         </div>
+
+        <div class="hero-exhibition-mark" aria-hidden="true"><span>Digital exhibition</span><i></i><span>01 / 07</span></div>
 
         <div class="opening-chapters" aria-hidden="true">
           <span data-opening-label="surface">01&nbsp; Surface</span>
@@ -179,7 +207,7 @@ $galleryImages = [
         <a class="hero-scroll" href="#manifesto" aria-label="Continue to artist statement"><span></span><small>Continue</small></a>
       </section>
 
-      <section class="manifesto" id="manifesto" aria-label="Artist introduction">
+      <section class="manifesto" id="manifesto" aria-label="Artist introduction" data-chapter="01 · Material">
         <div class="manifesto-index" aria-hidden="true">01 / 07</div>
         <p class="manifesto-copy" data-line-reveal>
           Pigment and fragments turn surface into atmosphere—holding movement, memory, and emotional weather.
@@ -187,46 +215,49 @@ $galleryImages = [
         <p class="manifesto-note">Works are built slowly, layer over layer. The closer one looks, the more the surface begins to move.</p>
       </section>
 
-      <section class="installation" id="installation" aria-labelledby="installation-title">
+      <section class="installation private-room private-room--3d-idle" id="installation" aria-labelledby="installation-title" data-chapter="02 · Space">
         <div class="installation-heading reveal">
           <p class="eyebrow">Private Room</p>
-          <h2 id="installation-title"><span>Art</span><span>becomes</span><span>atmosphere.</span></h2>
-          <p>Quiet light. Lasting presence.</p>
+          <h2 id="installation-title"><span>Enter the</span><span>material.</span></h2>
+          <p>A curated spatial study. Move gently; light and perspective answer.</p>
         </div>
 
         <div class="room-camera" data-room-camera>
-          <div class="room-stage" aria-label="Curated digital gallery room showing real Danny Hirsch artworks">
-            <div class="room-ceiling" aria-hidden="true"><span></span><span></span><span></span></div>
-            <div class="room-wall" aria-hidden="true"></div>
-            <div class="room-light room-light--one" aria-hidden="true"></div>
-            <div class="room-light room-light--two" aria-hidden="true"></div>
+          <div class="private-room-stage" data-private-room-stage aria-label="Curated digital room featuring the genuine Danny Hirsch wARTrobe surface">
+            <div class="private-room-fallback" aria-hidden="true">
+              <span class="private-room-fallback__ceiling"></span>
+              <span class="private-room-fallback__light"></span>
+              <span class="private-room-fallback__floor"></span>
+              <span class="private-room-fallback__bench"></span>
+              <figure class="private-room-fallback__object">
+                <img src="assets/optimized/gallery/gallery-04.webp" alt="" loading="eager" decoding="async" fetchpriority="low" width="1440" height="1920">
+              </figure>
+            </div>
 
-            <a class="room-art room-art--one js-lightbox-trigger" href="assets/artworks/artwork-04.jpg" aria-label="View Oxide Drift" data-lightbox-src="assets/artworks/artwork-04.jpg" data-lightbox-title="Oxide Drift" data-lightbox-caption="2026 / Acrylic and Mineral Pigment on Canvas / 40 × 50 cm / Available">
-              <img src="assets/optimized/artworks/artwork-04.webp" alt="Oxide Drift by Danny Hirsch" loading="lazy" decoding="async" width="1600" height="1200">
-              <span><strong>Oxide Drift</strong><small>40 × 50 cm</small><em>Available</em></span>
-            </a>
+            <div class="private-room-atmosphere" aria-hidden="true"><i></i><i></i><i></i></div>
 
-            <a class="room-art room-art--two js-lightbox-trigger" href="assets/artworks/artwork-06.jpg" aria-label="View Nocturne Relic" data-lightbox-src="assets/artworks/artwork-06.jpg" data-lightbox-title="Nocturne Relic" data-lightbox-caption="2026 / Mixed Media Assemblage / 40 × 50 cm / Available">
-              <img src="assets/optimized/artworks/artwork-06.webp" alt="Nocturne Relic by Danny Hirsch" loading="lazy" decoding="async" width="1200" height="1600">
-              <span><strong>Nocturne Relic</strong><small>40 × 50 cm</small><em>Available</em></span>
-            </a>
+            <div class="private-room-hud">
+              <div class="private-room-hud__index" aria-hidden="true"><span>Spatial study</span><i></i><span>02 / 07</span></div>
+              <div class="private-room-hud__copy">
+                <p>Modelled from genuine wARTrobe photography</p>
+                <a class="room-inspect js-lightbox-trigger" href="assets/gallery/gallery-04.jpg" aria-label="Inspect the genuine wARTrobe front photograph" data-lightbox-src="assets/gallery/gallery-04.jpg" data-lightbox-title="wARTrobe · Front" data-lightbox-caption="Genuine photograph of the complete three-panel painted frontage.">Inspect the real object <span aria-hidden="true">↗</span></a>
+              </div>
+            </div>
 
-            <div class="room-floor" aria-hidden="true"></div>
-            <div class="room-bench" aria-hidden="true"><span></span></div>
-            <div class="room-threshold" aria-hidden="true"></div>
+            <div class="private-room-loader" role="status" aria-live="polite"><span></span><small>Preparing spatial room</small></div>
           </div>
         </div>
 
-        <div class="room-caption" aria-hidden="true"><span>Curated viewing</span><span>Original works</span><span>True proportions</span></div>
+        <div class="room-caption" aria-hidden="true"><span>Curated camera</span><span>Original surface</span><span>Lightweight WebGL</span></div>
       </section>
 
-      <section class="collection" id="collection" aria-labelledby="collection-title">
+      <section class="collection" id="collection" aria-labelledby="collection-title" data-chapter="03 · Works">
         <header class="section-heading reveal">
           <div>
             <p class="eyebrow">Selected Works · 2026</p>
             <h2 id="collection-title">Six material<br>encounters.</h2>
           </div>
-          <p>Each work carries its own weather. Move slowly; the surface changes with the light.</p>
+          <p>Each work carries its own weather. The photographs here move close to the surface; complete documentation is available on request.</p>
         </header>
 
         <div class="art-chapters">
@@ -234,11 +265,11 @@ $galleryImages = [
             <article class="art-chapter art-chapter--<?php echo ($index % 3) + 1; ?> reveal" style="--art-color: <?php echo htmlspecialchars($artwork['palette']); ?>">
               <div class="art-chapter__visual" data-art-light>
                 <a class="art-image-link js-lightbox-trigger" href="<?php echo htmlspecialchars($artwork['image']); ?>" aria-label="View <?php echo htmlspecialchars($artwork['title']); ?> in detail" data-lightbox-src="<?php echo htmlspecialchars($artwork['image']); ?>" data-lightbox-title="<?php echo htmlspecialchars($artwork['title']); ?>" data-lightbox-caption="<?php echo htmlspecialchars($artwork['year'] . ' / ' . $artwork['medium'] . ' / ' . $artwork['dimensions'] . ' / ' . $artwork['status']); ?>">
-                  <img src="<?php echo htmlspecialchars($artwork['optimized']); ?>" alt="<?php echo htmlspecialchars($artwork['title']); ?> by Danny Hirsch" loading="lazy" decoding="async" width="1600" height="1200">
+                  <img src="<?php echo htmlspecialchars($artwork['optimized']); ?>" alt="Surface detail from <?php echo htmlspecialchars($artwork['title']); ?> by Danny Hirsch" loading="lazy" decoding="async"<?php echo imageSizeAttributes($artwork['optimized']); ?>>
                   <span class="art-light" aria-hidden="true"></span>
-                  <span class="art-view" aria-hidden="true">View detail ↗</span>
+                  <span class="art-view" aria-hidden="true">Explore surface ↗</span>
                 </a>
-                <span class="art-chapter__macro" aria-hidden="true"><img src="<?php echo htmlspecialchars($artwork['optimized']); ?>" alt="" loading="lazy" decoding="async"></span>
+                <span class="art-chapter__macro" aria-hidden="true"><img src="<?php echo htmlspecialchars($artwork['optimized']); ?>" alt="" loading="lazy" decoding="async"<?php echo imageSizeAttributes($artwork['optimized']); ?>></span>
               </div>
 
               <div class="art-chapter__copy">
@@ -258,7 +289,7 @@ $galleryImages = [
         </div>
       </section>
 
-      <section class="gallery" id="gallery" aria-labelledby="gallery-title">
+      <section class="gallery" id="gallery" aria-labelledby="gallery-title" data-chapter="04 · Archive">
         <header class="gallery-heading reveal">
           <div class="gallery-heading__intro">
             <p class="eyebrow">Surface Archive</p>
@@ -271,7 +302,7 @@ $galleryImages = [
           <?php foreach ($galleryImages as $index => $image): ?>
             <a class="gallery-item gallery-item--<?php echo ($index % 5) + 1; ?> reveal js-lightbox-trigger" href="<?php echo htmlspecialchars($image['image']); ?>" aria-label="Open <?php echo htmlspecialchars($image['title']); ?>" data-lightbox-src="<?php echo htmlspecialchars($image['image']); ?>" data-lightbox-title="<?php echo htmlspecialchars($image['title']); ?>" data-lightbox-caption="<?php echo htmlspecialchars($image['caption']); ?>">
               <span class="gallery-image" data-surface-light>
-                <img src="<?php echo htmlspecialchars($image['optimized']); ?>" alt="<?php echo htmlspecialchars($image['title']); ?> by Danny Hirsch Arts" loading="lazy" decoding="async" width="1440" height="1080">
+                <img src="<?php echo htmlspecialchars($image['optimized']); ?>" alt="<?php echo htmlspecialchars($image['title']); ?> by Danny Hirsch Arts" loading="lazy" decoding="async"<?php echo imageSizeAttributes($image['optimized']); ?>>
               </span>
               <span class="gallery-caption">
                 <i><?php echo str_pad((string)($index + 1), 2, '0', STR_PAD_LEFT); ?></i>
@@ -283,26 +314,31 @@ $galleryImages = [
         </div>
       </section>
 
-      <section class="wartrobe" id="wartrobe" aria-labelledby="wartrobe-title">
+      <section class="wartrobe" id="wartrobe" aria-labelledby="wartrobe-title" data-chapter="05 · Object">
         <div class="wartrobe-stage" data-wartrobe-stage>
           <div class="wartrobe-shadow" aria-hidden="true"></div>
           <figure class="wartrobe-object reveal">
             <img src="assets/optimized/images/wartrobe.webp" alt="Original wARTrobe painted wardrobe installation by Danny Hirsch" loading="lazy" decoding="async" width="1050" height="1400">
           </figure>
           <figure class="wartrobe-detail reveal" aria-label="Close detail of the painted wARTrobe surface">
-            <img src="assets/optimized/gallery/gallery-04.webp" alt="Painted surface detail from the wARTrobe" loading="lazy" decoding="async" width="1080" height="1440">
+            <img src="assets/optimized/gallery/gallery-08.webp" alt="Painted panels and hand-formed handles on the wARTrobe" loading="lazy" decoding="async" width="1440" height="1080">
           </figure>
+          <div class="wartrobe-stage__legend" aria-hidden="true"><span>Object</span><span>Surface</span><span>Room</span></div>
         </div>
 
         <div class="wartrobe-copy reveal">
           <p class="eyebrow">wARTrobe · One-of-one object</p>
           <h2 id="wartrobe-title">Furniture<br>becomes art.</h2>
           <p>Painted across wardrobe doors, wARTrobe turns an everyday object into a one-of-one artwork—made for the room, and lived with every day.</p>
-          <a class="text-link" href="#inquiry">Discuss a commission <span aria-hidden="true">↗</span></a>
+          <p class="wartrobe-model-note">The spatial room above is an artistic 3D interpretation from real photographs—not a forensic scan.</p>
+          <div class="wartrobe-actions">
+            <a class="text-link js-lightbox-trigger" href="assets/gallery/gallery-04.jpg" data-lightbox-src="assets/gallery/gallery-04.jpg" data-lightbox-title="wARTrobe · Front" data-lightbox-caption="Genuine photograph of the complete three-panel painted frontage.">Inspect the surface <span aria-hidden="true">↗</span></a>
+            <a class="text-link" href="#inquiry">Discuss a commission <span aria-hidden="true">↗</span></a>
+          </div>
         </div>
       </section>
 
-      <section class="about" id="about" aria-labelledby="about-title">
+      <section class="about" id="about" aria-labelledby="about-title" data-chapter="06 · Practice">
         <div class="about-copy reveal">
           <p class="eyebrow">About · Material Practice</p>
           <h2 id="about-title"><span>I paint what</span><span>cannot be said.</span></h2>
@@ -310,6 +346,12 @@ $galleryImages = [
             <p>My work begins with a feeling before it has an image. I am drawn to the tension between control and accident—the moment material begins to choose its own direction.</p>
             <p>Nature, weathered surfaces, architecture, and memory guide a slow process of layering, covering, and revealing. From afar the works are quiet; up close, tactile and unsettled.</p>
           </div>
+          <ol class="process-compass" aria-label="Material process">
+            <li><span>01</span><strong>Ground</strong></li>
+            <li><span>02</span><strong>Layer</strong></li>
+            <li><span>03</span><strong>Pressure</strong></li>
+            <li><span>04</span><strong>Reveal</strong></li>
+          </ol>
         </div>
 
         <div class="material-study reveal" aria-label="Material studies from original Danny Hirsch artworks">
@@ -331,7 +373,7 @@ $galleryImages = [
         </div>
       </section>
 
-      <section class="instagram-flow" id="instagram" aria-labelledby="instagram-title">
+      <section class="instagram-flow" id="instagram" aria-labelledby="instagram-title" data-chapter="Studio signal">
         <div class="instagram-heading reveal">
           <p class="eyebrow">Studio Signal</p>
           <h2 id="instagram-title">Live from<br>the studio.</h2>
@@ -350,7 +392,7 @@ $galleryImages = [
         </div>
       </section>
 
-      <section class="inquiry" id="inquiry" aria-labelledby="inquiry-title">
+      <section class="inquiry" id="inquiry" aria-labelledby="inquiry-title" data-chapter="07 · Contact">
         <div class="inquiry-atmosphere" aria-hidden="true"></div>
         <div class="inquiry-copy reveal">
           <p class="eyebrow">Collector Inquiry</p>
@@ -381,7 +423,7 @@ $galleryImages = [
       <div class="footer-bottom"><span>&copy; <?php echo date('Y'); ?> Danny Hirsch Arts</span><span>All rights reserved</span></div>
     </footer>
 
-    <div class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightbox-title" aria-describedby="lightbox-description" aria-hidden="true">
+    <div class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightbox-title" aria-describedby="lightbox-description" aria-hidden="true" inert>
       <button class="lightbox-close" type="button" aria-label="Close artwork preview"><span aria-hidden="true"></span></button>
       <button class="lightbox-nav lightbox-prev" type="button" aria-label="View previous image">←</button>
       <figure class="lightbox-figure">
@@ -399,6 +441,6 @@ $galleryImages = [
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260720-cinematic-13" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260721-threshold-8" defer></script>
   </body>
 </html>
