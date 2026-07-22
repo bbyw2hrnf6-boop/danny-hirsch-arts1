@@ -116,6 +116,14 @@ report.desktopLoaded = await waitFor("document.querySelector('[data-room-experie
 await pause(700);
 report.desktopDark = await roomState();
 await capture('/tmp/dha-gallery-desktop-dark.png');
+await evaluate("document.querySelector('[data-room-demo]').click(); true");
+await pause(550);
+await capture('/tmp/dha-gallery-desktop-dark-directory.png');
+await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 625, y: 500, button: 'left', clickCount: 1 });
+await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 625, y: 500, button: 'left', clickCount: 1 });
+await pause(450);
+report.desktopDarkDemo = await roomState();
+await evaluate("document.querySelector('[data-room-demo]').click(); true");
 if (process.env.AUDIT_FAST === '1') {
   console.log(JSON.stringify({ desktopLoaded: report.desktopLoaded, desktopDark: report.desktopDark, browserIssues }, null, 2));
   socket.close();
@@ -144,8 +152,13 @@ await evaluate("document.querySelector('[data-gallery-webgl]').__galleryControll
 report.desktopCurated = await roomState();
 await capture('/tmp/dha-gallery-desktop-curated.png');
 await evaluate("document.querySelector('[data-room-demo]').click(); true");
-await pause(250);
-await evaluate("document.querySelector('[data-gallery-demo-panel=privacy]').click(); true");
+await pause(650);
+report.desktopDirectory = await roomState();
+await capture('/tmp/dha-gallery-desktop-demo-directory.png');
+// Activate Privacy through the physical CanvasTexture directory, not the DOM
+// accessibility fallback, so UV hit mapping stays covered by the audit.
+await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 950, y: 500, button: 'left', clickCount: 1 });
+await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 950, y: 500, button: 'left', clickCount: 1 });
 await pause(650);
 report.desktopDemo = await evaluate(`(() => ({
   active: document.querySelector('[data-room-experience]').classList.contains('is-demo-mode'),
@@ -183,8 +196,11 @@ await pause(750);
 report.mobileLight = await roomState();
 await capture('/tmp/dha-gallery-mobile-light.png');
 await evaluate("document.querySelector('[data-room-demo]').click(); true");
-await pause(220);
-await evaluate("document.querySelector('[data-gallery-demo-panel=about]').click(); true");
+await pause(550);
+report.mobileDirectory = await roomState();
+await capture('/tmp/dha-gallery-mobile-demo-directory.png');
+await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 140, y: 420, button: 'left', clickCount: 1 });
+await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 140, y: 420, button: 'left', clickCount: 1 });
 await pause(600);
 report.mobileDemo = await evaluate(`(() => ({
   active: document.querySelector('[data-room-experience]').classList.contains('is-demo-mode'),

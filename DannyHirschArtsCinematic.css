@@ -943,6 +943,7 @@ body[data-theme="light"] .room-experience__controls > span {
 }
 
 .room-experience__webgl.is-dragging { cursor: grabbing; }
+.room-experience__webgl.has-interactive-target:not(.is-dragging) { cursor: pointer; }
 
 .room-experience__webgl canvas {
   display: block;
@@ -1334,6 +1335,17 @@ body[data-theme="light"] .room-experience__controls > span {
 .room-experience__demo-nav button { cursor: pointer; }
 .room-experience__demo-nav button:hover,
 .room-experience__demo-nav button:focus-visible { background: rgba(198, 163, 107, 0.18); }
+
+/* The primary demo navigation is a real object inside the 3D room. Keep the
+   DOM equivalent available to keyboard and assistive-technology users only. */
+.room-experience.is-demo-mode .room-experience__demo-nav:not(:focus-within) {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 .room-experience__walk-controls {
   position: absolute;

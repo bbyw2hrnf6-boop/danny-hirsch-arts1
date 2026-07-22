@@ -521,6 +521,7 @@ const setGalleryDemo = (active) => {
   if (galleryDemoNav) galleryDemoNav.hidden = !galleryDemoActive;
   if (!galleryDemoActive) setGallerySitePanel(null);
   galleryRoomController?.setDemoMode?.(galleryDemoActive);
+  if (galleryDemoActive) galleryRoomController?.goToSiteDirectory?.();
 };
 
 const setGalleryFallback = (reason = "fallback") => {
@@ -545,7 +546,7 @@ const ensureGalleryRoom = () => {
   roomExperience.classList.remove("is-gallery-fallback");
   roomExperience.classList.add("is-gallery-loading");
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-23")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-24")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
@@ -565,6 +566,8 @@ const ensureGalleryRoom = () => {
           if (galleryControls) galleryControls.hidden = false;
           if (roomExperienceFallbackControls) roomExperienceFallbackControls.hidden = true;
           galleryRoomController?.setTheme?.(body.dataset.theme);
+          galleryRoomController?.setDemoMode?.(galleryDemoActive);
+          if (galleryDemoActive) galleryRoomController?.goToSiteDirectory?.();
           galleryRoomController?.setActive?.(roomExperience.open);
         },
         onSkip: ({ reason }) => setGalleryFallback(reason),
@@ -931,7 +934,7 @@ const loadPrivateRoomExperience = async () => {
   }
 
   try {
-    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-23");
+    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-24");
     privateRoomController = initPrivateRoom3D({
       root: installation,
       stage: privateRoomStage,

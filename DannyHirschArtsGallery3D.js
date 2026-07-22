@@ -233,6 +233,46 @@ const createLabelTexture = (data, lightTheme, sitePanel = false) => {
   return texture;
 };
 
+const NAVIGATION_TITLE_SHARE = 0.18;
+
+const createNavigationTexture = (items, lightTheme, activeId) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2000;
+  canvas.height = 160;
+  const context = canvas.getContext('2d');
+  const paper = lightTheme ? '#e9e2d7' : '#c8bca8';
+  const ink = lightTheme ? '#171611' : '#201b15';
+  const gold = lightTheme ? '#8a6631' : '#725127';
+  context.fillStyle = paper;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const titleWidth = canvas.width * NAVIGATION_TITLE_SHARE;
+  const itemWidth = (canvas.width - titleWidth) / Math.max(1, items.length);
+  context.textBaseline = 'middle';
+  context.fillStyle = gold;
+  context.font = '700 22px Manrope, sans-serif';
+  context.letterSpacing = '3px';
+  context.fillText('ROOM DIRECTORY', 30, canvas.height / 2 + 1);
+  context.letterSpacing = '0px';
+  items.forEach((item, index) => {
+    const x = titleWidth + index * itemWidth;
+    const activeItem = item.id === activeId;
+    context.fillStyle = activeItem ? gold : 'rgba(91,69,39,.24)';
+    context.fillRect(x, 0, 2, canvas.height);
+    if (activeItem) context.fillRect(x + 2, 0, itemWidth - 2, canvas.height);
+    context.fillStyle = activeItem ? '#f5efe5' : ink;
+    context.font = '700 27px Manrope, sans-serif';
+    context.textAlign = 'center';
+    context.fillText(String(item.label || item.id).toUpperCase(), x + itemWidth / 2, canvas.height / 2 + 1);
+  });
+  context.textAlign = 'start';
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.flipY = false;
+  texture.anisotropy = 4;
+  texture.needsUpdate = true;
+  return texture;
+};
+
 const createMicroNormalTexture = (kind = 'stone') => {
   const size = 128;
   const canvas = document.createElement('canvas');
@@ -284,6 +324,7 @@ export function initWalkableGallery3D(options = {}) {
       destroy() {},
       goToNextView() {},
       goToPreviousView() {},
+      goToSiteDirectory() {},
       goToSitePanel() {},
       resetView() {},
       setActive() {},
@@ -312,8 +353,8 @@ export function initWalkableGallery3D(options = {}) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compact ? 1.1 : lowPower ? 1 : 1.5));
-  renderer.shadowMap.enabled = !compact && !lowPower;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compact ? 1.25 : lowPower ? 1 : 1.5));
+  renderer.shadowMap.enabled = !lowPower;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.domElement.setAttribute('aria-hidden', 'true');
   renderer.domElement.tabIndex = -1;
@@ -322,7 +363,8 @@ export function initWalkableGallery3D(options = {}) {
   const scene = new THREE.Scene();
   const environmentTexture = createGalleryEnvironment(renderer);
   scene.environment = environmentTexture;
-  const camera = new THREE.PerspectiveCamera(compact ? 68 : 62, 1, 0.04, 120);
+  const baseCameraFov = compact ? 68 : 62;
+  const camera = new THREE.PerspectiveCamera(baseCameraFov, 1, 0.04, 120);
   camera.rotation.order = 'YXZ';
   const ambient = new THREE.AmbientLight(0xfff4df, 0.1);
   const hemisphere = new THREE.HemisphereLight(0xffe6ba, 0x111310, 0.38);
@@ -336,12 +378,14 @@ export function initWalkableGallery3D(options = {}) {
   const candidate = new THREE.Vector3();
   const worldPosition = new THREE.Vector3();
   const lookEuler = new THREE.Euler(0, 0, 0, 'YXZ');
-  const pointer = { id: null, x: 0, y: 0 };
+  const pointer = { id: null, x: 0, y: 0, startX: 0, startY: 0, dragged: false };
   const held = new Set();
   const keys = new Set();
   const colliders = [];
   const artworkMeshes = [];
   const sitePanelMeshes = [];
+  const siteNavigationMeshes = [];
+  const demoObjects = [];
   const labelEntries = [];
   const themedMaterials = [];
   const importedLights = [];
@@ -368,6 +412,7 @@ export function initWalkableGallery3D(options = {}) {
   let currentViewIndex = -1;
   let focusedArtwork = null;
   let focusedSitePanel = null;
+  let activeNavigationId = 'artworks';
   let demoMode = false;
   let lastFocusCheck = 0;
   let themeTransition = 1;
@@ -379,6 +424,7 @@ export function initWalkableGallery3D(options = {}) {
       entry.material?.dispose?.();
       const userData = entry.object.userData || {};
       const sitePanel = Boolean(userData.site_panel_id);
+      const navigation = Boolean(userData.site_navigation);
       const data = sitePanel ? {
         title: userData.site_title,
         kicker: userData.site_kicker,
@@ -391,9 +437,19 @@ export function initWalkableGallery3D(options = {}) {
         availability: userData.availability,
         description: userData.description
       };
+      let navigationItems = [];
+      if (navigation) {
+        try {
+          navigationItems = JSON.parse(userData.site_navigation_items_json || '[]');
+        } catch (error) {
+          navigationItems = [];
+        }
+      }
       entry.material = new THREE.MeshPhysicalMaterial({
         color: '#ffffff',
-        map: createLabelTexture(data, lightTheme, sitePanel),
+        map: navigation
+          ? createNavigationTexture(navigationItems, lightTheme, activeNavigationId)
+          : createLabelTexture(data, lightTheme, sitePanel),
         roughness: 0.32,
         metalness: 0.02,
         clearcoat: 0.22,
@@ -402,7 +458,7 @@ export function initWalkableGallery3D(options = {}) {
         side: THREE.DoubleSide
       });
       entry.object.material = entry.material;
-      entry.object.visible = sitePanel ? demoMode : true;
+      entry.object.visible = (sitePanel || navigation) ? demoMode : true;
     });
   };
 
@@ -445,7 +501,14 @@ export function initWalkableGallery3D(options = {}) {
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
   };
 
+  const setCameraFov = (fieldOfView) => {
+    if (Math.abs(camera.fov - fieldOfView) < 0.01) return;
+    camera.fov = fieldOfView;
+    camera.updateProjectionMatrix();
+  };
+
   const resetView = () => {
+    setCameraFov(baseCameraFov);
     camera.position.copy(startPosition);
     orientToward(startTarget);
     currentViewIndex = -1;
@@ -461,6 +524,9 @@ export function initWalkableGallery3D(options = {}) {
     if (!views.length) return resetView();
     currentViewIndex = (index + views.length) % views.length;
     const view = views[currentViewIndex];
+    setCameraFov(view.object.userData?.view_kind === 'site_navigation'
+      ? (compact ? 88 : 66)
+      : baseCameraFov);
     view.object.getWorldPosition(worldPosition);
     camera.position.copy(worldPosition);
     if (view.target) orientToward(view.target.getWorldPosition(new THREE.Vector3()));
@@ -487,6 +553,8 @@ export function initWalkableGallery3D(options = {}) {
     const nextWork = currentWork < 0
       ? (direction > 0 ? 0 : workIndices.length - 1)
       : (currentWork + direction + workIndices.length) % workIndices.length;
+    activeNavigationId = 'artworks';
+    if (demoMode) refreshLabelMaterials();
     goToView(workIndices[nextWork]);
   };
 
@@ -494,7 +562,12 @@ export function initWalkableGallery3D(options = {}) {
     const isLight = currentTheme === 'light';
     const palette = isLight ? LIGHT_PALETTE : DARK_PALETTE;
     themedMaterials.forEach((entry) => {
-      const color = palette[entry.role] || palette.architecture;
+      let color = palette[entry.role] || palette.architecture;
+      if (entry.hasGeneratedMap) {
+        if (entry.role === 'wood') color = isLight ? '#e0c9b2' : '#b69b83';
+        else if (/leather/.test(entry.role)) color = isLight ? '#d4c4b6' : '#a58f7e';
+        else color = isLight ? '#ddd7cd' : '#aaa69d';
+      }
       entry.target.set(color);
       if (instant && entry.material.color) entry.material.color.copy(entry.target);
     });
@@ -575,12 +648,17 @@ export function initWalkableGallery3D(options = {}) {
 
   const setDemoMode = (nextDemoMode) => {
     demoMode = Boolean(nextDemoMode);
-    sitePanelMeshes.forEach((object) => { object.visible = demoMode; });
+    demoObjects.forEach((object) => { object.visible = demoMode; });
+    if (!demoMode) mount.classList.remove('has-interactive-target');
     if (!demoMode && focusedSitePanel) {
       focusedSitePanel = null;
       call(options.onSitePanelFocus, null);
     }
-    call(options.onDemoModeChange, { active: demoMode, panels: sitePanelMeshes.length });
+    call(options.onDemoModeChange, {
+      active: demoMode,
+      navigationEmbedded: siteNavigationMeshes.length > 0,
+      panels: sitePanelMeshes.length
+    });
     if (ready) {
       camera.updateMatrixWorld(true);
       updateArtworkFocus();
@@ -594,7 +672,56 @@ export function initWalkableGallery3D(options = {}) {
     ));
     if (index < 0) return;
     if (!demoMode) setDemoMode(true);
+    activeNavigationId = panelId || 'about';
+    refreshLabelMaterials();
     goToView(index);
+  };
+
+  const goToSiteDirectory = () => {
+    const index = views.findIndex((view) => view.object.userData?.view_kind === 'site_navigation'
+      || /site directory/i.test(view.label));
+    if (index < 0) return;
+    if (!demoMode) setDemoMode(true);
+    refreshLabelMaterials();
+    goToView(index);
+  };
+
+  const activateNavigationItem = (item) => {
+    if (!item?.id) return;
+    activeNavigationId = item.id;
+    call(options.onNavigationActivate, item);
+    if (item.id === 'artworks') goToWork(1);
+    else goToSitePanel(item.id);
+  };
+
+  const navigationHitAt = (clientX, clientY) => {
+    if (!demoMode || !siteNavigationMeshes.length) return null;
+    const rect = mount.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    raycaster.setFromCamera({
+      x: ((clientX - rect.left) / rect.width) * 2 - 1,
+      y: -((clientY - rect.top) / rect.height) * 2 + 1
+    }, camera);
+    return raycaster.intersectObjects(siteNavigationMeshes, false)[0] || null;
+  };
+
+  const activateNavigationAt = (clientX, clientY) => {
+    const hit = navigationHitAt(clientX, clientY);
+    if (!hit?.uv) return false;
+    let items = [];
+    try {
+      items = JSON.parse(hit.object.userData?.site_navigation_items_json || '[]');
+    } catch (error) {
+      items = [];
+    }
+    const position = clamp(hit.uv.x, 0, 0.999999);
+    if (position < NAVIGATION_TITLE_SHARE || !items.length) {
+      goToSiteDirectory();
+      return true;
+    }
+    const index = Math.floor(((position - NAVIGATION_TITLE_SHARE) / (1 - NAVIGATION_TITLE_SHARE)) * items.length);
+    activateNavigationItem(items[clamp(index, 0, items.length - 1)]);
+    return true;
   };
 
   const updateMovement = (delta) => {
@@ -605,6 +732,7 @@ export function initWalkableGallery3D(options = {}) {
     const turnInput = (keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0);
     if (turnInput) yaw -= turnInput * delta * 1.32;
     if (!forwardInput && !sideInput) return;
+    setCameraFov(baseCameraFov);
     forward.set(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
     right.set(-forward.z, 0, forward.x);
     candidate.copy(camera.position)
@@ -615,6 +743,7 @@ export function initWalkableGallery3D(options = {}) {
   };
 
   const nudgePlayer = (action, distance = compact ? 0.2 : 0.24) => {
+    setCameraFov(baseCameraFov);
     forward.set(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
     right.set(-forward.z, 0, forward.x);
     candidate.copy(camera.position);
@@ -705,7 +834,7 @@ export function initWalkableGallery3D(options = {}) {
         });
         object.castShadow = renderer.shadowMap.enabled && importedLights.length === 1;
         if (object.shadow) {
-          object.shadow.mapSize.set(1024, 1024);
+          object.shadow.mapSize.set(compact ? 512 : 1024, compact ? 512 : 1024);
           object.shadow.bias = -0.0004;
         }
       }
@@ -720,10 +849,16 @@ export function initWalkableGallery3D(options = {}) {
       object.frustumCulled = true;
       object.receiveShadow = renderer.shadowMap.enabled;
       object.castShadow = renderer.shadowMap.enabled && /frame|bench|vessel|plant/i.test(object.name);
+      if (object.userData?.demo_only) {
+        demoObjects.push(object);
+        object.visible = demoMode;
+      }
       const owner = findMetadataOwner(object);
-      if (object.userData?.catalogue_label || object.userData?.site_panel_id) {
+      if (object.userData?.catalogue_label || object.userData?.site_panel_id || object.userData?.site_navigation) {
         labelEntries.push({ object, material: null });
-        if (object.userData?.site_panel_id) {
+        if (object.userData?.site_navigation) {
+          siteNavigationMeshes.push(object);
+        } else if (object.userData?.site_panel_id) {
           object.visible = demoMode;
           sitePanelMeshes.push(object);
         } else {
@@ -745,6 +880,10 @@ export function initWalkableGallery3D(options = {}) {
           material.envMapIntensity = 0.14;
           artworkMeshes.push(object);
         } else if (!materialEntries.has(material)) {
+          if (material.map) {
+            material.map.colorSpace = THREE.SRGBColorSpace;
+            material.map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+          }
           const reflective = /floor_tile|floor_alt|bronze|plaque|planter|wood|leather/.test(role);
           material.envMapIntensity = reflective ? (/bronze|plaque_text/.test(role) ? 1.15 : 0.72) : 0.22;
           if ('clearcoat' in material) {
@@ -763,7 +902,11 @@ export function initWalkableGallery3D(options = {}) {
           }
           material.needsUpdate = true;
           const target = new THREE.Color();
-          materialEntries.set(material, { material, role, target });
+          const hasGeneratedMap = Boolean(material.map) && (
+            Boolean(material.userData?.generated_architectural_texture)
+            || /honed_stone|walnut|saddle_leather/i.test(material.name)
+          );
+          materialEntries.set(material, { material, role, target, hasGeneratedMap });
         }
       });
     });
@@ -830,11 +973,18 @@ export function initWalkableGallery3D(options = {}) {
     pointer.id = event.pointerId;
     pointer.x = event.clientX;
     pointer.y = event.clientY;
+    pointer.startX = event.clientX;
+    pointer.startY = event.clientY;
+    pointer.dragged = false;
     mount.setPointerCapture?.(event.pointerId);
     mount.classList.add('is-dragging');
   };
 
   const onPointerMove = (event) => {
+    if (pointer.id === null) {
+      mount.classList.toggle('has-interactive-target', Boolean(navigationHitAt(event.clientX, event.clientY)));
+      return;
+    }
     if (event.pointerId !== pointer.id) return;
     const x = event.clientX;
     const y = event.clientY;
@@ -842,6 +992,7 @@ export function initWalkableGallery3D(options = {}) {
     const dy = y - pointer.y;
     pointer.x = x;
     pointer.y = y;
+    if (Math.hypot(x - pointer.startX, y - pointer.startY) > 7) pointer.dragged = true;
     yaw = (yaw - dx * (compact ? 0.0052 : 0.0038)) % TAU;
     pitch = clamp(pitch - dy * (compact ? 0.0046 : 0.0034), -1.05, 1.05);
     currentViewIndex = -1;
@@ -849,9 +1000,11 @@ export function initWalkableGallery3D(options = {}) {
 
   const releasePointer = (event) => {
     if (event.pointerId !== pointer.id) return;
+    const wasDragged = pointer.dragged;
     mount.releasePointerCapture?.(event.pointerId);
     pointer.id = null;
     mount.classList.remove('is-dragging');
+    if (!wasDragged && event.type !== 'pointercancel') activateNavigationAt(event.clientX, event.clientY);
     if (active && ready) {
       camera.updateMatrixWorld(true);
       updateArtworkFocus();
@@ -950,6 +1103,7 @@ export function initWalkableGallery3D(options = {}) {
       camera: camera.position.toArray(),
       focusedArtwork,
       focusedSitePanel,
+      activeNavigationId,
       demoMode,
       pitch,
       ready,
@@ -959,6 +1113,7 @@ export function initWalkableGallery3D(options = {}) {
     }),
     goToNextView: () => goToWork(1),
     goToPreviousView: () => goToWork(-1),
+    goToSiteDirectory,
     goToSitePanel,
     resetView,
     setActive,

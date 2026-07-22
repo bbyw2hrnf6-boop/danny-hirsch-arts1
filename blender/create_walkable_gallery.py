@@ -35,6 +35,11 @@ SURFACE_TEXTURES = [
     ROOT / "assets" / "optimized" / "artworks" / f"artwork-{index:02d}.webp"
     for index in range(1, 7)
 ]
+MATERIAL_TEXTURES = {
+    "limestone": ROOT / "assets" / "materials" / "dark-limestone.webp",
+    "walnut": ROOT / "assets" / "materials" / "smoked-walnut.webp",
+    "leather": ROOT / "assets" / "materials" / "saddle-leather.webp",
+}
 
 ARTWORK_CATALOG = [
     {
@@ -218,9 +223,53 @@ def create_material(
     return material
 
 
+def create_textured_material(
+    name: str,
+    image_path: Path,
+    dark_color: str,
+    light_color: str,
+    role: str,
+    *,
+    roughness: float,
+    metallic: float = 0.0,
+    clearcoat: float = 0.0,
+    clearcoat_roughness: float = 0.2,
+) -> bpy.types.Material:
+    """Create PBR architecture material from a neutral generated scan.
+
+    These images are room-only albedo sources. They are explicitly marked as
+    generated architectural material and can never be discovered as artwork.
+    """
+    material = create_material(
+        name,
+        dark_color,
+        light_color,
+        role,
+        roughness=roughness,
+        metallic=metallic,
+        clearcoat=clearcoat,
+        clearcoat_roughness=clearcoat_roughness,
+    )
+    image = load_web_image(image_path, maximum_edge=1024)
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    principled = nodes.get("Principled BSDF")
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.name = f"{name}_Architectural_Albedo"
+    texture.label = f"Generated room material: {image_path.name}"
+    texture.image = image
+    texture.interpolation = "Linear"
+    texture.extension = "REPEAT"
+    links.new(texture.outputs["Color"], principled.inputs["Base Color"])
+    material["generated_architectural_texture"] = True
+    material["source_asset"] = str(image_path.relative_to(ROOT))
+    material["uv_variation"] = True
+    return material
+
+
 def load_web_image(path: Path, maximum_edge: int = 1024) -> bpy.types.Image:
     if not path.exists():
-        raise FileNotFoundError(f"Missing genuine source image: {path}")
+        raise FileNotFoundError(f"Missing local source image: {path}")
     image = bpy.data.images.load(str(path), check_existing=True)
     image.colorspace_settings.name = "sRGB"
     width, height = image.size
@@ -285,6 +334,16 @@ def add_box(
     obj.dimensions = dimensions
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     assign_material(obj, material)
+    if material.get("uv_variation") and obj.data.uv_layers.active:
+        # Offset and occasionally mirror each object so a repeated source scan
+        # does not reveal an obvious tiled pattern across the gallery floor.
+        variation = sum((index + 1) * ord(character) for index, character in enumerate(name))
+        offset_u = ((variation * 37) % 997) / 997
+        offset_v = ((variation * 61) % 991) / 991
+        mirror = -1 if variation % 2 else 1
+        for uv in obj.data.uv_layers.active.data:
+            uv.uv.x = (uv.uv.x - 0.5) * mirror + 0.5 + offset_u
+            uv.uv.y = uv.uv.y + offset_v
     if bevel:
         modifier = obj.modifiers.new("Architectural edge", "BEVEL")
         modifier.width = bevel
@@ -730,30 +789,33 @@ def add_site_information_panels(
     """Build subtle south-wall boards used only by the optional 3D-site demo."""
     for index, (panel_data, x) in enumerate(zip(SITE_PANELS, (-5.15, -2.58, 0.0, 2.58, 5.15)), start=1):
         center_z = 2.42
-        groups["shadow"].append(add_box(
+        recess = add_box(
             f"SITE_PANEL_{index:02d}_Recess",
             (x, -7.84, center_z),
             (2.25, 0.10, 1.58),
             materials["shadow"],
             bevel=0.035,
             theme_role="shadow",
-        ))
-        groups["bronze"].append(add_box(
+        )
+        frame = add_box(
             f"SITE_PANEL_{index:02d}_Frame",
             (x, -7.72, center_z),
             (2.15, 0.10, 1.48),
             materials["bronze"],
             bevel=0.035,
             theme_role="bronze",
-        ))
-        groups["plaque"].append(add_box(
+        )
+        backing = add_box(
             f"SITE_PANEL_{index:02d}_Backing",
             (x, -7.655, center_z),
             (2.02, 0.055, 1.35),
             materials["plaque"],
             bevel=0.025,
             theme_role="plaque",
-        ))
+        )
+        for structure in (recess, frame, backing):
+            structure["demo_only"] = True
+            structure["asset_role"] = "optional_3d_site_architecture"
         panel = add_vertical_panel(
             f"SITE_PANEL_{panel_data['id'].upper()}",
             "south",
@@ -781,6 +843,66 @@ def add_site_information_panels(
         )
         view["target_node"] = panel.name
         view["demo_only"] = True
+
+
+def add_site_navigation_console(materials: dict[str, bpy.types.Material]) -> None:
+    """Build the optional website directory as a physical south-wall object."""
+    backing = add_box(
+        "SITE_NAVIGATION_Recess",
+        (0, -7.82, 0.80),
+        (6.82, 0.12, 0.86),
+        materials["shadow"],
+        bevel=0.045,
+        theme_role="shadow",
+    )
+    frame = add_box(
+        "SITE_NAVIGATION_Bronze_Frame",
+        (0, -7.70, 0.80),
+        (6.68, 0.10, 0.75),
+        materials["bronze"],
+        bevel=0.025,
+        theme_role="bronze",
+    )
+    backing_inner = add_box(
+        "SITE_NAVIGATION_Plaque",
+        (0, -7.642, 0.80),
+        (6.54, 0.045, 0.63),
+        materials["plaque"],
+        bevel=0.018,
+        theme_role="plaque",
+    )
+    for structure in (backing, frame, backing_inner):
+        structure["demo_only"] = True
+        structure["asset_role"] = "optional_3d_site_navigation_architecture"
+
+    navigation_items = [
+        {"id": "artworks", "label": "Artworks"},
+        *({"id": panel["id"], "label": panel["id"].title()} for panel in SITE_PANELS),
+    ]
+    console = add_vertical_panel(
+        "SITE_NAVIGATION_CONSOLE",
+        "south",
+        (0, -7.616, 0.80),
+        6.38,
+        0.51,
+        materials["plaque"],
+    )
+    console["theme_role"] = "site_navigation"
+    console["asset_id"] = "site-navigation-console"
+    console["site_navigation"] = True
+    console["site_navigation_items_json"] = json.dumps(navigation_items, separators=(",", ":"))
+    console["representation"] = "interactive physical navigation directory"
+    console["demo_only"] = True
+
+    view = add_view_anchor(
+        "VIEW_Site_Directory",
+        (0, -1.35, WALK_EYE_HEIGHT),
+        (0, -7.616, 0.80),
+        label="3D site directory",
+        kind="site_navigation",
+    )
+    view["target_node"] = console.name
+    view["demo_only"] = True
 
 
 def add_stem_between(
@@ -1340,7 +1462,7 @@ def optimize_groups(groups: dict[str, list[bpy.types.Object]]) -> None:
 def build_scene() -> bpy.types.Scene:
     clean_scene()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    for source in [WARTROBE_TEXTURE, *SURFACE_TEXTURES]:
+    for source in [WARTROBE_TEXTURE, *SURFACE_TEXTURES, *MATERIAL_TEXTURES.values()]:
         if not source.exists():
             raise FileNotFoundError(f"Missing required genuine image: {source}")
 
@@ -1366,14 +1488,14 @@ def build_scene() -> bpy.types.Scene:
         "stone": create_material("Gallery_Stone", "#101211", "#8f887e", "stone", roughness=0.58, metallic=0.03),
         "ceiling": create_material("Gallery_Ceiling", "#090b0a", "#8a8276", "ceiling", roughness=0.70),
         "floor": create_material("Gallery_Grout", "#090a08", "#5f594f", "floor", roughness=0.72, metallic=0.0),
-        "floor_tile_a": create_material("Gallery_Honed_Stone_A", "#181813", "#a2998b", "floor_tile_a", roughness=0.22, metallic=0.04, clearcoat=0.34, clearcoat_roughness=0.16),
-        "floor_tile_b": create_material("Gallery_Honed_Stone_B", "#11130f", "#8c8376", "floor_tile_b", roughness=0.28, metallic=0.03, clearcoat=0.25, clearcoat_roughness=0.20),
-        "floor_alt": create_material("Gallery_Floor_Alt", "#1d1b15", "#a49a89", "floor_alt", roughness=0.18, metallic=0.08, clearcoat=0.42, clearcoat_roughness=0.13),
+        "floor_tile_a": create_textured_material("Gallery_Honed_Stone_A", MATERIAL_TEXTURES["limestone"], "#8b867d", "#c2bbb0", "floor_tile_a", roughness=0.25, metallic=0.02, clearcoat=0.28, clearcoat_roughness=0.18),
+        "floor_tile_b": create_textured_material("Gallery_Honed_Stone_B", MATERIAL_TEXTURES["limestone"], "#6f706b", "#aaa49a", "floor_tile_b", roughness=0.31, metallic=0.02, clearcoat=0.20, clearcoat_roughness=0.22),
+        "floor_alt": create_textured_material("Gallery_Floor_Alt", MATERIAL_TEXTURES["limestone"], "#979185", "#c5bcae", "floor_alt", roughness=0.20, metallic=0.04, clearcoat=0.38, clearcoat_roughness=0.15),
         "shadow": create_material("Gallery_Shadow", "#030504", "#4c4943", "shadow", roughness=0.76),
         "bronze": create_material("Gallery_Patinated_Bronze", "#634922", "#866331", "bronze", roughness=0.21, metallic=0.90, clearcoat=0.16, clearcoat_roughness=0.18),
         "bench": create_material("Gallery_Bench", "#17140f", "#7c7162", "bench", roughness=0.42),
-        "wood": create_material("Gallery_Walnut", "#24160d", "#6c4b31", "wood", roughness=0.27, clearcoat=0.22, clearcoat_roughness=0.20),
-        "leather": create_material("Gallery_Saddle_Leather", "#19130e", "#75675a", "leather", roughness=0.38, clearcoat=0.12, clearcoat_roughness=0.28),
+        "wood": create_textured_material("Gallery_Walnut", MATERIAL_TEXTURES["walnut"], "#76553d", "#ab8d73", "wood", roughness=0.29, clearcoat=0.26, clearcoat_roughness=0.18),
+        "leather": create_textured_material("Gallery_Saddle_Leather", MATERIAL_TEXTURES["leather"], "#6a5a4d", "#9b8b7c", "leather", roughness=0.40, clearcoat=0.10, clearcoat_roughness=0.30),
         "leather_seam": create_material("Gallery_Leather_Piping", "#090806", "#403931", "leather_seam", roughness=0.46),
         "planter": create_material("Gallery_Glazed_Ceramic", "#211f1a", "#91887c", "planter", roughness=0.24, metallic=0.02, clearcoat=0.58, clearcoat_roughness=0.12),
         "plaque": create_material("Gallery_Catalogue_Plaque", "#b5aa97", "#ded5c6", "plaque", roughness=0.30, metallic=0.02, clearcoat=0.20, clearcoat_roughness=0.18),
@@ -1414,6 +1536,7 @@ def build_scene() -> bpy.types.Scene:
         add_surface_portal(index, side, along_wall, SURFACE_TEXTURES[index - 1], materials, groups)
 
     add_site_information_panels(materials, groups)
+    add_site_navigation_console(materials)
 
     add_botanical("Botanical_West", (-5.40, 6.20, 0), materials, groups, seed=1963)
     add_botanical("Botanical_East", (5.40, 6.20, 0), materials, groups, seed=2026)
@@ -1470,13 +1593,17 @@ def build_scene() -> bpy.types.Scene:
     optimize_groups(groups)
 
     scene["experience_name"] = "Danny Hirsch Arts — Material Orbit"
-    scene["experience_version"] = 2
+    scene["experience_version"] = 3
     scene["architecture_truth"] = "Blender-modeled spatial interpretation; not a 3D scan"
     scene["artwork_truth"] = "Six portals are genuine surface-detail photographs, not complete work simulations"
     scene["wartrobe_truth"] = "wARTrobe focal surface uses genuine complete front photograph gallery-04"
     scene["surface_count"] = 6
     scene["catalogue_label_count"] = 6
     scene["site_demo_panel_count"] = len(SITE_PANELS)
+    scene["site_navigation_embedded"] = True
+    scene["generated_room_materials_json"] = json.dumps({
+        key: str(path.relative_to(ROOT)) for key, path in MATERIAL_TEXTURES.items()
+    }, separators=(",", ":"))
     scene["view_anchor_prefix"] = "VIEW_"
     scene["collider_prefix"] = "COLLIDER_"
     scene["hotspot_prefix"] = "HOTSPOT_"
