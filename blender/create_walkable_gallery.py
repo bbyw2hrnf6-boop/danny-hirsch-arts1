@@ -35,6 +35,57 @@ SURFACE_TEXTURES = [
     for index in range(1, 7)
 ]
 
+ARTWORK_CATALOG = [
+    {
+        "title": "Yellow Field, Veined",
+        "year": "2026",
+        "medium": "Mixed Media on Canvas",
+        "dimensions": "40 × 50 cm",
+        "availability": "Available",
+        "description": "A charged botanical trace held inside a saturated field of light.",
+    },
+    {
+        "title": "Black Current",
+        "year": "2026",
+        "medium": "Acrylic on Canvas",
+        "dimensions": "40 × 50 cm",
+        "availability": "Available",
+        "description": "Dark movement breaks into mineral gold, fluid and deliberate.",
+    },
+    {
+        "title": "Soft Terrain",
+        "year": "2026",
+        "medium": "Mixed Media on Canvas",
+        "dimensions": "40 × 50 cm",
+        "availability": "Available",
+        "description": "Color drifts across the surface like atmosphere settling into matter.",
+    },
+    {
+        "title": "Oxide Drift",
+        "year": "2026",
+        "medium": "Acrylic and Mineral Pigment on Canvas",
+        "dimensions": "40 × 50 cm",
+        "availability": "Available",
+        "description": "A low, metallic landscape shaped by pressure, reflection, and restraint.",
+    },
+    {
+        "title": "Blue Aperture",
+        "year": "2026",
+        "medium": "Acrylic on Canvas",
+        "dimensions": "40 × 50 cm",
+        "availability": "Available",
+        "description": "Cool blues and silver tones open into a deep, architectural field.",
+    },
+    {
+        "title": "Nocturne Relic",
+        "year": "2026",
+        "medium": "Mixed Media Assemblage",
+        "dimensions": "40 × 50 cm",
+        "availability": "Available",
+        "description": "Raw material interrupts a luminous ground with sculptural tension.",
+    },
+]
+
 ROOM_HALF_WIDTH = 7.0
 ROOM_HALF_DEPTH = 8.0
 ROOM_HEIGHT = 5.8
@@ -99,6 +150,8 @@ def create_material(
     metallic: float = 0.0,
     emission: str | None = None,
     emission_strength: float = 0.0,
+    clearcoat: float = 0.0,
+    clearcoat_roughness: float = 0.2,
 ) -> bpy.types.Material:
     material = bpy.data.materials.new(name)
     material.use_nodes = True
@@ -106,12 +159,18 @@ def create_material(
     set_socket(principled, "Base Color", rgba(dark_color))
     set_socket(principled, "Roughness", roughness)
     set_socket(principled, "Metallic", metallic)
+    set_socket(principled, "Coat Weight", clearcoat)
+    set_socket(principled, "Clearcoat", clearcoat)
+    set_socket(principled, "Coat Roughness", clearcoat_roughness)
+    set_socket(principled, "Clearcoat Roughness", clearcoat_roughness)
     if emission:
         set_socket(principled, "Emission Color", rgba(emission))
         set_socket(principled, "Emission Strength", emission_strength)
     set_theme_metadata(material, role, dark_color, light_color)
     material["dark_roughness"] = roughness
     material["light_roughness"] = min(1.0, roughness + 0.06)
+    material["web_clearcoat"] = clearcoat
+    material["web_clearcoat_roughness"] = clearcoat_roughness
     return material
 
 
@@ -214,6 +273,30 @@ def add_cylinder(
     assign_material(obj, material)
     if web:
         mark_web(obj)
+    return obj
+
+
+def add_torus(
+    name: str,
+    location: tuple[float, float, float],
+    major_radius: float,
+    minor_radius: float,
+    material: bpy.types.Material,
+    *,
+    major_segments: int = 28,
+    minor_segments: int = 8,
+) -> bpy.types.Object:
+    bpy.ops.mesh.primitive_torus_add(
+        major_radius=major_radius,
+        minor_radius=minor_radius,
+        major_segments=major_segments,
+        minor_segments=minor_segments,
+        location=location,
+    )
+    obj = bpy.context.object
+    obj.name = name
+    assign_material(obj, material)
+    mark_web(obj)
     return obj
 
 
@@ -454,6 +537,7 @@ def add_surface_portal(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> bpy.types.Object:
+    catalogue = ARTWORK_CATALOG[index - 1]
     image_material, ratio = create_image_material(
         f"SURFACE_DETAIL_{index:02d}_LOCKED",
         image_path,
@@ -498,15 +582,30 @@ def add_surface_portal(
             theme_role="bronze",
         ))
 
-    plaque_x = -6.72 if side == "west" else 6.72
-    groups["bronze"].append(add_box(
-        f"Surface_{index:02d}_Plaque",
-        (plaque_x, along_wall, max(0.72, center_z - height / 2 - 0.30)),
-        (0.055, min(0.72, width * 0.36), 0.10),
-        materials["bronze"],
-        bevel=0.015,
-        theme_role="bronze",
+    # A proper museum label sits beside every genuine surface photograph.
+    # The modeled linework makes it legible as an object at room scale; the
+    # exact accessible catalogue copy is supplied by the DOM information card.
+    plaque_x = -6.695 if side == "west" else 6.695
+    plaque_y = along_wall + width / 2 + 0.56
+    plaque_z = max(1.24, center_z - height * 0.20)
+    groups["plaque"].append(add_box(
+        f"Surface_{index:02d}_Catalogue_Plaque",
+        (plaque_x, plaque_y, plaque_z),
+        (0.075, 0.78, 0.58),
+        materials["plaque"],
+        bevel=0.025,
+        theme_role="plaque",
     ))
+    line_x = -6.648 if side == "west" else 6.648
+    for line_index, (line_width, line_height) in enumerate(((0.56, 0.030), (0.43, 0.018), (0.49, 0.018), (0.34, 0.018))):
+        groups["plaque_text"].append(add_box(
+            f"Surface_{index:02d}_Plaque_Line_{line_index + 1}",
+            (line_x, plaque_y, plaque_z + 0.17 - line_index * 0.105),
+            (0.012, line_width, line_height),
+            materials["plaque_text"],
+            bevel=0.004,
+            theme_role="plaque_text",
+        ))
 
     panel = add_vertical_panel(
         f"SURFACE_DETAIL_{index:02d}",
@@ -518,12 +617,19 @@ def add_surface_portal(
     )
     panel["asset_role"] = "genuine_artwork_surface_detail"
     panel["asset_id"] = f"artwork-{index:02d}"
-    panel["display_label"] = f"Surface Detail {index:02d}"
+    panel["display_label"] = f"{catalogue['title']} · detail"
+    panel["title"] = catalogue["title"]
+    panel["year"] = catalogue["year"]
+    panel["medium"] = catalogue["medium"]
+    panel["dimensions"] = catalogue["dimensions"]
+    panel["availability"] = catalogue["availability"]
+    panel["description"] = catalogue["description"]
+    panel["detail_label"] = f"Surface detail · {catalogue['medium']}"
     panel["source_asset"] = str((ROOT / "assets" / "artworks" / f"artwork-{index:02d}.jpg").relative_to(ROOT))
     panel["optimized_asset"] = str(image_path.relative_to(ROOT))
     panel["representation"] = "genuine macro/detail photograph; not a complete artwork view"
     panel["is_complete_artwork_view"] = False
-    panel["catalogue_metadata_status"] = "unverified; use neutral Surface Detail label"
+    panel["catalogue_metadata_status"] = "verified against local website catalogue"
     panel["colour_locked"] = True
     panel["surface_index"] = index
 
@@ -539,6 +645,8 @@ def add_surface_portal(
     hotspot["asset_id"] = panel["asset_id"]
     hotspot["display_label"] = panel["display_label"]
     hotspot["representation"] = panel["representation"]
+    for key in ("title", "year", "medium", "dimensions", "availability", "description", "detail_label", "source_asset"):
+        hotspot[key] = panel[key]
 
     light_x = -4.85 if side == "west" else 4.85
     portal_light = add_light(
@@ -559,7 +667,7 @@ def add_surface_portal(
         f"VIEW_Surface_{index:02d}",
         (view_x, along_wall, WALK_EYE_HEIGHT),
         center,
-        label=f"Surface Detail {index:02d}",
+        label=f"{catalogue['title']} · detail",
         kind="surface_detail",
         surface_index=index,
     )
@@ -662,12 +770,21 @@ def add_botanical(
 ) -> None:
     random.seed(seed)
     x, y, _ = origin
-    planter = add_cylinder(f"{prefix}_Planter", (x, y, 0.49), 0.43, 0.98, materials["planter"], vertices=20)
+    planter = add_cylinder(f"{prefix}_Planter", (x, y, 0.49), 0.43, 0.98, materials["planter"], vertices=28)
     planter["theme_role"] = "planter"
+    planter_bevel = planter.modifiers.new("Ceramic rolled edge", "BEVEL")
+    planter_bevel.width = 0.045
+    planter_bevel.segments = 3
     groups["planter"].append(planter)
-    rim = add_cylinder(f"{prefix}_Planter_Rim", (x, y, 0.99), 0.46, 0.07, materials["bronze"], vertices=20)
+    foot = add_cylinder(f"{prefix}_Planter_Foot", (x, y, 0.055), 0.31, 0.08, materials["bronze"], vertices=28)
+    foot["theme_role"] = "bronze"
+    groups["bronze"].append(foot)
+    rim = add_torus(f"{prefix}_Planter_Rim", (x, y, 0.99), 0.425, 0.045, materials["bronze"])
     rim["theme_role"] = "bronze"
     groups["bronze"].append(rim)
+    soil = add_cylinder(f"{prefix}_Planter_Shadowed_Soil", (x, y, 0.965), 0.385, 0.025, materials["shadow"], vertices=28)
+    soil["theme_role"] = "shadow"
+    groups["shadow"].append(soil)
 
     base = Vector((x, y, 0.91))
     for index in range(8):
@@ -744,6 +861,24 @@ def build_gallery_shell(
         materials["floor"],
         theme_role="floor",
     ))
+
+    # Individually beveled honed-stone slabs catch grazing light and create
+    # real highlight breaks. The slightly recessed base reads as dark grout.
+    tile_width = 2.72
+    tile_depth = 1.53
+    for row in range(10):
+        for column in range(5):
+            x = -5.52 + column * 2.76
+            y = -6.92 + row * 1.54
+            group_name = "floor_tile_a" if (row + column) % 2 else "floor_tile_b"
+            groups[group_name].append(add_box(
+                f"Floor_Tile_{row + 1:02d}_{column + 1:02d}",
+                (x, y, 0.008),
+                (tile_width, tile_depth, 0.045),
+                materials[group_name],
+                bevel=0.016,
+                theme_role=group_name,
+            ))
 
     # Large stone bays give the side-wall details architectural rhythm.
     for side, x in (("West", -6.82), ("East", 6.82)):
@@ -891,6 +1026,12 @@ def add_wartrobe(
     surface["representation"] = "genuine complete front photograph on modeled spatial object; room is not a scan"
     surface["is_complete_object_view"] = True
     surface["colour_locked"] = True
+    surface["title"] = "wARTrobe · Front"
+    surface["year"] = "One-of-one object"
+    surface["medium"] = "Painted wardrobe installation"
+    surface["dimensions"] = "Details on request"
+    surface["availability"] = "Private inquiry"
+    surface["description"] = "A painted object where storage, memory, and surface become one architectural presence."
 
     hotspot = add_empty("HOTSPOT_wARTrobe", (0, 7.17, center_z), display_type="SPHERE", display_size=0.20)
     hotspot["navigation_role"] = "artwork_hotspot"
@@ -898,6 +1039,8 @@ def add_wartrobe(
     hotspot["asset_id"] = "wartrobe-front"
     hotspot["display_label"] = "wARTrobe · Front"
     hotspot["representation"] = surface["representation"]
+    for key in ("title", "year", "medium", "dimensions", "availability", "description", "source_asset"):
+        hotspot[key] = surface[key]
 
     for index, x in enumerate((-1.20, 1.20), start=1):
         wartrobe_light = add_light(
@@ -924,29 +1067,48 @@ def add_wartrobe(
 
 
 def add_bench(materials: dict[str, bpy.types.Material], groups: dict[str, list[bpy.types.Object]]) -> None:
-    groups["bench"].append(add_box(
-        "Bench_Seat",
-        (0, -2.55, 0.54),
-        (3.25, 0.86, 0.18),
-        materials["bench"],
-        bevel=0.085,
-        theme_role="bench",
+    # Tailored leather cushion over a warm walnut apron and slim patinated
+    # brass legs. The layered silhouette reads as furniture, not stacked cubes.
+    groups["leather"].append(add_box(
+        "Bench_Leather_Cushion",
+        (0, -2.55, 0.61),
+        (3.24, 0.86, 0.20),
+        materials["leather"],
+        bevel=0.095,
+        theme_role="leather",
     ))
-    groups["shadow"].append(add_box(
-        "Bench_Underside",
-        (0, -2.55, 0.40),
-        (2.82, 0.64, 0.15),
-        materials["shadow"],
-        bevel=0.055,
-        theme_role="shadow",
+    groups["wood"].append(add_box(
+        "Bench_Walnut_Apron",
+        (0, -2.55, 0.46),
+        (3.02, 0.67, 0.18),
+        materials["wood"],
+        bevel=0.045,
+        theme_role="wood",
     ))
-    for x in (-1.22, 1.22):
+    for y in (-2.95, -2.15):
+        groups["leather_seam"].append(add_box(
+            f"Bench_Leather_Piping_{y:+.2f}",
+            (0, y, 0.665),
+            (3.10, 0.018, 0.018),
+            materials["leather_seam"],
+            bevel=0.007,
+            theme_role="leather_seam",
+        ))
+    for x in (-1.25, 1.25):
         groups["bronze"].append(add_box(
-            f"Bench_Foot_{x:+.0f}",
-            (x, -2.55, 0.22),
-            (0.12, 0.58, 0.42),
+            f"Bench_Leg_{x:+.2f}",
+            (x, -2.55, 0.245),
+            (0.105, 0.60, 0.43),
             materials["bronze"],
-            bevel=0.025,
+            bevel=0.032,
+            theme_role="bronze",
+        ))
+        groups["bronze"].append(add_box(
+            f"Bench_Leg_Foot_{x:+.2f}",
+            (x, -2.55, 0.055),
+            (0.31, 0.67, 0.055),
+            materials["bronze"],
+            bevel=0.018,
             theme_role="bronze",
         ))
 
@@ -1025,13 +1187,20 @@ def optimize_groups(groups: dict[str, list[bpy.types.Object]]) -> None:
         "wall": "wall",
         "ceiling": "ceiling",
         "floor": "floor",
+        "floor_tile_a": "floor_tile_a",
+        "floor_tile_b": "floor_tile_b",
         "floor_alt": "floor_alt",
         "stone": "stone",
         "bronze": "bronze",
         "shadow": "shadow",
         "emissive": "emissive",
         "bench": "bench",
+        "wood": "wood",
+        "leather": "leather",
+        "leather_seam": "leather_seam",
         "planter": "planter",
+        "plaque": "plaque",
+        "plaque_text": "plaque_text",
         "stem": "botanical_stem",
         "leaf_a": "botanical_leaf",
         "leaf_b": "botanical_leaf",
@@ -1070,12 +1239,19 @@ def build_scene() -> bpy.types.Scene:
         "wall": create_material("Gallery_Wall", "#181a19", "#b9b0a4", "wall", roughness=0.86),
         "stone": create_material("Gallery_Stone", "#101211", "#8f887e", "stone", roughness=0.58, metallic=0.03),
         "ceiling": create_material("Gallery_Ceiling", "#090b0a", "#8a8276", "ceiling", roughness=0.70),
-        "floor": create_material("Gallery_Floor", "#111310", "#766f65", "floor", roughness=0.32, metallic=0.10),
-        "floor_alt": create_material("Gallery_Floor_Alt", "#1a1915", "#9a9082", "floor_alt", roughness=0.27, metallic=0.08),
+        "floor": create_material("Gallery_Grout", "#090a08", "#5f594f", "floor", roughness=0.72, metallic=0.0),
+        "floor_tile_a": create_material("Gallery_Honed_Stone_A", "#181813", "#a2998b", "floor_tile_a", roughness=0.22, metallic=0.04, clearcoat=0.34, clearcoat_roughness=0.16),
+        "floor_tile_b": create_material("Gallery_Honed_Stone_B", "#11130f", "#8c8376", "floor_tile_b", roughness=0.28, metallic=0.03, clearcoat=0.25, clearcoat_roughness=0.20),
+        "floor_alt": create_material("Gallery_Floor_Alt", "#1d1b15", "#a49a89", "floor_alt", roughness=0.18, metallic=0.08, clearcoat=0.42, clearcoat_roughness=0.13),
         "shadow": create_material("Gallery_Shadow", "#030504", "#4c4943", "shadow", roughness=0.76),
-        "bronze": create_material("Gallery_Bronze", "#5c4528", "#705431", "bronze", roughness=0.32, metallic=0.76),
+        "bronze": create_material("Gallery_Patinated_Bronze", "#634922", "#866331", "bronze", roughness=0.21, metallic=0.90, clearcoat=0.16, clearcoat_roughness=0.18),
         "bench": create_material("Gallery_Bench", "#17140f", "#7c7162", "bench", roughness=0.42),
-        "planter": create_material("Gallery_Planter", "#25231e", "#8e8579", "planter", roughness=0.60, metallic=0.04),
+        "wood": create_material("Gallery_Walnut", "#24160d", "#6c4b31", "wood", roughness=0.27, clearcoat=0.22, clearcoat_roughness=0.20),
+        "leather": create_material("Gallery_Saddle_Leather", "#19130e", "#75675a", "leather", roughness=0.38, clearcoat=0.12, clearcoat_roughness=0.28),
+        "leather_seam": create_material("Gallery_Leather_Piping", "#090806", "#403931", "leather_seam", roughness=0.46),
+        "planter": create_material("Gallery_Glazed_Ceramic", "#211f1a", "#91887c", "planter", roughness=0.24, metallic=0.02, clearcoat=0.58, clearcoat_roughness=0.12),
+        "plaque": create_material("Gallery_Catalogue_Plaque", "#b5aa97", "#ded5c6", "plaque", roughness=0.30, metallic=0.02, clearcoat=0.20, clearcoat_roughness=0.18),
+        "plaque_text": create_material("Gallery_Plaque_Engraving", "#2c241a", "#3b3023", "plaque_text", roughness=0.38, metallic=0.58),
         "stem": create_material("Botanical_Stem", "#38291b", "#604b35", "botanical_stem", roughness=0.88),
         "leaf_a": create_material("Botanical_Leaf_Ochre", "#8a5e32", "#9b744b", "botanical_leaf", roughness=0.92),
         "leaf_b": create_material("Botanical_Leaf_Smoke", "#6d5940", "#806b50", "botanical_leaf", roughness=0.94),
@@ -1091,8 +1267,8 @@ def build_scene() -> bpy.types.Scene:
         ),
     }
     groups = {name: [] for name in (
-        "wall", "stone", "ceiling", "floor", "floor_alt", "shadow", "bronze",
-        "emissive", "bench", "planter", "stem", "leaf_a", "leaf_b",
+        "wall", "stone", "ceiling", "floor", "floor_tile_a", "floor_tile_b", "floor_alt", "shadow", "bronze",
+        "emissive", "bench", "wood", "leather", "leather_seam", "planter", "plaque", "plaque_text", "stem", "leaf_a", "leaf_b",
         "wartrobe_shadow", "wartrobe_bronze",
     )}
 

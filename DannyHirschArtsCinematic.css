@@ -1085,7 +1085,7 @@ body[data-theme="light"] .room-experience__controls > span {
   bottom: max(26px, calc(3vw + env(safe-area-inset-bottom)));
   z-index: 8;
   display: grid;
-  width: min(320px, calc(100vw - 40px));
+  width: min(390px, calc(100vw - 40px));
   gap: 6px;
   padding: 16px 18px;
   border-left: 1px solid rgba(198, 163, 107, 0.58);
@@ -1120,6 +1120,40 @@ body[data-theme="light"] .room-experience__controls > span {
   color: rgba(244, 239, 230, 0.62);
   font-size: 0.66rem;
   line-height: 1.45;
+}
+
+.room-experience__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 5px;
+  border-top: 1px solid rgba(244, 239, 230, 0.14);
+}
+
+.room-experience__facts[hidden],
+.room-experience__facts > div[hidden] { display: none; }
+
+.room-experience__facts > div {
+  min-width: 0;
+  padding: 8px 10px 7px 0;
+  border-bottom: 1px solid rgba(244, 239, 230, 0.10);
+}
+
+.room-experience__facts dt {
+  margin-bottom: 3px;
+  color: rgba(198, 163, 107, 0.82);
+  font-size: 0.42rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.room-experience__facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: rgba(244, 239, 230, 0.82);
+  font-size: 0.56rem;
+  line-height: 1.35;
 }
 
 .room-experience__art button {
@@ -1244,6 +1278,10 @@ body[data-theme="light"] .room-experience__art {
 }
 
 body[data-theme="light"] .room-experience__art > span { color: rgba(24, 23, 19, 0.64); }
+body[data-theme="light"] .room-experience__facts { border-top-color: rgba(24, 23, 19, 0.15); }
+body[data-theme="light"] .room-experience__facts > div { border-bottom-color: rgba(24, 23, 19, 0.11); }
+body[data-theme="light"] .room-experience__facts dt { color: #765522; }
+body[data-theme="light"] .room-experience__facts dd { color: rgba(24, 23, 19, 0.78); }
 body[data-theme="light"] .room-experience__reticle { border-color: rgba(24, 23, 19, 0.62); }
 body[data-theme="light"] .room-experience.has-artwork-focus .room-experience__reticle { border-color: #8c672e; color: #8c672e; }
 body[data-theme="light"] .room-experience__loading { color: rgba(24, 23, 19, 0.72); }
@@ -2021,11 +2059,22 @@ body[data-theme="light"] .wartrobe-stage__legend {
     width: auto;
     max-width: none;
     padding: 11px 13px;
+    max-height: min(46dvh, 390px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .room-experience__art strong { font-size: 1.22rem; }
   .room-experience__art > span { font-size: 0.6rem; }
   .room-experience__art button { min-height: 44px; }
+  .room-experience__facts > div { padding-block: 6px; }
+  .room-experience__facts dt { font-size: 0.38rem; }
+  .room-experience__facts dd { font-size: 0.51rem; }
+
+  body[data-theme="light"] .room-experience__header > div:first-child {
+    color: #f5f0e8;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.78);
+  }
 
   .section-heading h2 {
     font-size: clamp(3.35rem, 14.4vw, 5.5rem);

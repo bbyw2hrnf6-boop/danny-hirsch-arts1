@@ -9,12 +9,19 @@ const DARK_PALETTE = {
   architecture: '#151715',
   ceiling: '#0d0f0e',
   floor: '#171611',
+  floor_tile_a: '#191914',
+  floor_tile_b: '#11130f',
   floor_alt: '#201e18',
   stone: '#111311',
   shadow: '#050606',
   bronze: '#6a4e2c',
   frame: '#5c4327',
   bench: '#17140f',
+  wood: '#24160d',
+  leather: '#19130e',
+  leather_seam: '#090806',
+  plaque: '#b5aa97',
+  plaque_text: '#2c241a',
   planter: '#28231d',
   botanical: '#51412e',
   botanical_leaf: '#725638',
@@ -27,12 +34,19 @@ const LIGHT_PALETTE = {
   architecture: '#989086',
   ceiling: '#8a8175',
   floor: '#7d7569',
+  floor_tile_a: '#a2998b',
+  floor_tile_b: '#8c8376',
   floor_alt: '#998f80',
   stone: '#91897e',
   shadow: '#504b43',
   bronze: '#9c7641',
   frame: '#806038',
   bench: '#7d7263',
+  wood: '#6c4b31',
+  leather: '#75675a',
+  leather_seam: '#403931',
+  plaque: '#ded5c6',
+  plaque_text: '#3b3023',
   planter: '#8e8579',
   botanical: '#78664c',
   botanical_leaf: '#96734d',
@@ -109,6 +123,37 @@ const findMetadataOwner = (object) => {
   return null;
 };
 
+const createGalleryEnvironment = (renderer) => {
+  const environmentScene = new THREE.Scene();
+  environmentScene.background = new THREE.Color('#080806');
+  const geometry = new THREE.PlaneGeometry(1, 1);
+  const cards = [
+    [[-3.8, 3.2, -1.0], [4.6, 2.2], [0, Math.PI / 2, 0], [5.8, 3.8, 1.9]],
+    [[3.8, 2.8, 0.8], [3.6, 2.0], [0, -Math.PI / 2, 0], [2.1, 3.1, 4.8]],
+    [[0, 4.5, -3.2], [5.8, 2.2], [Math.PI / 2, 0, 0], [4.8, 3.7, 2.2]],
+    [[0, 1.2, 4.4], [4.8, 2.0], [-Math.PI / 2, 0, 0], [1.0, 1.1, 1.4]]
+  ];
+  cards.forEach(([position, scale, rotation, colour]) => {
+    const material = new THREE.MeshBasicMaterial({
+      color: new THREE.Color().setRGB(...colour),
+      side: THREE.DoubleSide,
+      toneMapped: false
+    });
+    const card = new THREE.Mesh(geometry, material);
+    card.position.set(...position);
+    card.scale.set(...scale, 1);
+    card.rotation.set(...rotation);
+    environmentScene.add(card);
+  });
+  const generator = new THREE.PMREMGenerator(renderer);
+  generator.compileCubemapShader();
+  const target = generator.fromScene(environmentScene, 0.06, 0.1, 30);
+  generator.dispose();
+  environmentScene.traverse((object) => object.material?.dispose?.());
+  geometry.dispose();
+  return target.texture;
+};
+
 /**
  * Fullscreen, user-entered 360 gallery. The canvas is decorative to assistive
  * technology; every movement and artwork action has an equivalent DOM control.
@@ -159,6 +204,8 @@ export function initWalkableGallery3D(options = {}) {
   mount.append(renderer.domElement);
 
   const scene = new THREE.Scene();
+  const environmentTexture = createGalleryEnvironment(renderer);
+  scene.environment = environmentTexture;
   const camera = new THREE.PerspectiveCamera(compact ? 68 : 62, 1, 0.04, 120);
   camera.rotation.order = 'YXZ';
   const ambient = new THREE.AmbientLight(0xfff4df, 0.1);
@@ -293,10 +340,11 @@ export function initWalkableGallery3D(options = {}) {
       if (instant && entry.material.color) entry.material.color.copy(entry.target);
     });
     scene.background = new THREE.Color(isLight ? '#ddd5c8' : '#070807');
+    if ('environmentIntensity' in scene) scene.environmentIntensity = isLight ? 0.62 : 0.54;
     scene.fog = new THREE.FogExp2(isLight ? '#c6bdaf' : '#080908', isLight ? 0.018 : 0.027);
-    renderer.toneMappingExposure = isLight ? 0.82 : 0.64;
-    ambient.intensity = isLight ? 0.68 : 0.055;
-    hemisphere.intensity = isLight ? 0.92 : 0.18;
+    renderer.toneMappingExposure = isLight ? 0.82 : 0.70;
+    ambient.intensity = isLight ? 0.68 : 0.072;
+    hemisphere.intensity = isLight ? 0.92 : 0.23;
     hemisphere.color.set(isLight ? '#fff4df' : '#ffdda7');
     hemisphere.groundColor.set(isLight ? '#6b655c' : '#0c0f0d');
     importedLights.forEach((entry) => {
@@ -304,7 +352,7 @@ export function initWalkableGallery3D(options = {}) {
       // intentionally much stronger than Three's small web exhibition needs.
       // Scale the original rig as a unit so the light geometry and artwork keep
       // their authored relationship without clipping pigment to flat white.
-      entry.targetIntensity = entry.intensity * (isLight ? 0.005 : 0.009);
+      entry.targetIntensity = entry.intensity * (isLight ? 0.005 : 0.0105);
       entry.light.intensity = entry.targetIntensity;
       if (entry.light.color) entry.light.color.copy(entry.color);
     });
@@ -334,7 +382,12 @@ export function initWalkableGallery3D(options = {}) {
       detail: owner.userData.detail_label || owner.userData.medium || owner.userData.representation || 'Genuine artwork photography',
       source: owner.userData.source_asset || owner.userData.delivery_asset || '',
       representation: owner.userData.representation || '',
-      collectionTitle: owner.userData.collection_title || owner.userData.title || ''
+      collectionTitle: owner.userData.collection_title || owner.userData.title || '',
+      year: owner.userData.year || '',
+      medium: owner.userData.medium || '',
+      dimensions: owner.userData.dimensions || '',
+      availability: owner.userData.availability || owner.userData.status || '',
+      description: owner.userData.description || ''
     } : null;
     call(options.onArtworkFocus, focusedArtwork);
   };
@@ -474,8 +527,15 @@ export function initWalkableGallery3D(options = {}) {
           material.color?.set('#ffffff');
           material.side = THREE.DoubleSide;
           material.toneMapped = true;
+          material.envMapIntensity = 0.14;
           artworkMeshes.push(object);
         } else if (!materialEntries.has(material)) {
+          const reflective = /floor_tile|floor_alt|bronze|plaque|planter|wood|leather/.test(role);
+          material.envMapIntensity = reflective ? (/bronze|plaque_text/.test(role) ? 1.15 : 0.72) : 0.22;
+          if ('clearcoat' in material) {
+            material.clearcoat = Number(material.userData?.web_clearcoat ?? material.clearcoat ?? 0);
+            material.clearcoatRoughness = Number(material.userData?.web_clearcoat_roughness ?? material.clearcoatRoughness ?? 0.2);
+          }
           const target = new THREE.Color();
           materialEntries.set(material, { material, role, target });
         }
@@ -531,6 +591,7 @@ export function initWalkableGallery3D(options = {}) {
     listeners.splice(0).forEach((remove) => remove());
     resizeObserver.disconnect();
     disposeObject(model);
+    environmentTexture.dispose();
     renderer.dispose();
     renderer.forceContextLoss?.();
     renderer.domElement.remove();

@@ -56,6 +56,11 @@ const galleryReset = document.querySelector("[data-gallery-reset]");
 const galleryArtKicker = document.querySelector("[data-gallery-art-kicker]");
 const galleryArtTitle = document.querySelector("[data-gallery-art-title]");
 const galleryArtDetail = document.querySelector("[data-gallery-art-detail]");
+const galleryArtFacts = document.querySelector("[data-gallery-art-facts]");
+const galleryArtYear = document.querySelector("[data-gallery-art-year]");
+const galleryArtMedium = document.querySelector("[data-gallery-art-medium]");
+const galleryArtDimensions = document.querySelector("[data-gallery-art-dimensions]");
+const galleryArtAvailability = document.querySelector("[data-gallery-art-availability]");
 const galleryArtInspect = document.querySelector("[data-gallery-art-inspect]");
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -440,6 +445,7 @@ const setGalleryArtwork = (artwork) => {
     if (galleryArtKicker) galleryArtKicker.textContent = "In view";
     galleryArtTitle.textContent = "Move through the gallery";
     galleryArtDetail.textContent = "Turn toward a surface to discover it.";
+    if (galleryArtFacts) galleryArtFacts.hidden = true;
     galleryArtInspect.disabled = true;
     return;
   }
@@ -447,11 +453,21 @@ const setGalleryArtwork = (artwork) => {
   const isDetail = /detail|surface/i.test(artwork.representation || artwork.detail || "");
   if (galleryArtKicker) galleryArtKicker.textContent = isDetail ? "Genuine surface detail" : "In view";
   galleryArtTitle.textContent = artwork.title || "Danny Hirsch artwork";
-  galleryArtDetail.textContent = isDetail
+  galleryArtDetail.textContent = artwork.description || (isDetail
     ? "Genuine surface photography from the collection."
     : /wartrobe/i.test(`${artwork.id || ""} ${artwork.title || ""}`)
       ? "Genuine wARTrobe photography in a modeled gallery."
-      : "Genuine artwork photography in a modeled gallery.";
+      : "Genuine artwork photography in a modeled gallery.");
+  const setFact = (node, value) => {
+    if (!node) return;
+    node.textContent = value || "—";
+    node.closest("div")?.toggleAttribute("hidden", !value);
+  };
+  setFact(galleryArtYear, artwork.year);
+  setFact(galleryArtMedium, artwork.medium);
+  setFact(galleryArtDimensions, artwork.dimensions);
+  setFact(galleryArtAvailability, artwork.availability);
+  if (galleryArtFacts) galleryArtFacts.hidden = ![artwork.year, artwork.medium, artwork.dimensions, artwork.availability].some(Boolean);
 
   const stem = (path = "") => path.split("/").pop()?.replace(/\.[^.]+$/, "").toLowerCase();
   const expected = stem(artwork.source);
@@ -490,7 +506,7 @@ const ensureGalleryRoom = () => {
   roomExperience.classList.remove("is-gallery-fallback");
   roomExperience.classList.add("is-gallery-loading");
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-21")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-22")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
@@ -864,7 +880,7 @@ const loadPrivateRoomExperience = async () => {
   }
 
   try {
-    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-21");
+    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-22");
     privateRoomController = initPrivateRoom3D({
       root: installation,
       stage: privateRoomStage,
