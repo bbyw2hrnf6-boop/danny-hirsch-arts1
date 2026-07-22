@@ -143,6 +143,21 @@ await pause(500);
 await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.setActive(true); true");
 report.desktopCurated = await roomState();
 await capture('/tmp/dha-gallery-desktop-curated.png');
+await evaluate("document.querySelector('[data-room-demo]').click(); true");
+await pause(250);
+await evaluate("document.querySelector('[data-gallery-demo-panel=privacy]').click(); true");
+await pause(650);
+report.desktopDemo = await evaluate(`(() => ({
+  active: document.querySelector('[data-room-experience]').classList.contains('is-demo-mode'),
+  pressed: document.querySelector('[data-room-demo]').getAttribute('aria-pressed'),
+  navHidden: document.querySelector('[data-gallery-demo-nav]').hidden,
+  panelHidden: document.querySelector('[data-gallery-site-panel]').hidden,
+  panelTitle: document.querySelector('[data-gallery-site-title]').textContent,
+  panelLink: document.querySelector('[data-gallery-site-link]').getAttribute('href'),
+  controller: document.querySelector('[data-gallery-webgl]').__galleryController.getState()
+}))()`);
+await capture('/tmp/dha-gallery-desktop-demo-privacy.png');
+await evaluate("document.querySelector('[data-room-demo]').click(); true");
 await evaluate("document.querySelector('[data-room-close]').click(); true");
 
 await viewport(390, 844, true);
@@ -167,6 +182,19 @@ await evaluate("document.querySelector('[data-room-theme]').click(); true");
 await pause(750);
 report.mobileLight = await roomState();
 await capture('/tmp/dha-gallery-mobile-light.png');
+await evaluate("document.querySelector('[data-room-demo]').click(); true");
+await pause(220);
+await evaluate("document.querySelector('[data-gallery-demo-panel=about]').click(); true");
+await pause(600);
+report.mobileDemo = await evaluate(`(() => ({
+  active: document.querySelector('[data-room-experience]').classList.contains('is-demo-mode'),
+  navHidden: document.querySelector('[data-gallery-demo-nav]').hidden,
+  panelHidden: document.querySelector('[data-gallery-site-panel]').hidden,
+  panelTitle: document.querySelector('[data-gallery-site-title]').textContent,
+  overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+}))()`);
+await capture('/tmp/dha-gallery-mobile-demo-about.png');
+await evaluate("document.querySelector('[data-room-demo]').click(); true");
 await evaluate("document.querySelector('[data-room-close]').click(); true");
 
 for (const page of ['privacy.html', 'imprint.html', '404.html']) {

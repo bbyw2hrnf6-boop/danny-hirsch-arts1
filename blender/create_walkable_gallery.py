@@ -9,7 +9,8 @@ Run from the repository root:
 The architecture is a designed spatial interpretation, not a scan.  The
 wARTrobe uses the genuine complete front photograph.  The six side apertures
 use genuine macro/detail photographs and are deliberately labelled in glTF
-extras as surface details, never as complete artwork simulations.
+extras as surface details, never as complete artwork simulations. Optional
+site-demo boards carry the existing About, Process, Inquiry and legal copy.
 """
 
 from __future__ import annotations
@@ -83,6 +84,49 @@ ARTWORK_CATALOG = [
         "dimensions": "40 × 50 cm",
         "availability": "Available",
         "description": "Raw material interrupts a luminous ground with sculptural tension.",
+    },
+]
+
+SITE_PANELS = [
+    {
+        "id": "about",
+        "title": "About the practice",
+        "kicker": "06 · Practice",
+        "body": "My work begins with a feeling before it has an image. Nature, weathered surfaces, architecture, and memory guide a slow process of layering, covering, and revealing.",
+        "link": "#about",
+        "link_label": "Enter the studio story",
+    },
+    {
+        "id": "process",
+        "title": "Material process",
+        "kicker": "Ground · Layer · Pressure · Reveal",
+        "body": "Control meets accident as pigment, fibers, leaves, pressure, and time determine the final surface.",
+        "link": "#about",
+        "link_label": "Explore the process",
+    },
+    {
+        "id": "inquiry",
+        "title": "Private inquiry",
+        "kicker": "Viewings · Commissions · Acquisitions",
+        "body": "Begin a private conversation about available works, commissions, or a studio viewing.",
+        "link": "mailto:dannyhirscharts@protonmail.com",
+        "link_label": "Email the studio",
+    },
+    {
+        "id": "privacy",
+        "title": "Privacy, without noise",
+        "kicker": "Legal · Privacy",
+        "body": "This website collects as little information as possible. Optional third-party content remains off until you choose to enable it.",
+        "link": "privacy.html",
+        "link_label": "Read privacy policy",
+    },
+    {
+        "id": "imprint",
+        "title": "The work. The studio.",
+        "kicker": "Legal · Imprint",
+        "body": "Publisher, contact, copyright, and external-link information for the Danny Hirsch Arts digital exhibition.",
+        "link": "imprint.html",
+        "link_label": "Read imprint",
     },
 ]
 
@@ -591,21 +635,26 @@ def add_surface_portal(
     groups["plaque"].append(add_box(
         f"Surface_{index:02d}_Catalogue_Plaque",
         (plaque_x, plaque_y, plaque_z),
-        (0.075, 0.78, 0.58),
+        (0.075, 1.14, 0.80),
         materials["plaque"],
         bevel=0.025,
         theme_role="plaque",
     ))
-    line_x = -6.648 if side == "west" else 6.648
-    for line_index, (line_width, line_height) in enumerate(((0.56, 0.030), (0.43, 0.018), (0.49, 0.018), (0.34, 0.018))):
-        groups["plaque_text"].append(add_box(
-            f"Surface_{index:02d}_Plaque_Line_{line_index + 1}",
-            (line_x, plaque_y, plaque_z + 0.17 - line_index * 0.105),
-            (0.012, line_width, line_height),
-            materials["plaque_text"],
-            bevel=0.004,
-            theme_role="plaque_text",
-        ))
+    label = add_vertical_panel(
+        f"CATALOGUE_LABEL_{index:02d}",
+        side,
+        ((-6.646 if side == "west" else 6.646), plaque_y, plaque_z),
+        1.04,
+        0.70,
+        materials["plaque"],
+    )
+    label["theme_role"] = "catalogue_label"
+    label["asset_id"] = f"artwork-{index:02d}"
+    label["catalogue_label"] = True
+    label["representation"] = "readable in-room catalogue label for a genuine artwork surface detail"
+    for key, value in catalogue.items():
+        label[key] = value
+    label["source_asset"] = str((ROOT / "assets" / "artworks" / f"artwork-{index:02d}.jpg").relative_to(ROOT))
 
     panel = add_vertical_panel(
         f"SURFACE_DETAIL_{index:02d}",
@@ -672,6 +721,66 @@ def add_surface_portal(
         surface_index=index,
     )
     return panel
+
+
+def add_site_information_panels(
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    """Build subtle south-wall boards used only by the optional 3D-site demo."""
+    for index, (panel_data, x) in enumerate(zip(SITE_PANELS, (-5.15, -2.58, 0.0, 2.58, 5.15)), start=1):
+        center_z = 2.42
+        groups["shadow"].append(add_box(
+            f"SITE_PANEL_{index:02d}_Recess",
+            (x, -7.84, center_z),
+            (2.25, 0.10, 1.58),
+            materials["shadow"],
+            bevel=0.035,
+            theme_role="shadow",
+        ))
+        groups["bronze"].append(add_box(
+            f"SITE_PANEL_{index:02d}_Frame",
+            (x, -7.72, center_z),
+            (2.15, 0.10, 1.48),
+            materials["bronze"],
+            bevel=0.035,
+            theme_role="bronze",
+        ))
+        groups["plaque"].append(add_box(
+            f"SITE_PANEL_{index:02d}_Backing",
+            (x, -7.655, center_z),
+            (2.02, 0.055, 1.35),
+            materials["plaque"],
+            bevel=0.025,
+            theme_role="plaque",
+        ))
+        panel = add_vertical_panel(
+            f"SITE_PANEL_{panel_data['id'].upper()}",
+            "south",
+            (x, -7.622, center_z),
+            1.91,
+            1.24,
+            materials["plaque"],
+        )
+        panel["theme_role"] = "site_panel"
+        panel["asset_id"] = f"site-panel-{panel_data['id']}"
+        panel["site_panel_id"] = panel_data["id"]
+        panel["site_title"] = panel_data["title"]
+        panel["site_kicker"] = panel_data["kicker"]
+        panel["site_body"] = panel_data["body"]
+        panel["site_link"] = panel_data["link"]
+        panel["site_link_label"] = panel_data["link_label"]
+        panel["representation"] = "optional 3D-site information panel"
+        panel["demo_only"] = True
+        view = add_view_anchor(
+            f"VIEW_Site_{index:02d}",
+            (x, -5.25, WALK_EYE_HEIGHT),
+            (x, -7.62, center_z),
+            label=panel_data["title"],
+            kind="site_panel",
+        )
+        view["target_node"] = panel.name
+        view["demo_only"] = True
 
 
 def add_stem_between(
@@ -861,6 +970,23 @@ def build_gallery_shell(
         materials["floor"],
         theme_role="floor",
     ))
+
+    # Continuous skirting and ceiling shadow gaps give the architecture real
+    # construction joints and stronger contact shadows.
+    for name, location, dimensions in (
+        ("Skirting_West", (-6.76, 0, 0.14), (0.12, 15.55, 0.24)),
+        ("Skirting_East", (6.76, 0, 0.14), (0.12, 15.55, 0.24)),
+        ("Skirting_North", (0, 7.76, 0.14), (13.45, 0.12, 0.24)),
+        ("Skirting_South", (0, -7.76, 0.14), (13.45, 0.12, 0.24)),
+    ):
+        groups["stone"].append(add_box(name, location, dimensions, materials["stone"], bevel=0.018, theme_role="stone"))
+    for name, location, dimensions in (
+        ("Ceiling_Gap_West", (-6.73, 0, 5.50), (0.07, 15.40, 0.07)),
+        ("Ceiling_Gap_East", (6.73, 0, 5.50), (0.07, 15.40, 0.07)),
+        ("Ceiling_Gap_North", (0, 7.70, 5.50), (13.40, 0.07, 0.07)),
+        ("Ceiling_Gap_South", (0, -7.70, 5.50), (13.40, 0.07, 0.07)),
+    ):
+        groups["shadow"].append(add_box(name, location, dimensions, materials["shadow"], bevel=0.01, theme_role="shadow"))
 
     # Individually beveled honed-stone slabs catch grazing light and create
     # real highlight breaks. The slightly recessed base reads as dark grout.
@@ -1287,6 +1413,8 @@ def build_scene() -> bpy.types.Scene:
     for index, side, along_wall in portal_layout:
         add_surface_portal(index, side, along_wall, SURFACE_TEXTURES[index - 1], materials, groups)
 
+    add_site_information_panels(materials, groups)
+
     add_botanical("Botanical_West", (-5.40, 6.20, 0), materials, groups, seed=1963)
     add_botanical("Botanical_East", (5.40, 6.20, 0), materials, groups, seed=2026)
     for side, x in (("West", -5.40), ("East", 5.40)):
@@ -1342,11 +1470,13 @@ def build_scene() -> bpy.types.Scene:
     optimize_groups(groups)
 
     scene["experience_name"] = "Danny Hirsch Arts — Material Orbit"
-    scene["experience_version"] = 1
+    scene["experience_version"] = 2
     scene["architecture_truth"] = "Blender-modeled spatial interpretation; not a 3D scan"
     scene["artwork_truth"] = "Six portals are genuine surface-detail photographs, not complete work simulations"
     scene["wartrobe_truth"] = "wARTrobe focal surface uses genuine complete front photograph gallery-04"
     scene["surface_count"] = 6
+    scene["catalogue_label_count"] = 6
+    scene["site_demo_panel_count"] = len(SITE_PANELS)
     scene["view_anchor_prefix"] = "VIEW_"
     scene["collider_prefix"] = "COLLIDER_"
     scene["hotspot_prefix"] = "HOTSPOT_"

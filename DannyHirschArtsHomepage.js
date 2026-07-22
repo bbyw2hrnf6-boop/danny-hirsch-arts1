@@ -46,6 +46,7 @@ const roomExperienceViews = ["left", "center", "right"].map((view) => [
   document.querySelector(`.room-experience__view--light-${view}`)
 ].filter(Boolean));
 const roomExperienceTheme = document.querySelector("[data-room-theme]");
+const roomExperienceDemo = document.querySelector("[data-room-demo]");
 const roomExperienceFallbackControls = document.querySelector("[data-room-fallback-controls]");
 const galleryMount = document.querySelector("[data-gallery-webgl]");
 const galleryLoading = document.querySelector("[data-gallery-loading]");
@@ -62,6 +63,15 @@ const galleryArtMedium = document.querySelector("[data-gallery-art-medium]");
 const galleryArtDimensions = document.querySelector("[data-gallery-art-dimensions]");
 const galleryArtAvailability = document.querySelector("[data-gallery-art-availability]");
 const galleryArtInspect = document.querySelector("[data-gallery-art-inspect]");
+const gallerySitePanel = document.querySelector("[data-gallery-site-panel]");
+const gallerySiteKicker = document.querySelector("[data-gallery-site-kicker]");
+const gallerySiteTitle = document.querySelector("[data-gallery-site-title]");
+const gallerySiteBody = document.querySelector("[data-gallery-site-body]");
+const gallerySiteLink = document.querySelector("[data-gallery-site-link]");
+const gallerySiteClose = document.querySelector("[data-gallery-site-close]");
+const galleryDemoNav = document.querySelector("[data-gallery-demo-nav]");
+const galleryDemoArt = document.querySelector("[data-gallery-demo-art]");
+const galleryDemoPanels = [...document.querySelectorAll("[data-gallery-demo-panel]")];
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const mobileNavigation = window.matchMedia("(max-width: 1120px)");
@@ -83,6 +93,7 @@ let privateRoomImportObserver = null;
 let galleryRoomController = null;
 let galleryRoomLoadingPromise = null;
 let galleryFocusedArtwork = null;
+let galleryDemoActive = false;
 let roomInteractionUntil = 0;
 let roomExperienceIndex = 1;
 let roomExperienceTrigger = null;
@@ -484,6 +495,34 @@ const setGalleryArtwork = (artwork) => {
   galleryArtInspect.dataset.galleryTrigger = trigger ? String(lightboxTriggers.indexOf(trigger)) : "";
 };
 
+const setGallerySitePanel = (panel) => {
+  roomExperience?.classList.toggle("has-site-panel-focus", Boolean(panel));
+  if (!gallerySitePanel) return;
+  if (!panel) {
+    gallerySitePanel.hidden = true;
+    return;
+  }
+  gallerySitePanel.hidden = false;
+  if (gallerySiteKicker) gallerySiteKicker.textContent = panel.kicker || "3D Site Demo";
+  if (gallerySiteTitle) gallerySiteTitle.textContent = panel.title || "Room information";
+  if (gallerySiteBody) gallerySiteBody.textContent = panel.body || "";
+  if (gallerySiteLink) {
+    gallerySiteLink.href = panel.link || "#about";
+    gallerySiteLink.firstChild.textContent = `${panel.linkLabel || "Open information"} `;
+  }
+};
+
+const setGalleryDemo = (active) => {
+  galleryDemoActive = Boolean(active);
+  roomExperience?.classList.toggle("is-demo-mode", galleryDemoActive);
+  roomExperienceDemo?.setAttribute("aria-pressed", String(galleryDemoActive));
+  const label = roomExperienceDemo?.querySelector("b");
+  if (label) label.textContent = galleryDemoActive ? "Exit demo" : "3D site demo";
+  if (galleryDemoNav) galleryDemoNav.hidden = !galleryDemoActive;
+  if (!galleryDemoActive) setGallerySitePanel(null);
+  galleryRoomController?.setDemoMode?.(galleryDemoActive);
+};
+
 const setGalleryFallback = (reason = "fallback") => {
   if (!roomExperience) return;
   roomExperience.classList.remove("is-gallery-loading", "is-webgl-ready");
@@ -506,7 +545,7 @@ const ensureGalleryRoom = () => {
   roomExperience.classList.remove("is-gallery-fallback");
   roomExperience.classList.add("is-gallery-loading");
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-22")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-23")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
@@ -531,6 +570,11 @@ const ensureGalleryRoom = () => {
         onSkip: ({ reason }) => setGalleryFallback(reason),
         onError: () => setGalleryFallback("load-error"),
         onArtworkFocus: setGalleryArtwork,
+        onSitePanelFocus: setGallerySitePanel,
+        onDemoModeChange: ({ active }) => {
+          galleryDemoActive = Boolean(active);
+          roomExperience?.classList.toggle("is-demo-mode", galleryDemoActive);
+        },
         onViewChange: ({ label }) => {
           if (!label || galleryFocusedArtwork) return;
           if (galleryArtKicker) galleryArtKicker.textContent = "Curated viewpoint";
@@ -563,6 +607,7 @@ const closeRoomExperience = () => {
   if (!roomExperience?.open) return;
   body.classList.remove("room-experience-open");
   galleryRoomController?.setActive?.(false);
+  setGalleryDemo(false);
   if (typeof roomExperience.close === "function") roomExperience.close();
   else {
     roomExperience.removeAttribute("open");
@@ -577,6 +622,12 @@ roomExperienceNext?.addEventListener("click", () => setRoomExperienceView(roomEx
 galleryViewPrev?.addEventListener("click", () => galleryRoomController?.goToPreviousView?.());
 galleryViewNext?.addEventListener("click", () => galleryRoomController?.goToNextView?.());
 galleryReset?.addEventListener("click", () => galleryRoomController?.resetView?.());
+roomExperienceDemo?.addEventListener("click", () => setGalleryDemo(!galleryDemoActive));
+galleryDemoArt?.addEventListener("click", () => galleryRoomController?.goToNextView?.());
+galleryDemoPanels.forEach((button) => {
+  button.addEventListener("click", () => galleryRoomController?.goToSitePanel?.(button.dataset.galleryDemoPanel));
+});
+gallerySiteClose?.addEventListener("click", () => setGallerySitePanel(null));
 roomExperienceTheme?.addEventListener("click", () => {
   const nextTheme = body.dataset.theme === "light" ? "dark" : "light";
   applyTheme(nextTheme);
@@ -880,7 +931,7 @@ const loadPrivateRoomExperience = async () => {
   }
 
   try {
-    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-22");
+    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-23");
     privateRoomController = initPrivateRoom3D({
       root: installation,
       stage: privateRoomStage,

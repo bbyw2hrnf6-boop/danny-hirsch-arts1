@@ -154,6 +154,120 @@ const createGalleryEnvironment = (renderer) => {
   return target.texture;
 };
 
+const wrapCanvasText = (context, text, x, y, maxWidth, lineHeight, maxLines = 4) => {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  words.forEach((word) => {
+    const test = line ? `${line} ${word}` : word;
+    if (context.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else line = test;
+  });
+  if (line) lines.push(line);
+  lines.slice(0, maxLines).forEach((value, index) => context.fillText(value, x, y + index * lineHeight));
+  return y + Math.min(lines.length, maxLines) * lineHeight;
+};
+
+const createLabelTexture = (data, lightTheme, sitePanel = false) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = sitePanel ? 1200 : 1000;
+  canvas.height = sitePanel ? 760 : 700;
+  const context = canvas.getContext('2d');
+  const paper = lightTheme ? '#e9e2d7' : '#c8bca8';
+  const ink = lightTheme ? '#171611' : '#201b15';
+  const gold = '#80602f';
+  context.fillStyle = paper;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+  gradient.addColorStop(0, 'rgba(255,255,255,.22)');
+  gradient.addColorStop(0.55, 'rgba(255,255,255,0)');
+  gradient.addColorStop(1, 'rgba(72,48,25,.08)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = gold;
+  context.font = `700 ${sitePanel ? 29 : 25}px Manrope, sans-serif`;
+  context.letterSpacing = '4px';
+  context.fillText(String(data.kicker || data.year || 'DANNY HIRSCH ARTS').toUpperCase(), 64, 78);
+  context.letterSpacing = '0px';
+  context.fillStyle = ink;
+  context.font = `400 ${sitePanel ? 72 : 62}px "Instrument Serif", Georgia, serif`;
+  let cursorY = wrapCanvasText(context, data.title || 'Untitled', 64, 164, canvas.width - 128, sitePanel ? 76 : 66, 2) + 20;
+  context.fillStyle = lightTheme ? '#4c4840' : '#494138';
+  context.font = `500 ${sitePanel ? 28 : 24}px Manrope, sans-serif`;
+  cursorY = wrapCanvasText(context, data.body || data.description || '', 64, cursorY, canvas.width - 128, sitePanel ? 40 : 34, sitePanel ? 4 : 3) + 26;
+  context.strokeStyle = 'rgba(91,69,39,.34)';
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(64, cursorY);
+  context.lineTo(canvas.width - 64, cursorY);
+  context.stroke();
+  if (!sitePanel) {
+    const facts = [
+      ['YEAR', data.year], ['MATERIAL', data.medium],
+      ['DIMENSIONS', data.dimensions], ['AVAILABILITY', data.availability]
+    ];
+    facts.forEach(([label, value], index) => {
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      const x = 64 + column * (canvas.width - 128) / 2;
+      const y = cursorY + 54 + row * 92;
+      context.fillStyle = gold;
+      context.font = '700 17px Manrope, sans-serif';
+      context.fillText(label, x, y);
+      context.fillStyle = ink;
+      context.font = '500 21px Manrope, sans-serif';
+      wrapCanvasText(context, value || '—', x, y + 30, (canvas.width - 160) / 2, 27, 2);
+    });
+  } else {
+    context.fillStyle = gold;
+    context.font = '700 21px Manrope, sans-serif';
+    context.fillText('APPROACH · FOCUS · OPEN', 64, canvas.height - 64);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.flipY = false;
+  texture.anisotropy = 4;
+  texture.needsUpdate = true;
+  return texture;
+};
+
+const createMicroNormalTexture = (kind = 'stone') => {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(size, size);
+  const heights = new Float32Array(size * size);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const grain = Math.sin(x * (kind === 'wood' ? 0.22 : 0.67) + Math.sin(y * 0.11) * 1.8);
+      const pore = Math.sin((x * 12.9898 + y * 78.233) % Math.PI) * 0.32;
+      heights[y * size + x] = grain * (kind === 'wood' ? 0.7 : 0.22) + pore;
+    }
+  }
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const left = heights[y * size + (x + size - 1) % size];
+      const right = heights[y * size + (x + 1) % size];
+      const down = heights[((y + size - 1) % size) * size + x];
+      const up = heights[((y + 1) % size) * size + x];
+      const offset = (y * size + x) * 4;
+      image.data[offset] = 128 + clamp((left - right) * 42, -90, 90);
+      image.data[offset + 1] = 128 + clamp((down - up) * 42, -90, 90);
+      image.data[offset + 2] = 245;
+      image.data[offset + 3] = 255;
+    }
+  }
+  context.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(kind === 'wood' ? 2 : 7, kind === 'wood' ? 5 : 7);
+  texture.colorSpace = THREE.NoColorSpace;
+  return texture;
+};
+
 /**
  * Fullscreen, user-entered 360 gallery. The canvas is decorative to assistive
  * technology; every movement and artwork action has an equivalent DOM control.
@@ -170,8 +284,10 @@ export function initWalkableGallery3D(options = {}) {
       destroy() {},
       goToNextView() {},
       goToPreviousView() {},
+      goToSitePanel() {},
       resetView() {},
       setActive() {},
+      setDemoMode() {},
       setTheme() {}
     };
   };
@@ -225,11 +341,18 @@ export function initWalkableGallery3D(options = {}) {
   const keys = new Set();
   const colliders = [];
   const artworkMeshes = [];
+  const sitePanelMeshes = [];
+  const labelEntries = [];
   const themedMaterials = [];
   const importedLights = [];
   const views = [];
   const listeners = [];
   const playerRadius = 0.34;
+  const detailTextures = {
+    stone: createMicroNormalTexture('stone'),
+    wood: createMicroNormalTexture('wood'),
+    leather: createMicroNormalTexture('leather')
+  };
 
   let destroyed = false;
   let active = false;
@@ -244,8 +367,44 @@ export function initWalkableGallery3D(options = {}) {
   let startTarget = new THREE.Vector3(0, 2.4, -2.8);
   let currentViewIndex = -1;
   let focusedArtwork = null;
+  let focusedSitePanel = null;
+  let demoMode = false;
   let lastFocusCheck = 0;
   let themeTransition = 1;
+
+  const refreshLabelMaterials = () => {
+    const lightTheme = currentTheme === 'light';
+    labelEntries.forEach((entry) => {
+      entry.material?.map?.dispose?.();
+      entry.material?.dispose?.();
+      const userData = entry.object.userData || {};
+      const sitePanel = Boolean(userData.site_panel_id);
+      const data = sitePanel ? {
+        title: userData.site_title,
+        kicker: userData.site_kicker,
+        body: userData.site_body
+      } : {
+        title: userData.title,
+        year: userData.year,
+        medium: userData.medium,
+        dimensions: userData.dimensions,
+        availability: userData.availability,
+        description: userData.description
+      };
+      entry.material = new THREE.MeshPhysicalMaterial({
+        color: '#ffffff',
+        map: createLabelTexture(data, lightTheme, sitePanel),
+        roughness: 0.32,
+        metalness: 0.02,
+        clearcoat: 0.22,
+        clearcoatRoughness: 0.18,
+        envMapIntensity: 0.52,
+        side: THREE.DoubleSide
+      });
+      entry.object.material = entry.material;
+      entry.object.visible = sitePanel ? demoMode : true;
+    });
+  };
 
   const listen = (target, type, handler, settings) => {
     target.addEventListener(type, handler, settings);
@@ -321,7 +480,7 @@ export function initWalkableGallery3D(options = {}) {
   const goToWork = (direction) => {
     const workIndices = views
       .map((view, index) => ({ index, label: view.label }))
-      .filter(({ label }) => !/entrance|overview/i.test(label))
+      .filter(({ index, label }) => !views[index].object.userData?.demo_only && !/entrance|overview/i.test(label))
       .map(({ index }) => index);
     if (!workIndices.length) return resetView();
     const currentWork = workIndices.indexOf(currentViewIndex);
@@ -356,6 +515,7 @@ export function initWalkableGallery3D(options = {}) {
       entry.light.intensity = entry.targetIntensity;
       if (entry.light.color) entry.light.color.copy(entry.color);
     });
+    if (labelEntries.length) refreshLabelMaterials();
     themeTransition = instant ? 1 : 0;
   };
 
@@ -370,10 +530,31 @@ export function initWalkableGallery3D(options = {}) {
   };
 
   const updateArtworkFocus = () => {
-    if (!artworkMeshes.length) return;
+    if (!artworkMeshes.length && !sitePanelMeshes.length) return;
     raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-    const hit = raycaster.intersectObjects(artworkMeshes, false)[0];
-    const owner = hit ? findMetadataOwner(hit.object) : null;
+    const hit = raycaster.intersectObjects(demoMode ? [...artworkMeshes, ...sitePanelMeshes] : artworkMeshes, false)[0];
+    let owner = hit ? findMetadataOwner(hit.object) : null;
+    if (owner?.userData?.site_panel_id && hit.distance > 6.2) owner = null;
+    if (owner?.userData?.site_panel_id) {
+      const id = owner.userData.site_panel_id;
+      if (id === focusedSitePanel?.id) return;
+      focusedSitePanel = {
+        id,
+        title: owner.userData.site_title || 'Room information',
+        kicker: owner.userData.site_kicker || '3D Site Demo',
+        body: owner.userData.site_body || '',
+        link: owner.userData.site_link || '',
+        linkLabel: owner.userData.site_link_label || 'Open information'
+      };
+      focusedArtwork = null;
+      call(options.onArtworkFocus, null);
+      call(options.onSitePanelFocus, focusedSitePanel);
+      return;
+    }
+    if (focusedSitePanel) {
+      focusedSitePanel = null;
+      call(options.onSitePanelFocus, null);
+    }
     const id = owner?.userData?.asset_id || owner?.userData?.artwork_id || null;
     if (id === focusedArtwork?.id) return;
     focusedArtwork = owner ? {
@@ -390,6 +571,30 @@ export function initWalkableGallery3D(options = {}) {
       description: owner.userData.description || ''
     } : null;
     call(options.onArtworkFocus, focusedArtwork);
+  };
+
+  const setDemoMode = (nextDemoMode) => {
+    demoMode = Boolean(nextDemoMode);
+    sitePanelMeshes.forEach((object) => { object.visible = demoMode; });
+    if (!demoMode && focusedSitePanel) {
+      focusedSitePanel = null;
+      call(options.onSitePanelFocus, null);
+    }
+    call(options.onDemoModeChange, { active: demoMode, panels: sitePanelMeshes.length });
+    if (ready) {
+      camera.updateMatrixWorld(true);
+      updateArtworkFocus();
+      renderer.render(scene, camera);
+    }
+  };
+
+  const goToSitePanel = (panelId) => {
+    const index = views.findIndex((view) => view.object.userData?.demo_only && (
+      !panelId || view.target?.userData?.site_panel_id === panelId
+    ));
+    if (index < 0) return;
+    if (!demoMode) setDemoMode(true);
+    goToView(index);
   };
 
   const updateMovement = (delta) => {
@@ -516,6 +721,16 @@ export function initWalkableGallery3D(options = {}) {
       object.receiveShadow = renderer.shadowMap.enabled;
       object.castShadow = renderer.shadowMap.enabled && /frame|bench|vessel|plant/i.test(object.name);
       const owner = findMetadataOwner(object);
+      if (object.userData?.catalogue_label || object.userData?.site_panel_id) {
+        labelEntries.push({ object, material: null });
+        if (object.userData?.site_panel_id) {
+          object.visible = demoMode;
+          sitePanelMeshes.push(object);
+        } else {
+          artworkMeshes.push(object);
+        }
+        return;
+      }
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       materials.filter(Boolean).forEach((material) => {
         const role = readRole(object, material);
@@ -536,6 +751,17 @@ export function initWalkableGallery3D(options = {}) {
             material.clearcoat = Number(material.userData?.web_clearcoat ?? material.clearcoat ?? 0);
             material.clearcoatRoughness = Number(material.userData?.web_clearcoat_roughness ?? material.clearcoatRoughness ?? 0.2);
           }
+          if (/floor_tile|floor_alt|stone|wall/.test(role)) {
+            material.normalMap = detailTextures.stone;
+            material.normalScale?.set(0.17, 0.17);
+          } else if (role === 'wood') {
+            material.normalMap = detailTextures.wood;
+            material.normalScale?.set(0.28, 0.28);
+          } else if (/leather/.test(role)) {
+            material.normalMap = detailTextures.leather;
+            material.normalScale?.set(0.20, 0.20);
+          }
+          material.needsUpdate = true;
           const target = new THREE.Color();
           materialEntries.set(material, { material, role, target });
         }
@@ -580,6 +806,7 @@ export function initWalkableGallery3D(options = {}) {
       const targetName = view.object.userData?.target_node;
       view.target = targetName ? model.getObjectByName(targetName) : null;
     });
+    refreshLabelMaterials();
     resetView();
     applyThemeTargets(true);
   };
@@ -722,6 +949,8 @@ export function initWalkableGallery3D(options = {}) {
       active,
       camera: camera.position.toArray(),
       focusedArtwork,
+      focusedSitePanel,
+      demoMode,
       pitch,
       ready,
       theme: currentTheme,
@@ -730,8 +959,10 @@ export function initWalkableGallery3D(options = {}) {
     }),
     goToNextView: () => goToWork(1),
     goToPreviousView: () => goToWork(-1),
+    goToSitePanel,
     resetView,
     setActive,
+    setDemoMode,
     setTheme
   };
 
