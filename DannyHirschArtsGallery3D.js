@@ -6,8 +6,9 @@ const TAU = Math.PI * 2;
 
 const DARK_PALETTE = {
   wall: '#1a1c1a',
+  fabric: '#24231f',
   architecture: '#151715',
-  ceiling: '#0d0f0e',
+  ceiling: '#070807',
   floor: '#171611',
   floor_tile_a: '#191914',
   floor_tile_b: '#11130f',
@@ -22,17 +23,18 @@ const DARK_PALETTE = {
   leather_seam: '#090806',
   plaque: '#b5aa97',
   plaque_text: '#2c241a',
-  planter: '#28231d',
-  botanical: '#51412e',
-  botanical_leaf: '#725638',
-  botanical_stem: '#3d2c1c',
+  planter: '#151715',
+  botanical: '#29452a',
+  botanical_leaf: '#294d2b',
+  botanical_stem: '#283821',
   vessel: '#27231d'
 };
 
 const LIGHT_PALETTE = {
   wall: '#c1b8aa',
+  fabric: '#aaa195',
   architecture: '#989086',
-  ceiling: '#8a8175',
+  ceiling: '#36332e',
   floor: '#7d7569',
   floor_tile_a: '#a2998b',
   floor_tile_b: '#8c8376',
@@ -47,10 +49,10 @@ const LIGHT_PALETTE = {
   leather_seam: '#403931',
   plaque: '#ded5c6',
   plaque_text: '#3b3023',
-  planter: '#8e8579',
-  botanical: '#78664c',
-  botanical_leaf: '#96734d',
-  botanical_stem: '#64503a',
+  planter: '#4d4b46',
+  botanical: '#52684a',
+  botanical_leaf: '#607a55',
+  botanical_stem: '#4d5d43',
   vessel: '#5f584e'
 };
 
@@ -175,15 +177,15 @@ const createLabelTexture = (data, lightTheme, sitePanel = false) => {
   canvas.width = sitePanel ? 1200 : 1000;
   canvas.height = sitePanel ? 760 : 700;
   const context = canvas.getContext('2d');
-  const paper = lightTheme ? '#e9e2d7' : '#c8bca8';
-  const ink = lightTheme ? '#171611' : '#201b15';
-  const gold = '#80602f';
+  const paper = lightTheme ? '#e9e2d7' : '#171612';
+  const ink = lightTheme ? '#171611' : '#eee7dc';
+  const gold = lightTheme ? '#80602f' : '#bd965b';
   context.fillStyle = paper;
   context.fillRect(0, 0, canvas.width, canvas.height);
   const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, 'rgba(255,255,255,.22)');
+  gradient.addColorStop(0, lightTheme ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.055)');
   gradient.addColorStop(0.55, 'rgba(255,255,255,0)');
-  gradient.addColorStop(1, 'rgba(72,48,25,.08)');
+  gradient.addColorStop(1, lightTheme ? 'rgba(72,48,25,.08)' : 'rgba(118,82,36,.10)');
   context.fillStyle = gradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = gold;
@@ -194,7 +196,7 @@ const createLabelTexture = (data, lightTheme, sitePanel = false) => {
   context.fillStyle = ink;
   context.font = `400 ${sitePanel ? 72 : 62}px "Instrument Serif", Georgia, serif`;
   let cursorY = wrapCanvasText(context, data.title || 'Untitled', 64, 164, canvas.width - 128, sitePanel ? 76 : 66, 2) + 20;
-  context.fillStyle = lightTheme ? '#4c4840' : '#494138';
+  context.fillStyle = lightTheme ? '#4c4840' : '#bdb5aa';
   context.font = `500 ${sitePanel ? 28 : 24}px Manrope, sans-serif`;
   cursorY = wrapCanvasText(context, data.body || data.description || '', 64, cursorY, canvas.width - 128, sitePanel ? 40 : 34, sitePanel ? 4 : 3) + 26;
   context.strokeStyle = 'rgba(91,69,39,.34)';
@@ -571,12 +573,12 @@ export function initWalkableGallery3D(options = {}) {
       entry.target.set(color);
       if (instant && entry.material.color) entry.material.color.copy(entry.target);
     });
-    scene.background = new THREE.Color(isLight ? '#ddd5c8' : '#070807');
-    if ('environmentIntensity' in scene) scene.environmentIntensity = isLight ? 0.62 : 0.54;
-    scene.fog = new THREE.FogExp2(isLight ? '#c6bdaf' : '#080908', isLight ? 0.018 : 0.027);
-    renderer.toneMappingExposure = isLight ? 0.82 : 0.70;
-    ambient.intensity = isLight ? 0.68 : 0.072;
-    hemisphere.intensity = isLight ? 0.92 : 0.23;
+    scene.background = new THREE.Color(isLight ? '#746c61' : '#060706');
+    if ('environmentIntensity' in scene) scene.environmentIntensity = isLight ? 0.78 : 0.68;
+    scene.fog = new THREE.FogExp2(isLight ? '#756d62' : '#070807', isLight ? 0.013 : 0.022);
+    renderer.toneMappingExposure = isLight ? 0.84 : 0.72;
+    ambient.intensity = isLight ? 0.58 : 0.10;
+    hemisphere.intensity = isLight ? 0.76 : 0.27;
     hemisphere.color.set(isLight ? '#fff4df' : '#ffdda7');
     hemisphere.groundColor.set(isLight ? '#6b655c' : '#0c0f0d');
     importedLights.forEach((entry) => {
@@ -584,7 +586,7 @@ export function initWalkableGallery3D(options = {}) {
       // intentionally much stronger than Three's small web exhibition needs.
       // Scale the original rig as a unit so the light geometry and artwork keep
       // their authored relationship without clipping pigment to flat white.
-      entry.targetIntensity = entry.intensity * (isLight ? 0.005 : 0.0105);
+      entry.targetIntensity = entry.intensity * (isLight ? 0.0068 : 0.0115);
       entry.light.intensity = entry.targetIntensity;
       if (entry.light.color) entry.light.color.copy(entry.color);
     });
@@ -892,7 +894,10 @@ export function initWalkableGallery3D(options = {}) {
           }
           if (/floor_tile|floor_alt|stone|wall/.test(role)) {
             material.normalMap = detailTextures.stone;
-            material.normalScale?.set(0.17, 0.17);
+            const normalStrength = role === 'wall'
+              ? 0.045
+              : (/floor_tile|floor_alt/.test(role) ? 0.085 : 0.10);
+            material.normalScale?.set(normalStrength, normalStrength);
           } else if (role === 'wood') {
             material.normalMap = detailTextures.wood;
             material.normalScale?.set(0.28, 0.28);
@@ -900,11 +905,16 @@ export function initWalkableGallery3D(options = {}) {
             material.normalMap = detailTextures.leather;
             material.normalScale?.set(0.20, 0.20);
           }
+          if (/botanical_leaf|botanical/.test(role)) {
+            material.side = THREE.DoubleSide;
+            material.envMapIntensity = 0.12;
+            material.roughness = Math.max(0.48, material.roughness || 0);
+          }
           material.needsUpdate = true;
           const target = new THREE.Color();
           const hasGeneratedMap = Boolean(material.map) && (
             Boolean(material.userData?.generated_architectural_texture)
-            || /honed_stone|walnut|saddle_leather/i.test(material.name)
+            || /marble|mineral_fabric|stained_oak|walnut|saddle_leather/i.test(material.name)
           );
           materialEntries.set(material, { material, role, target, hasGeneratedMap });
         }

@@ -546,12 +546,12 @@ const ensureGalleryRoom = () => {
   roomExperience.classList.remove("is-gallery-fallback");
   roomExperience.classList.add("is-gallery-loading");
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-24")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-25")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
         mount: galleryMount,
-        modelUrl: "assets/cinematic/danny-gallery-360.glb",
+        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260722-gallery-25",
         theme: body.dataset.theme,
         onLoading: ({ progress }) => {
           const status = galleryLoading?.querySelector("small");
@@ -934,7 +934,7 @@ const loadPrivateRoomExperience = async () => {
   }
 
   try {
-    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-24");
+    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-25");
     privateRoomController = initPrivateRoom3D({
       root: installation,
       stage: privateRoomStage,

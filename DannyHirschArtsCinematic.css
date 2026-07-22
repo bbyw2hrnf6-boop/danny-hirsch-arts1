@@ -1466,6 +1466,23 @@ body[data-theme="light"] .room-experience__reticle { border-color: rgba(24, 23, 
 body[data-theme="light"] .room-experience.has-artwork-focus .room-experience__reticle { border-color: #8c672e; color: #8c672e; }
 body[data-theme="light"] .room-experience__loading { color: rgba(24, 23, 19, 0.72); }
 
+/* Light mode still enters a dark architectural gallery. Its materials lift,
+   while exhibition signage stays pale and readable over the WebGL scene. */
+body[data-theme="light"] .room-experience.is-webgl-ready {
+  color: #f5f0e8;
+  background: #080806;
+}
+
+body[data-theme="light"] .room-experience.is-webgl-ready .room-experience__header p,
+body[data-theme="light"] .room-experience.is-webgl-ready .room-experience__description {
+  color: rgba(245, 240, 232, 0.68);
+}
+
+body[data-theme="light"] .room-experience.is-webgl-ready .room-experience__header h2 {
+  color: #f5f0e8;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.84);
+}
+
 body[data-theme="light"] .room-experience :is(button, a):focus-visible {
   outline: 2px solid #17150f;
   outline-offset: 3px;
