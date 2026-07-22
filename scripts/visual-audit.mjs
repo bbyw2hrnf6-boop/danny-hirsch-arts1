@@ -169,6 +169,11 @@ await evaluate("document.body.dataset.theme='dark'; localStorage.setItem('dha-th
 await pause(700);
 await capture('audit-desktop-room-dark.png');
 await recordLayout('desktop-room-dark');
+await evaluate("document.querySelector('[data-room-enter]').click(); true");
+await pause(850);
+await capture('audit-desktop-room-immersive.png');
+await evaluate("document.querySelector('[data-room-close]').click(); true");
+await pause(320);
 
 await evaluate("document.querySelector('[data-cookie-reject]')?.click(); true");
 for (const [selector, name] of [
@@ -200,6 +205,11 @@ await scrollTo('#installation', 2800);
 await decodeImagesWithin('#installation');
 await capture('audit-mobile-room.png');
 await recordLayout('mobile-room');
+await evaluate("document.querySelector('[data-room-enter]').click(); true");
+await pause(700);
+await capture('audit-mobile-room-immersive.png');
+await evaluate("document.querySelector('[data-room-close]').click(); true");
+await pause(280);
 await scrollTo('#collection .art-chapter:nth-child(2)');
 await decodeImagesWithin('#collection .art-chapter:nth-child(2)');
 await capture('audit-mobile-collection.png');

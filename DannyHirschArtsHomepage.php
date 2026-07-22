@@ -114,8 +114,8 @@ function imageSizeAttributes(string $path): string
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260722-threshold-11">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260722-threshold-11">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260722-threshold-12">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260722-threshold-12">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -161,9 +161,10 @@ function imageSizeAttributes(string $path): string
         <div class="hero-cinematic" aria-hidden="true">
           <img class="hero-cinematic__poster" src="assets/cinematic/threshold-poster.webp" alt="" width="1600" height="900" fetchpriority="high">
           <video class="hero-cinematic__film" muted playsinline preload="none" poster="assets/cinematic/threshold-poster.webp" data-cinematic-video>
-            <source data-src="assets/cinematic/threshold-intro.webm" type="video/webm">
             <source data-src="assets/cinematic/threshold-intro.mp4" type="video/mp4">
+            <source data-src="assets/cinematic/threshold-intro.webm" type="video/webm">
           </video>
+          <img class="hero-cinematic__botanical" src="assets/cinematic/threshold-botanical.webp" alt="" width="900" height="1400" decoding="async" fetchpriority="low">
           <span class="hero-cinematic__veil"></span>
           <span class="hero-cinematic__light"></span>
         </div>
@@ -247,7 +248,10 @@ function imageSizeAttributes(string $path): string
               <div class="private-room-hud__index" aria-hidden="true"><span>Spatial study</span><i></i><span>02 / 07</span></div>
               <div class="private-room-hud__copy">
                 <p>Modelled from genuine wARTrobe photography</p>
-                <a class="room-inspect js-lightbox-trigger" href="assets/gallery/gallery-04.jpg" aria-label="Inspect the genuine wARTrobe front photograph" data-lightbox-src="assets/gallery/gallery-04.jpg" data-lightbox-title="wARTrobe · Front" data-lightbox-caption="Genuine photograph of the complete three-panel painted frontage.">Inspect the real object <span aria-hidden="true">↗</span></a>
+                <div class="private-room-hud__actions">
+                  <button class="room-enter" type="button" data-room-enter>Enter room <span aria-hidden="true">↗</span></button>
+                  <a class="room-inspect js-lightbox-trigger" href="assets/gallery/gallery-04.jpg" aria-label="Inspect the genuine wARTrobe front photograph" data-lightbox-src="assets/gallery/gallery-04.jpg" data-lightbox-title="wARTrobe · Front" data-lightbox-caption="Genuine photograph of the complete three-panel painted frontage.">Inspect object <span aria-hidden="true">↗</span></a>
+                </div>
               </div>
             </div>
 
@@ -430,6 +434,27 @@ function imageSizeAttributes(string $path): string
       <div class="footer-bottom"><span>&copy; <?php echo date('Y'); ?> Danny Hirsch Arts</span><span>All rights reserved</span></div>
     </footer>
 
+    <dialog class="room-experience" data-room-experience aria-labelledby="room-experience-title" aria-describedby="room-experience-description">
+      <div class="room-experience__stage" data-room-experience-stage>
+        <img class="room-experience__view room-experience__view--center is-active" src="assets/cinematic/threshold-room-center.webp" alt="" width="1800" height="1125" decoding="async">
+        <img class="room-experience__view room-experience__view--left" src="assets/cinematic/threshold-room-left.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+        <img class="room-experience__view room-experience__view--right" src="assets/cinematic/threshold-room-right.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+        <img class="room-experience__view room-experience__view--light" src="assets/cinematic/threshold-room-light.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+        <span class="room-experience__light" aria-hidden="true"></span>
+        <span class="room-experience__grain" aria-hidden="true"></span>
+        <header class="room-experience__header">
+          <div><p>Private Room · Spatial study</p><h2 id="room-experience-title">Move through the room.</h2></div>
+          <button class="room-experience__close" type="button" data-room-close aria-label="Leave private room"><span aria-hidden="true"></span></button>
+        </header>
+        <p class="room-experience__description" id="room-experience-description">Move your pointer or finger to shift perspective and light. Use the arrow keys or camera controls to travel between three curated viewpoints.</p>
+        <div class="room-experience__controls" aria-label="Room camera controls">
+          <button type="button" data-room-prev aria-label="Previous room viewpoint">←</button>
+          <span><i aria-hidden="true"></i><b data-room-view-label>Center · 02</b></span>
+          <button type="button" data-room-next aria-label="Next room viewpoint">→</button>
+        </div>
+      </div>
+    </dialog>
+
     <div class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightbox-title" aria-describedby="lightbox-description" aria-hidden="true" inert>
       <button class="lightbox-close" type="button" aria-label="Close artwork preview"><span aria-hidden="true"></span></button>
       <button class="lightbox-nav lightbox-prev" type="button" aria-label="View previous image">←</button>
@@ -448,6 +473,6 @@ function imageSizeAttributes(string $path): string
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260722-threshold-11" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260722-threshold-12" defer></script>
   </body>
 </html>

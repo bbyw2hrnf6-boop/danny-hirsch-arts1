@@ -34,6 +34,14 @@ const pageMain = document.querySelector("main");
 const pageFooter = document.querySelector(".site-footer");
 const privateRoomStage = document.querySelector("[data-private-room-stage]");
 const privateRoomStatus = document.querySelector(".private-room-loader small");
+const roomEnter = document.querySelector("[data-room-enter]");
+const roomExperience = document.querySelector("[data-room-experience]");
+const roomExperienceStage = document.querySelector("[data-room-experience-stage]");
+const roomExperienceClose = document.querySelector("[data-room-close]");
+const roomExperiencePrev = document.querySelector("[data-room-prev]");
+const roomExperienceNext = document.querySelector("[data-room-next]");
+const roomExperienceLabel = document.querySelector("[data-room-view-label]");
+const roomExperienceViews = ["left", "center", "right"].map((view) => document.querySelector(`.room-experience__view--${view}`));
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const mobileNavigation = window.matchMedia("(max-width: 1120px)");
@@ -53,6 +61,8 @@ let ambientIsOn = false;
 let privateRoomController = null;
 let privateRoomImportObserver = null;
 let roomInteractionUntil = 0;
+let roomExperienceIndex = 1;
+let roomExperienceTrigger = null;
 
 const storage = {
   get(key, session = false) {
@@ -358,6 +368,80 @@ const setRoomCinematicPosition = (event) => {
 roomCamera?.addEventListener("pointerdown", setRoomCinematicPosition, { passive: true });
 roomCamera?.addEventListener("pointermove", setRoomCinematicPosition, { passive: true });
 
+const setRoomExperienceView = (index) => {
+  if (!roomExperienceStage) return;
+  roomExperienceIndex = (index + roomExperienceViews.length) % roomExperienceViews.length;
+  roomExperienceViews.forEach((view, viewIndex) => view?.classList.toggle("is-active", viewIndex === roomExperienceIndex));
+  roomExperienceStage.style.setProperty("--experience-pan", String(roomExperienceIndex - 1));
+  if (roomExperienceLabel) {
+    const names = ["Left · 01", "Center · 02", "Right · 03"];
+    roomExperienceLabel.textContent = names[roomExperienceIndex];
+  }
+};
+
+const setRoomExperiencePosition = (event) => {
+  if (!roomExperienceStage || reducedMotion.matches) return;
+  const rect = roomExperienceStage.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+  roomExperienceStage.style.setProperty("--experience-x", `${(x * 100).toFixed(2)}%`);
+  roomExperienceStage.style.setProperty("--experience-y", `${(y * 100).toFixed(2)}%`);
+  roomExperienceStage.style.setProperty("--experience-shift-x", `${((x - 0.5) * (finePointer.matches ? 24 : 34)).toFixed(2)}px`);
+  roomExperienceStage.style.setProperty("--experience-shift-y", `${((y - 0.5) * (finePointer.matches ? 15 : 22)).toFixed(2)}px`);
+};
+
+const openRoomExperience = () => {
+  if (!roomExperience) return;
+  roomExperienceTrigger = roomEnter || document.activeElement;
+  setRoomExperienceView(1);
+  body.classList.add("room-experience-open");
+  if (typeof roomExperience.showModal === "function") roomExperience.showModal();
+  else roomExperience.setAttribute("open", "");
+  roomExperienceClose?.focus({ preventScroll: true });
+};
+
+const closeRoomExperience = () => {
+  if (!roomExperience?.open) return;
+  body.classList.remove("room-experience-open");
+  if (typeof roomExperience.close === "function") roomExperience.close();
+  else {
+    roomExperience.removeAttribute("open");
+  }
+  roomExperienceTrigger?.focus({ preventScroll: true });
+};
+
+roomEnter?.addEventListener("click", openRoomExperience);
+roomExperienceClose?.addEventListener("click", closeRoomExperience);
+roomExperiencePrev?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex - 1));
+roomExperienceNext?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex + 1));
+roomExperienceStage?.addEventListener("pointermove", setRoomExperiencePosition, { passive: true });
+roomExperienceStage?.addEventListener("pointerdown", (event) => {
+  setRoomExperiencePosition(event);
+  const rect = roomExperienceStage.getBoundingClientRect();
+  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  setRoomExperienceView(x < 0.34 ? 0 : x > 0.66 ? 2 : 1);
+}, { passive: true });
+roomExperience?.addEventListener("close", () => {
+  body.classList.remove("room-experience-open");
+  roomExperienceTrigger?.focus({ preventScroll: true });
+});
+roomExperience?.addEventListener("click", (event) => {
+  if (event.target === roomExperience) closeRoomExperience();
+});
+
+window.addEventListener("keydown", (event) => {
+  if (!roomExperience?.open) return;
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    setRoomExperienceView(roomExperienceIndex - 1);
+  }
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    setRoomExperienceView(roomExperienceIndex + 1);
+  }
+});
+
 if (finePointer.matches && !reducedMotion.matches) {
   hero?.addEventListener("pointermove", (event) => setPointerPosition(hero, event, 24));
   wartrobeStage?.addEventListener("pointermove", (event) => setPointerPosition(wartrobeStage, event, 12));
@@ -603,7 +687,7 @@ const loadPrivateRoomExperience = async () => {
   }
 
   try {
-    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-threshold-11");
+    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-threshold-12");
     privateRoomController = initPrivateRoom3D({
       root: installation,
       stage: privateRoomStage,

@@ -309,6 +309,162 @@ def add_dust(emissive_mat: bpy.types.Material) -> None:
         assign_material(particle, emissive_mat)
 
 
+def tag_botanical(obj: bpy.types.Object, *, overlay: bool = True) -> bpy.types.Object:
+    obj["botanical_render"] = True
+    if overlay:
+        obj["botanical_overlay"] = True
+    return obj
+
+
+def add_stem(
+    name: str,
+    points: list[tuple[float, float, float]],
+    mat: bpy.types.Material,
+    *,
+    radius: float = 0.018,
+) -> bpy.types.Object:
+    curve = bpy.data.curves.new(name, "CURVE")
+    curve.dimensions = "3D"
+    curve.resolution_u = 2
+    curve.bevel_depth = radius
+    curve.bevel_resolution = 3
+    spline = curve.splines.new("BEZIER")
+    spline.bezier_points.add(len(points) - 1)
+    for point, coordinate in zip(spline.bezier_points, points):
+        point.co = coordinate
+        point.handle_left_type = "AUTO"
+        point.handle_right_type = "AUTO"
+    obj = bpy.data.objects.new(name, curve)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, mat)
+    return tag_botanical(obj)
+
+
+def add_dried_leaf(
+    name: str,
+    location: tuple[float, float, float],
+    size: float,
+    rotation: tuple[float, float, float],
+    mat: bpy.types.Material,
+    vein_mat: bpy.types.Material,
+) -> bpy.types.Object:
+    # A narrow, irregular lanceolate profile reads as a dried leaf at room
+    # scale; the earlier broad diamond silhouette looked like folded paper.
+    width = size * 0.245
+    length = size
+    vertices = [
+        (0.0, 0.0, 0.0),
+        (-width * 0.42, 0.012, length * 0.12),
+        (-width * 0.78, 0.032, length * 0.31),
+        (-width, 0.05, length * 0.51),
+        (-width * 0.78, 0.035, length * 0.72),
+        (-width * 0.38, 0.014, length * 0.9),
+        (0.0, -0.012, length),
+        (width * 0.34, -0.028, length * 0.89),
+        (width * 0.72, -0.046, length * 0.7),
+        (width * 0.94, -0.055, length * 0.48),
+        (width * 0.72, -0.032, length * 0.29),
+        (width * 0.38, -0.01, length * 0.11),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    mesh.from_pydata(vertices, [], [tuple(range(len(vertices)))])
+    mesh.update()
+    leaf = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(leaf)
+    leaf.location = location
+    leaf.rotation_euler = rotation
+    assign_material(leaf, mat)
+    solidify = leaf.modifiers.new("Paper-thin dried material", "SOLIDIFY")
+    solidify.thickness = 0.008
+    solidify.offset = 0.0
+    bevel = leaf.modifiers.new("Soft dried edge", "BEVEL")
+    bevel.width = 0.008
+    bevel.segments = 3
+    vein = add_stem(
+        f"{name}_Vein",
+        [(0.0, -0.006, length * 0.05), (0.0, 0.014, length * 0.5), (0.0, -0.004, length * 0.92)],
+        vein_mat,
+        radius=max(0.0035, size * 0.009),
+    )
+    vein.parent = leaf
+    vein.location = (0.0, 0.0, 0.0)
+    leaf["material_story"] = "procedural dried botanical; decorative, not an artwork"
+    return tag_botanical(leaf)
+
+
+def add_botanical_installation(
+    stem_mat: bpy.types.Material,
+    leaf_materials: list[bpy.types.Material],
+    vessel_mat: bpy.types.Material,
+) -> None:
+    """A restrained dried-leaf arrangement connecting the room to the practice."""
+    random.seed(1963)
+    origin = Vector((5.32, 2.72, 1.02))
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=48,
+        radius1=0.58,
+        radius2=0.43,
+        depth=1.12,
+        location=(origin.x, origin.y, 0.56),
+    )
+    vessel = bpy.context.object
+    vessel.name = "Botanical_Vessel"
+    assign_material(vessel, vessel_mat)
+    bevel = vessel.modifiers.new("Hand-thrown vessel edge", "BEVEL")
+    bevel.width = 0.045
+    bevel.segments = 4
+    tag_botanical(vessel, overlay=False)
+
+    bpy.ops.mesh.primitive_torus_add(
+        major_radius=0.42,
+        minor_radius=0.038,
+        major_segments=48,
+        minor_segments=10,
+        location=(origin.x, origin.y, 1.115),
+    )
+    rim = bpy.context.object
+    rim.name = "Botanical_Vessel_Rim"
+    assign_material(rim, vessel_mat)
+    tag_botanical(rim, overlay=False)
+
+    for index in range(11):
+        angle = random.uniform(-1.0, 1.0)
+        height = random.uniform(2.25, 4.25)
+        reach = random.uniform(0.45, 1.3)
+        endpoint = Vector((
+            origin.x + math.sin(angle) * reach,
+            origin.y + random.uniform(-0.42, 0.32),
+            origin.z + height,
+        ))
+        midpoint = origin.lerp(endpoint, 0.52)
+        midpoint.x += random.uniform(-0.22, 0.22)
+        midpoint.y += random.uniform(-0.14, 0.14)
+        add_stem(
+            f"Botanical_Stem_{index:02d}",
+            [tuple(origin), tuple(midpoint), tuple(endpoint)],
+            stem_mat,
+            radius=random.uniform(0.012, 0.023),
+        )
+        for leaf_index, factor in enumerate((0.47, 0.68, 0.86)):
+            position = origin.lerp(endpoint, factor)
+            position.x += random.uniform(-0.12, 0.12)
+            side = -1 if (index + leaf_index) % 2 else 1
+            rotation = (
+                random.uniform(-0.45, 0.45),
+                random.uniform(-0.6, 0.6),
+                angle + side * random.uniform(0.55, 1.2),
+            )
+            leaf = add_dried_leaf(
+                f"Botanical_Leaf_{index:02d}_{leaf_index:02d}",
+                tuple(position),
+                random.uniform(0.28, 0.5),
+                rotation,
+                random.choice(leaf_materials),
+                stem_mat,
+            )
+            leaf.scale.x = side
+
+
 def keyframe_camera(camera: bpy.types.Object, target: bpy.types.Object) -> None:
     camera_points = {
         FRAME_START: ((-0.68, 3.04, 2.86), 55.0, 2.2),
@@ -391,6 +547,13 @@ def build_scene() -> bpy.types.Scene:
     floor_a = add_micro_surface(material("Room_Floor", "#111210", roughness=0.30, metallic=0.12), scale=8.0, strength=0.13, distance=0.045)
     floor_b = add_micro_surface(material("Room_Floor_Alt", "#181713", roughness=0.38, metallic=0.08), scale=6.8, strength=0.11, distance=0.05)
     bench_mat = add_micro_surface(material("Room_Bench", "#171511", roughness=0.38), scale=16.0, detail=3.0, strength=0.08, distance=0.025)
+    botanical_stem = add_micro_surface(material("Botanical_Stem", "#332719", roughness=0.84), scale=18.0, detail=3.0, strength=0.18, distance=0.025)
+    botanical_leaves = [
+        add_micro_surface(material("Botanical_Leaf_Ochre", "#725332", roughness=0.92), scale=11.0, detail=5.0, strength=0.24, distance=0.035),
+        add_micro_surface(material("Botanical_Leaf_Smoke", "#51483a", roughness=0.94), scale=13.0, detail=4.0, strength=0.2, distance=0.03),
+        add_micro_surface(material("Botanical_Leaf_Bronze", "#8d6840", roughness=0.88), scale=9.0, detail=5.0, strength=0.26, distance=0.04),
+    ]
+    botanical_vessel = add_micro_surface(material("Botanical_Vessel", "#25231f", roughness=0.58, metallic=0.04), scale=7.5, detail=5.0, strength=0.16, distance=0.045)
     emissive = material(
         "Warm aperture",
         "#7b5520",
@@ -450,6 +613,8 @@ def build_scene() -> bpy.types.Scene:
     add_box("Bench_ShadowCore", (0.0, -1.72, 0.42), (3.16, 0.66, 0.20), recess_mat, bevel=0.075)
     for x in (-1.36, 1.36):
         add_box(f"Bench_Foot_{x:+.0f}", (x, -1.72, 0.22), (0.16, 0.68, 0.44), bronze, bevel=0.035)
+
+    add_botanical_installation(botanical_stem, botanical_leaves, botanical_vessel)
 
     # Track and fixtures.
     add_box("Track_Rail", (0.0, 0.72, 6.76), (7.70, 0.075, 0.075), recess_mat, bevel=0.02)
@@ -525,8 +690,10 @@ def save_render(
     output_path: Path,
     *,
     resolution: tuple[int, int] | None = None,
+    evaluate_frame: bool = True,
 ) -> None:
-    scene.frame_set(frame)
+    if evaluate_frame:
+        scene.frame_set(frame)
     previous_resolution = (scene.render.resolution_x, scene.render.resolution_y)
     if resolution:
         scene.render.resolution_x, scene.render.resolution_y = resolution
@@ -540,10 +707,11 @@ def save_render(
 
 def render_private_room_views(scene: bpy.types.Scene) -> None:
     """Bake three high-quality viewpoints for responsive, photographic web depth."""
-    camera = scene.camera
-    original_location = camera.location.copy()
-    original_rotation = camera.rotation_euler.copy()
-    original_lens = camera.data.lens
+    source_camera = scene.camera
+    camera_data = source_camera.data.copy()
+    camera = bpy.data.objects.new("Render_PrivateRoom_View_Camera", camera_data)
+    bpy.context.collection.objects.link(camera)
+    scene.camera = camera
     target = Vector((0.0, 3.58, 2.48))
     views = {
         "left": (-1.15, -8.25, 3.04),
@@ -560,18 +728,20 @@ def render_private_room_views(scene: bpy.types.Scene) -> None:
             FRAME_ROOM,
             OUTPUT_DIR / f"threshold-room-{name}.webp",
             resolution=(1800, 1125),
+            evaluate_frame=False,
         )
-    camera.location = original_location
-    camera.rotation_euler = original_rotation
-    camera.data.lens = original_lens
+    scene.camera = source_camera
+    bpy.data.objects.remove(camera, do_unlink=True)
+    bpy.data.cameras.remove(camera_data)
 
 
 def render_private_room_light_view(scene: bpy.types.Scene) -> None:
     """Create a genuine light-gallery render instead of filtering the dark room in CSS."""
-    camera = scene.camera
-    original_location = camera.location.copy()
-    original_rotation = camera.rotation_euler.copy()
-    original_lens = camera.data.lens
+    source_camera = scene.camera
+    camera_data = source_camera.data.copy()
+    camera = bpy.data.objects.new("Render_PrivateRoom_Light_Camera", camera_data)
+    bpy.context.collection.objects.link(camera)
+    scene.camera = camera
     original_exposure = scene.view_settings.exposure
     world_background = scene.world.node_tree.nodes.get("Background")
     original_world_color = world_background.inputs["Color"].default_value[:]
@@ -607,7 +777,7 @@ def render_private_room_light_view(scene: bpy.types.Scene) -> None:
     camera.location = (0.0, -8.72, 2.96)
     camera.data.lens = 29.0
     look_at(camera, Vector((0.0, 3.58, 2.48)))
-    save_render(scene, FRAME_ROOM, OUTPUT_DIR / "threshold-room-light.webp", resolution=(1800, 1125))
+    save_render(scene, FRAME_ROOM, OUTPUT_DIR / "threshold-room-light.webp", resolution=(1800, 1125), evaluate_frame=False)
     for socket, value in material_state:
         socket.default_value = value
     for light, energy in light_state:
@@ -615,9 +785,47 @@ def render_private_room_light_view(scene: bpy.types.Scene) -> None:
     world_background.inputs["Color"].default_value = original_world_color
     world_background.inputs["Strength"].default_value = original_world_strength
     scene.view_settings.exposure = original_exposure
-    camera.location = original_location
-    camera.rotation_euler = original_rotation
-    camera.data.lens = original_lens
+    scene.camera = source_camera
+    bpy.data.objects.remove(camera, do_unlink=True)
+    bpy.data.cameras.remove(camera_data)
+
+
+def render_botanical_overlay(scene: bpy.types.Scene) -> None:
+    """Bake the room's dried botanical as a transparent reusable atmosphere layer."""
+    source_camera = scene.camera
+    camera_data = source_camera.data.copy()
+    camera = bpy.data.objects.new("Render_Botanical_Overlay_Camera", camera_data)
+    bpy.context.collection.objects.link(camera)
+    scene.camera = camera
+    original_transparent = scene.render.film_transparent
+    original_color_mode = scene.render.image_settings.color_mode
+    world_background = scene.world.node_tree.nodes.get("Background")
+    original_world_strength = world_background.inputs["Strength"].default_value
+    render_states = {obj: obj.hide_render for obj in scene.objects}
+    for obj in scene.objects:
+        obj.hide_render = not (obj.get("botanical_overlay") or obj.type in {"LIGHT", "CAMERA"})
+    scene.render.film_transparent = True
+    scene.render.image_settings.color_mode = "RGBA"
+    world_background.inputs["Strength"].default_value = 0.0
+    scene.frame_set(FRAME_ROOM)
+    camera.location = (5.28, -2.35, 3.1)
+    camera.data.lens = 62.0
+    look_at(camera, Vector((5.30, 2.72, 2.92)))
+    save_render(
+        scene,
+        FRAME_ROOM,
+        OUTPUT_DIR / "threshold-botanical.webp",
+        resolution=(900, 1400),
+        evaluate_frame=False,
+    )
+    for obj, hidden in render_states.items():
+        obj.hide_render = hidden
+    scene.render.film_transparent = original_transparent
+    scene.render.image_settings.color_mode = original_color_mode
+    world_background.inputs["Strength"].default_value = original_world_strength
+    scene.camera = source_camera
+    bpy.data.objects.remove(camera, do_unlink=True)
+    bpy.data.cameras.remove(camera_data)
 
 
 def export_glb() -> None:
@@ -784,10 +992,13 @@ def main() -> None:
     )
     render_private_room_views(scene)
     render_private_room_light_view(scene)
+    render_botanical_overlay(scene)
     export_glb()
     if "--render-video" in sys.argv:
         render_video(scene)
         render_webm(scene)
+    elif "--render-mp4" in sys.argv:
+        render_video(scene)
     elif "--render-webm" in sys.argv:
         render_webm(scene)
     scene.frame_set(FRAME_ROOM)

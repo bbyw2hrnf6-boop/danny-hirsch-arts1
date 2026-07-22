@@ -79,6 +79,28 @@ const introClosed = await evaluate(`(() => ({
   heroContentInert: document.querySelector('.hero-content').inert
 }))()`);
 
+await navigate('#installation', 900);
+await evaluate("document.querySelector('[data-room-enter]').focus(); document.querySelector('[data-room-enter]').click(); true");
+await pause(220);
+const roomOpen = await evaluate(`(() => ({
+  open: document.querySelector('[data-room-experience]').open,
+  bodyLocked: document.body.classList.contains('room-experience-open'),
+  focusOnClose: document.activeElement === document.querySelector('[data-room-close]'),
+  label: document.querySelector('[data-room-view-label]').textContent
+}))()`);
+await key('ArrowRight');
+const roomMoved = await evaluate(`(() => ({
+  label: document.querySelector('[data-room-view-label]').textContent,
+  rightActive: document.querySelector('.room-experience__view--right').classList.contains('is-active')
+}))()`);
+await evaluate("document.querySelector('[data-room-close]').click(); true");
+await pause(120);
+const roomClosed = await evaluate(`(() => ({
+  open: document.querySelector('[data-room-experience]').open,
+  bodyLocked: document.body.classList.contains('room-experience-open'),
+  focusReturned: document.activeElement === document.querySelector('[data-room-enter]')
+}))()`);
+
 await navigate('#collection', 1300);
 await evaluate("document.querySelector('#collection .js-lightbox-trigger').click(); true");
 await pause(180);
@@ -142,6 +164,6 @@ const form = await evaluate(`(() => ({
   labels: [...document.querySelectorAll('.inquiry-form label')].every((label) => Boolean(label.querySelector('input,textarea')))
 }))()`);
 
-const report = { intro, introClosed, lightboxOpen, lightboxClosed, menuOpen, menuClosed, theme, reduced, form };
+const report = { intro, introClosed, roomOpen, roomMoved, roomClosed, lightboxOpen, lightboxClosed, menuOpen, menuClosed, theme, reduced, form };
 console.log(JSON.stringify(report, null, 2));
 socket.close();

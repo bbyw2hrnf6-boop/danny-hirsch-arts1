@@ -96,6 +96,7 @@ main > section[data-chapter]:not(.hero)::after {
 
 .hero-cinematic__poster,
 .hero-cinematic__film,
+.hero-cinematic__botanical,
 .hero-cinematic__veil,
 .hero-cinematic__light {
   position: absolute;
@@ -124,6 +125,44 @@ main > section[data-chapter]:not(.hero)::after {
   opacity: 1;
 }
 
+.hero-cinematic__botanical {
+  top: auto;
+  right: -5vw;
+  bottom: -18vh;
+  left: auto;
+  z-index: 3;
+  width: min(44vw, 720px);
+  height: min(88vh, 980px);
+  object-fit: contain;
+  object-position: right bottom;
+  filter: brightness(0.68) saturate(0.74) drop-shadow(-24px 18px 34px rgba(0, 0, 0, 0.72));
+  opacity: 0;
+  transform: translate3d(7%, 12%, 0) rotate(1.8deg) scale(1.12);
+  transform-origin: 70% 100%;
+  transition: opacity 1100ms ease, transform 2200ms var(--ease-cinema), filter 900ms ease;
+}
+
+.opening-active[data-opening-phase="surface"] .hero-cinematic__botanical {
+  opacity: 0.62;
+  transform: translate3d(1%, 4%, 0) rotate(0.6deg) scale(1.04);
+}
+
+.opening-active[data-opening-phase="work"] .hero-cinematic__botanical {
+  opacity: 0.34;
+  transform: translate3d(-2%, 0, 0) rotate(-0.4deg) scale(0.98);
+}
+
+.opening-active[data-opening-phase="room"] .hero-cinematic__botanical {
+  opacity: 0.14;
+  transform: translate3d(-4%, -2%, 0) rotate(-1deg) scale(0.94);
+}
+
+.opening-active[data-opening-phase="identity"] .hero-cinematic__botanical,
+.opening-complete .hero-cinematic__botanical {
+  opacity: 0.08;
+  transform: translate3d(-5%, -3%, 0) rotate(-1.3deg) scale(0.92);
+}
+
 .hero-cinematic__veil {
   z-index: 2;
   background:
@@ -132,7 +171,7 @@ main > section[data-chapter]:not(.hero)::after {
 }
 
 .hero-cinematic__light {
-  z-index: 3;
+  z-index: 4;
   left: calc(var(--pointer-x) - 50%);
   background: radial-gradient(circle at 60% 36%, rgba(211, 174, 111, 0.11), transparent 28%);
   mix-blend-mode: screen;
@@ -169,6 +208,11 @@ body[data-theme="light"] .hero-cinematic__veil {
 
 body[data-theme="light"] .hero-cinematic__light {
   background: radial-gradient(circle at 60% 36%, rgba(184, 149, 95, 0.18), transparent 30%);
+  mix-blend-mode: multiply;
+}
+
+body[data-theme="light"] .hero-cinematic__botanical {
+  filter: sepia(0.18) brightness(0.76) saturate(0.62) drop-shadow(-20px 18px 30px rgba(76, 60, 39, 0.22));
   mix-blend-mode: multiply;
 }
 
@@ -568,13 +612,22 @@ body[data-theme="light"] .hero-cinematic__light {
   text-align: right;
 }
 
+.private-room-hud__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+}
+
 .private-room-hud__copy p {
   color: rgba(244, 239, 230, 0.5);
   font-size: 0.52rem;
   letter-spacing: 0.08em;
 }
 
-.room-inspect {
+.room-inspect,
+.room-enter {
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -590,10 +643,279 @@ body[data-theme="light"] .hero-cinematic__light {
   transition: border-color 300ms ease, background 300ms ease;
 }
 
+.room-enter {
+  border-color: rgba(198, 163, 107, 0.68);
+  color: #0a0b09;
+  background: #c6a36b;
+  cursor: pointer;
+}
+
 .room-inspect:hover,
-.room-inspect:focus-visible {
+.room-inspect:focus-visible,
+.room-enter:hover,
+.room-enter:focus-visible {
   border-color: var(--gold);
   background: rgba(6, 7, 7, 0.92);
+  color: #f4efe6;
+}
+
+/* Fullscreen room: a curated camera rail, not game navigation. */
+
+.room-experience {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  color: #f4efe6;
+  background: #050605;
+  opacity: 0;
+  transition: display 420ms allow-discrete, overlay 420ms allow-discrete, opacity 420ms ease;
+}
+
+.room-experience[open] {
+  display: block;
+  opacity: 1;
+}
+
+@starting-style {
+  .room-experience[open] { opacity: 0; }
+}
+
+.room-experience::backdrop {
+  background: #030403;
+  opacity: 0;
+  transition: display 420ms allow-discrete, overlay 420ms allow-discrete, opacity 420ms ease;
+}
+
+.room-experience[open]::backdrop { opacity: 1; }
+
+@starting-style {
+  .room-experience[open]::backdrop { opacity: 0; }
+}
+
+.room-experience__stage {
+  --experience-x: 50%;
+  --experience-y: 40%;
+  --experience-shift-x: 0px;
+  --experience-shift-y: 0px;
+  --experience-pan: 0;
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  overflow: hidden;
+  background: #070807;
+  touch-action: pan-y pinch-zoom;
+}
+
+.room-experience__stage::after {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background:
+    linear-gradient(90deg, rgba(3, 4, 3, 0.65), transparent 26%, transparent 70%, rgba(3, 4, 3, 0.34)),
+    linear-gradient(0deg, rgba(3, 4, 3, 0.78), transparent 46%, rgba(3, 4, 3, 0.28));
+  content: "";
+  pointer-events: none;
+}
+
+.room-experience__view {
+  position: absolute;
+  inset: -3%;
+  z-index: 1;
+  width: 106%;
+  height: 106%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.94) contrast(1.04) brightness(0.9);
+  opacity: 0;
+  transform: translate3d(calc(var(--experience-shift-x) * -0.26), calc(var(--experience-shift-y) * -0.2), 0) scale(1.05);
+  transition: opacity 760ms ease, transform 1500ms var(--ease-cinema), filter 500ms ease;
+}
+
+.room-experience__view.is-active {
+  z-index: 2;
+  opacity: 1;
+  transform: translate3d(calc(var(--experience-shift-x) * -0.26), calc(var(--experience-shift-y) * -0.2), 0) scale(1.015);
+}
+
+.room-experience__light {
+  position: absolute;
+  inset: -20%;
+  z-index: 3;
+  background:
+    radial-gradient(circle at var(--experience-x) var(--experience-y), rgba(255, 224, 171, 0.28), transparent 18%),
+    linear-gradient(110deg, transparent 28%, rgba(222, 183, 116, 0.11) 44%, transparent 61%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  transform: translate3d(calc(var(--experience-shift-x) * 0.24), calc(var(--experience-shift-y) * 0.18), 0);
+  transition: transform 800ms var(--ease-out);
+  animation: privateRoomLightPass 9s ease-in-out infinite alternate;
+}
+
+.room-experience__grain {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background-image:
+    repeating-radial-gradient(circle at 31% 27%, rgba(255, 255, 255, 0.42) 0 0.45px, transparent 0.6px 4px),
+    repeating-radial-gradient(circle at 72% 66%, rgba(0, 0, 0, 0.5) 0 0.4px, transparent 0.7px 5px);
+  background-size: 13px 17px, 17px 11px;
+  opacity: 0.055;
+  pointer-events: none;
+}
+
+.room-experience__header {
+  position: absolute;
+  top: clamp(22px, 4vw, 58px);
+  right: clamp(20px, 4vw, 64px);
+  left: clamp(20px, 4vw, 64px);
+  z-index: 7;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  pointer-events: none;
+}
+
+.room-experience__header p {
+  margin-bottom: 12px;
+  color: rgba(244, 239, 230, 0.56);
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.room-experience__header h2 {
+  max-width: 9ch;
+  font-size: clamp(2.8rem, 5.2vw, 6.6rem);
+  letter-spacing: -0.045em;
+  line-height: 0.88;
+}
+
+.room-experience__close {
+  position: relative;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  border: 1px solid rgba(244, 239, 230, 0.32);
+  color: inherit;
+  background: rgba(6, 7, 6, 0.5);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.room-experience__close span::before,
+.room-experience__close span::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.room-experience__close span::before { transform: translate(-50%, -50%) rotate(45deg); }
+.room-experience__close span::after { transform: translate(-50%, -50%) rotate(-45deg); }
+
+.room-experience__description {
+  position: absolute;
+  right: clamp(20px, 4vw, 64px);
+  bottom: clamp(84px, 9vw, 126px);
+  z-index: 7;
+  max-width: 36ch;
+  color: rgba(244, 239, 230, 0.58);
+  font-size: clamp(0.7rem, 0.82vw, 0.88rem);
+  line-height: 1.65;
+  text-align: right;
+  pointer-events: none;
+}
+
+.room-experience__controls {
+  position: absolute;
+  right: clamp(20px, 4vw, 64px);
+  bottom: clamp(22px, 4vw, 56px);
+  left: clamp(20px, 4vw, 64px);
+  z-index: 7;
+  display: grid;
+  grid-template-columns: 46px minmax(150px, 290px) 46px;
+  justify-content: end;
+  gap: 8px;
+}
+
+.room-experience__controls button {
+  min-width: 46px;
+  min-height: 46px;
+  border: 1px solid rgba(244, 239, 230, 0.28);
+  color: inherit;
+  background: rgba(5, 6, 5, 0.66);
+  cursor: pointer;
+}
+
+.room-experience__controls > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid rgba(244, 239, 230, 0.22);
+  background: rgba(5, 6, 5, 0.58);
+}
+
+.room-experience__controls i {
+  width: 38px;
+  height: 1px;
+  background: #c6a36b;
+}
+
+.room-experience__controls b {
+  font-size: 0.55rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.room-experience__close:hover,
+.room-experience__close:focus-visible,
+.room-experience__controls button:hover,
+.room-experience__controls button:focus-visible {
+  border-color: #c6a36b;
+  background: rgba(5, 6, 5, 0.9);
+}
+
+body.room-experience-open { overflow: hidden; }
+
+body[data-theme="light"] .room-experience {
+  color: #181713;
+  background: #ddd5c8;
+}
+
+body[data-theme="light"] .room-experience__stage { background: #ddd5c8; }
+body[data-theme="light"] .room-experience__view:not(.room-experience__view--light) { opacity: 0; }
+body[data-theme="light"] .room-experience__view--light {
+  z-index: 2;
+  opacity: 1;
+  filter: saturate(0.84) contrast(0.98) brightness(1.06);
+  transform: translate3d(calc((var(--experience-pan) * -2.8%) + (var(--experience-shift-x) * -0.12)), calc(var(--experience-shift-y) * -0.1), 0) scale(1.08);
+}
+body[data-theme="light"] .room-experience__stage::after {
+  background: linear-gradient(0deg, rgba(43, 34, 23, 0.22), transparent 48%, rgba(238, 233, 223, 0.18));
+}
+body[data-theme="light"] .room-experience__light { mix-blend-mode: multiply; opacity: 0.38; }
+body[data-theme="light"] .room-experience__header p,
+body[data-theme="light"] .room-experience__description { color: rgba(24, 23, 19, 0.6); }
+body[data-theme="light"] .room-experience__close,
+body[data-theme="light"] .room-experience__controls button,
+body[data-theme="light"] .room-experience__controls > span {
+  border-color: rgba(24, 23, 19, 0.25);
+  color: #181713;
+  background: rgba(238, 233, 223, 0.78);
 }
 
 .private-room-loader {
@@ -1011,6 +1333,29 @@ body[data-theme="light"] .wartrobe-stage__legend {
     display: none;
   }
 
+  .hero-cinematic__botanical {
+    right: -30vw;
+    bottom: -12vh;
+    width: 104vw;
+    height: 86vh;
+    filter: brightness(0.58) saturate(0.7) drop-shadow(-18px 14px 24px rgba(0, 0, 0, 0.68));
+  }
+
+  .opening-active[data-opening-phase="surface"] .hero-cinematic__botanical {
+    opacity: 0.74;
+    transform: translate3d(-8%, 2%, 0) rotate(-1.5deg) scale(1.16);
+  }
+
+  .opening-active[data-opening-phase="work"] .hero-cinematic__botanical {
+    opacity: 0.42;
+    transform: translate3d(-13%, -2%, 0) rotate(-2.2deg) scale(1.04);
+  }
+
+  .opening-active[data-opening-phase="room"] .hero-cinematic__botanical {
+    opacity: 0.18;
+    transform: translate3d(-18%, -4%, 0) rotate(-3deg) scale(0.96);
+  }
+
   .hero-cinematic__poster {
     object-position: 58% 43%;
     filter: saturate(0.86) contrast(1.18) brightness(0.55);
@@ -1203,8 +1548,63 @@ body[data-theme="light"] .wartrobe-stage__legend {
     width: 100%;
   }
 
-  .room-inspect {
+  .private-room-hud__actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .room-inspect,
+  .room-enter {
+    justify-content: center;
     min-height: 42px;
+    padding-inline: 8px;
+    font-size: 0.48rem;
+  }
+
+  .room-experience__view {
+    inset: -5%;
+    width: 110%;
+    height: 110%;
+    object-position: 56% 50%;
+  }
+
+  .room-experience__stage::before {
+    position: absolute;
+    right: -23%;
+    bottom: 7%;
+    z-index: 3;
+    width: 74%;
+    height: 56%;
+    background: url("assets/cinematic/threshold-botanical.webp") right bottom / contain no-repeat;
+    content: "";
+    filter: brightness(0.64) saturate(0.7) drop-shadow(-14px 10px 22px rgba(0, 0, 0, 0.62));
+    opacity: 0.46;
+    pointer-events: none;
+  }
+
+  .room-experience__header h2 {
+    max-width: 7ch;
+    font-size: clamp(3rem, 14.4vw, 5rem);
+  }
+
+  .room-experience__description {
+    right: 20px;
+    bottom: 92px;
+    left: 20px;
+    max-width: 30ch;
+    font-size: 0.67rem;
+    text-align: left;
+  }
+
+  .room-experience__controls {
+    grid-template-columns: 46px minmax(0, 1fr) 46px;
+  }
+
+  .room-experience__controls i { width: 22px; }
+
+  body[data-theme="light"] .room-experience__view--light {
+    transform: translate3d(calc((var(--experience-pan) * -5.2%) + (var(--experience-shift-x) * -0.12)), calc(var(--experience-shift-y) * -0.1), 0) scale(1.28);
   }
 
   .section-heading h2 {
@@ -1299,6 +1699,12 @@ body[data-theme="light"] .wartrobe-stage__legend {
     transform: none;
   }
 
+  .hero-cinematic__botanical {
+    opacity: 0.08 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
   .private-room-atmosphere {
     display: none;
   }
@@ -1308,6 +1714,12 @@ body[data-theme="light"] .wartrobe-stage__legend {
   .private-room-render__spotlight {
     animation: none !important;
     transform: none !important;
+    transition: none !important;
+  }
+
+  .room-experience__view,
+  .room-experience__light {
+    animation: none !important;
     transition: none !important;
   }
 
