@@ -49,6 +49,14 @@ const navigate = async (path, delay = 1000) => {
   await send('Page.navigate', { url: new URL(path, baseUrl).href });
   await pause(delay);
 };
+const waitFor = async (expression, timeout = 20000) => {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    if (await evaluate(expression)) return true;
+    await pause(200);
+  }
+  return false;
+};
 const key = async (value) => {
   await send('Input.dispatchKeyEvent', { type: 'keyDown', key: value, code: value });
   await send('Input.dispatchKeyEvent', { type: 'keyUp', key: value, code: value });
@@ -81,18 +89,25 @@ const introClosed = await evaluate(`(() => ({
 
 await navigate('#installation', 900);
 await evaluate("document.querySelector('[data-room-enter]').focus(); document.querySelector('[data-room-enter]').click(); true");
-await pause(220);
+await waitFor("document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready') || document.querySelector('[data-room-experience]').classList.contains('is-gallery-fallback')");
 const roomOpen = await evaluate(`(() => ({
   open: document.querySelector('[data-room-experience]').open,
   bodyLocked: document.body.classList.contains('room-experience-open'),
   focusOnClose: document.activeElement === document.querySelector('[data-room-close]'),
-  label: document.querySelector('[data-room-view-label]').textContent
+  label: document.querySelector('[data-room-view-label]').textContent,
+  webglReady: document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready'),
+  fallback: document.querySelector('[data-room-experience]').classList.contains('is-gallery-fallback'),
+  yaw: document.querySelector('[data-gallery-webgl]')?.__galleryController?.getState?.().yaw ?? null
 }))()`);
 await key('ArrowRight');
 const roomMoved = await evaluate(`(() => ({
   label: document.querySelector('[data-room-view-label]').textContent,
-  rightActive: document.querySelector('.room-experience__view--right').classList.contains('is-active')
+  rightActive: document.querySelector('.room-experience__view--right').classList.contains('is-active'),
+  yaw: document.querySelector('[data-gallery-webgl]')?.__galleryController?.getState?.().yaw ?? null
 }))()`);
+roomMoved.turned = roomOpen.webglReady
+  ? roomMoved.yaw !== null && roomMoved.yaw !== roomOpen.yaw
+  : roomMoved.rightActive;
 await evaluate("document.querySelector('[data-room-close]').click(); true");
 await pause(120);
 const roomClosed = await evaluate(`(() => ({

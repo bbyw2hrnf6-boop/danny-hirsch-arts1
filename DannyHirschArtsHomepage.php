@@ -97,25 +97,25 @@ function imageSizeAttributes(string $path): string
     <title>Danny Hirsch Arts | Contemporary Abstract Art</title>
     <meta name="description" content="Danny Hirsch Arts presents contemporary abstract works shaped by material, movement, atmosphere, and emotional depth.">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/">
+    <link rel="canonical" href="https://www.dannyhirscharts.com/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Danny Hirsch Arts">
     <meta property="og:title" content="Danny Hirsch Arts | Contemporary Abstract Art">
     <meta property="og:description" content="Contemporary abstract artworks shaped by material, movement, atmosphere, and emotional depth.">
-    <meta property="og:url" content="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/">
-    <meta property="og:image" content="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/assets/images/hero.jpg">
+    <meta property="og:url" content="https://www.dannyhirscharts.com/">
+    <meta property="og:image" content="https://www.dannyhirscharts.com/assets/images/hero.jpg">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Danny Hirsch Arts | Contemporary Abstract Art">
     <meta name="twitter:description" content="Contemporary abstract artworks shaped by material, movement, atmosphere, and emotional depth.">
-    <meta name="twitter:image" content="https://bbyw2hrnf6-boop.github.io/danny-hirsch-arts1/assets/images/hero.jpg">
+    <meta name="twitter:image" content="https://www.dannyhirscharts.com/assets/images/hero.jpg">
     <meta name="theme-color" content="#090909">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preload" as="font" href="assets/fonts/instrument-serif-400.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260722-threshold-12">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260722-threshold-12">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260722-gallery-21">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260722-gallery-21">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -224,13 +224,15 @@ function imageSizeAttributes(string $path): string
         </div>
 
         <div class="room-camera" data-room-camera>
-          <div class="private-room-stage" data-private-room-stage aria-label="Curated digital room featuring the genuine Danny Hirsch wARTrobe surface">
+          <div class="private-room-stage" data-private-room-stage aria-label="Curated digital room featuring genuine Danny Hirsch artwork photography">
             <div class="private-room-fallback" aria-hidden="true">
               <div class="private-room-render" data-room-render>
-                <img class="private-room-render__view private-room-render__view--center" src="assets/cinematic/threshold-room-center.webp" alt="" loading="eager" decoding="async" fetchpriority="low" width="1800" height="1125">
+                <img class="private-room-render__view private-room-render__view--center" src="assets/cinematic/threshold-room-center.webp" alt="" loading="lazy" decoding="async" fetchpriority="low" width="1800" height="1125">
                 <img class="private-room-render__view private-room-render__view--left" src="assets/cinematic/threshold-room-left.webp" alt="" loading="lazy" decoding="async" width="1800" height="1125">
                 <img class="private-room-render__view private-room-render__view--right" src="assets/cinematic/threshold-room-right.webp" alt="" loading="lazy" decoding="async" width="1800" height="1125">
-                <img class="private-room-render__view private-room-render__view--light" src="assets/cinematic/threshold-room-light.webp" alt="" loading="eager" decoding="async" fetchpriority="low" width="1800" height="1125">
+                <img class="private-room-render__view private-room-render__view--light private-room-render__view--light-center" src="assets/cinematic/threshold-room-light-center.webp" alt="" loading="lazy" decoding="async" width="1800" height="1125">
+                <img class="private-room-render__view private-room-render__view--light private-room-render__view--light-left" src="assets/cinematic/threshold-room-light-left.webp" alt="" loading="lazy" decoding="async" width="1800" height="1125">
+                <img class="private-room-render__view private-room-render__view--light private-room-render__view--light-right" src="assets/cinematic/threshold-room-light-right.webp" alt="" loading="lazy" decoding="async" width="1800" height="1125">
                 <span class="private-room-render__spotlight"></span>
               </div>
               <span class="private-room-fallback__ceiling"></span>
@@ -249,7 +251,7 @@ function imageSizeAttributes(string $path): string
               <div class="private-room-hud__copy">
                 <p>Modelled from genuine wARTrobe photography</p>
                 <div class="private-room-hud__actions">
-                  <button class="room-enter" type="button" data-room-enter>Enter room <span aria-hidden="true">↗</span></button>
+                  <button class="room-enter" type="button" data-room-enter>Explore 360° <span aria-hidden="true">↗</span></button>
                   <a class="room-inspect js-lightbox-trigger" href="assets/gallery/gallery-04.jpg" aria-label="Inspect the genuine wARTrobe front photograph" data-lightbox-src="assets/gallery/gallery-04.jpg" data-lightbox-title="wARTrobe · Front" data-lightbox-caption="Genuine photograph of the complete three-panel painted frontage.">Inspect object <span aria-hidden="true">↗</span></a>
                 </div>
               </div>
@@ -436,20 +438,52 @@ function imageSizeAttributes(string $path): string
 
     <dialog class="room-experience" data-room-experience aria-labelledby="room-experience-title" aria-describedby="room-experience-description">
       <div class="room-experience__stage" data-room-experience-stage>
-        <img class="room-experience__view room-experience__view--center is-active" src="assets/cinematic/threshold-room-center.webp" alt="" width="1800" height="1125" decoding="async">
-        <img class="room-experience__view room-experience__view--left" src="assets/cinematic/threshold-room-left.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
-        <img class="room-experience__view room-experience__view--right" src="assets/cinematic/threshold-room-right.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
-        <img class="room-experience__view room-experience__view--light" src="assets/cinematic/threshold-room-light.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+        <div class="room-experience__fallback" data-room-fallback aria-hidden="true">
+          <img class="room-experience__view room-experience__view--center is-active" src="assets/cinematic/threshold-room-center.webp" alt="" width="1800" height="1125" decoding="async">
+          <img class="room-experience__view room-experience__view--left" src="assets/cinematic/threshold-room-left.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+          <img class="room-experience__view room-experience__view--right" src="assets/cinematic/threshold-room-right.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+          <img class="room-experience__view room-experience__view--light room-experience__view--light-center is-active" src="assets/cinematic/threshold-room-light-center.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+          <img class="room-experience__view room-experience__view--light room-experience__view--light-left" src="assets/cinematic/threshold-room-light-left.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+          <img class="room-experience__view room-experience__view--light room-experience__view--light-right" src="assets/cinematic/threshold-room-light-right.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async">
+        </div>
+        <div class="room-experience__webgl" data-gallery-webgl aria-hidden="true"></div>
         <span class="room-experience__light" aria-hidden="true"></span>
         <span class="room-experience__grain" aria-hidden="true"></span>
+        <span class="room-experience__reticle" aria-hidden="true"></span>
+        <div class="room-experience__loading" data-gallery-loading role="status" aria-live="polite"><span></span><small>Preparing the 360° gallery</small></div>
         <header class="room-experience__header">
-          <div><p>Private Room · Spatial study</p><h2 id="room-experience-title">Move through the room.</h2></div>
-          <button class="room-experience__close" type="button" data-room-close aria-label="Leave private room"><span aria-hidden="true"></span></button>
+          <div><p>Private Room · 360° gallery</p><h2 id="room-experience-title">Walk into the work.</h2></div>
+          <div class="room-experience__header-actions">
+            <button class="room-experience__theme" type="button" data-room-theme aria-label="Switch room to light theme"><span aria-hidden="true"></span><b>Light</b></button>
+            <button class="room-experience__close" type="button" data-room-close aria-label="Leave private room"><span aria-hidden="true"></span></button>
+          </div>
         </header>
-        <p class="room-experience__description" id="room-experience-description">Move your pointer or finger to shift perspective and light. Use the arrow keys or camera controls to travel between three curated viewpoints.</p>
-        <div class="room-experience__controls" aria-label="Room camera controls">
+        <p class="room-experience__description" id="room-experience-description">Drag to look around. Use W A S D, arrow keys, or the movement controls to walk. The room is a Blender-built spatial interpretation using genuine artwork photography.</p>
+
+        <aside class="room-experience__art" data-gallery-art-card aria-live="polite">
+          <p data-gallery-art-kicker>In view</p>
+          <strong data-gallery-art-title>Enter the gallery</strong>
+          <span data-gallery-art-detail>Turn toward a surface to discover it.</span>
+          <button type="button" data-gallery-art-inspect disabled>View artwork <i aria-hidden="true">↗</i></button>
+        </aside>
+
+        <div class="room-experience__walk-controls" data-gallery-controls aria-label="Walkable gallery controls" hidden>
+          <div class="room-experience__dpad" role="group" aria-label="Move through gallery">
+            <button type="button" data-gallery-move="forward" aria-label="Walk forward">↑</button>
+            <button type="button" data-gallery-move="left" aria-label="Step left">←</button>
+            <button type="button" data-gallery-move="backward" aria-label="Walk backward">↓</button>
+            <button type="button" data-gallery-move="right" aria-label="Step right">→</button>
+          </div>
+          <div class="room-experience__tour" role="group" aria-label="Curated artwork views">
+            <button type="button" data-gallery-view-prev aria-label="Previous curated artwork view">Previous work</button>
+            <button type="button" data-gallery-reset aria-label="Return to gallery entrance">Entrance</button>
+            <button type="button" data-gallery-view-next aria-label="Next curated artwork view">Next work</button>
+          </div>
+        </div>
+
+        <div class="room-experience__controls" data-room-fallback-controls role="group" aria-label="Room camera controls">
           <button type="button" data-room-prev aria-label="Previous room viewpoint">←</button>
-          <span><i aria-hidden="true"></i><b data-room-view-label>Center · 02</b></span>
+          <span><i aria-hidden="true"></i><output data-room-view-label aria-live="polite">Center · 02</output></span>
           <button type="button" data-room-next aria-label="Next room viewpoint">→</button>
         </div>
       </div>
@@ -473,6 +507,6 @@ function imageSizeAttributes(string $path): string
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260722-threshold-12" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260722-gallery-21" defer></script>
   </body>
 </html>

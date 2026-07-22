@@ -41,7 +41,22 @@ const roomExperienceClose = document.querySelector("[data-room-close]");
 const roomExperiencePrev = document.querySelector("[data-room-prev]");
 const roomExperienceNext = document.querySelector("[data-room-next]");
 const roomExperienceLabel = document.querySelector("[data-room-view-label]");
-const roomExperienceViews = ["left", "center", "right"].map((view) => document.querySelector(`.room-experience__view--${view}`));
+const roomExperienceViews = ["left", "center", "right"].map((view) => [
+  document.querySelector(`.room-experience__view--${view}`),
+  document.querySelector(`.room-experience__view--light-${view}`)
+].filter(Boolean));
+const roomExperienceTheme = document.querySelector("[data-room-theme]");
+const roomExperienceFallbackControls = document.querySelector("[data-room-fallback-controls]");
+const galleryMount = document.querySelector("[data-gallery-webgl]");
+const galleryLoading = document.querySelector("[data-gallery-loading]");
+const galleryControls = document.querySelector("[data-gallery-controls]");
+const galleryViewPrev = document.querySelector("[data-gallery-view-prev]");
+const galleryViewNext = document.querySelector("[data-gallery-view-next]");
+const galleryReset = document.querySelector("[data-gallery-reset]");
+const galleryArtKicker = document.querySelector("[data-gallery-art-kicker]");
+const galleryArtTitle = document.querySelector("[data-gallery-art-title]");
+const galleryArtDetail = document.querySelector("[data-gallery-art-detail]");
+const galleryArtInspect = document.querySelector("[data-gallery-art-inspect]");
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const mobileNavigation = window.matchMedia("(max-width: 1120px)");
@@ -60,9 +75,14 @@ let ambientMaster = null;
 let ambientIsOn = false;
 let privateRoomController = null;
 let privateRoomImportObserver = null;
+let galleryRoomController = null;
+let galleryRoomLoadingPromise = null;
+let galleryFocusedArtwork = null;
 let roomInteractionUntil = 0;
 let roomExperienceIndex = 1;
 let roomExperienceTrigger = null;
+let roomExperiencePointer = null;
+let roomExperiencePointerFrame = 0;
 
 const storage = {
   get(key, session = false) {
@@ -98,6 +118,13 @@ const applyTheme = (theme) => {
   }
 
   privateRoomController?.setTheme?.(nextTheme);
+  galleryRoomController?.setTheme?.(nextTheme);
+  if (roomExperienceTheme) {
+    const roomIsLight = nextTheme === "light";
+    roomExperienceTheme.setAttribute("aria-label", `Switch room to ${roomIsLight ? "dark" : "light"} theme`);
+    const label = roomExperienceTheme.querySelector("b");
+    if (label) label.textContent = roomIsLight ? "Dark" : "Light";
+  }
 };
 
 applyTheme(storage.get("dha-theme") || body.dataset.theme);
@@ -370,17 +397,21 @@ roomCamera?.addEventListener("pointermove", setRoomCinematicPosition, { passive:
 
 const setRoomExperienceView = (index) => {
   if (!roomExperienceStage) return;
-  roomExperienceIndex = (index + roomExperienceViews.length) % roomExperienceViews.length;
-  roomExperienceViews.forEach((view, viewIndex) => view?.classList.toggle("is-active", viewIndex === roomExperienceIndex));
+  roomExperienceIndex = clamp(index, 0, roomExperienceViews.length - 1);
+  roomExperienceViews.forEach((views, viewIndex) => {
+    views.forEach((view) => view.classList.toggle("is-active", viewIndex === roomExperienceIndex));
+  });
   roomExperienceStage.style.setProperty("--experience-pan", String(roomExperienceIndex - 1));
   if (roomExperienceLabel) {
     const names = ["Left · 01", "Center · 02", "Right · 03"];
     roomExperienceLabel.textContent = names[roomExperienceIndex];
   }
+  if (roomExperiencePrev) roomExperiencePrev.disabled = roomExperienceIndex === 0;
+  if (roomExperienceNext) roomExperienceNext.disabled = roomExperienceIndex === roomExperienceViews.length - 1;
 };
 
 const setRoomExperiencePosition = (event) => {
-  if (!roomExperienceStage || reducedMotion.matches) return;
+  if (!roomExperienceStage || reducedMotion.matches || roomExperience?.classList.contains("is-webgl-ready")) return;
   const rect = roomExperienceStage.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
   const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
@@ -391,6 +422,114 @@ const setRoomExperiencePosition = (event) => {
   roomExperienceStage.style.setProperty("--experience-shift-y", `${((y - 0.5) * (finePointer.matches ? 15 : 22)).toFixed(2)}px`);
 };
 
+const queueRoomExperiencePosition = (event) => {
+  if (roomExperiencePointerFrame) return;
+  const point = { clientX: event.clientX, clientY: event.clientY };
+  roomExperiencePointerFrame = window.requestAnimationFrame(() => {
+    roomExperiencePointerFrame = 0;
+    setRoomExperiencePosition(point);
+  });
+};
+
+const setGalleryArtwork = (artwork) => {
+  galleryFocusedArtwork = artwork;
+  roomExperience?.classList.toggle("has-artwork-focus", Boolean(artwork));
+  if (!galleryArtTitle || !galleryArtDetail || !galleryArtInspect) return;
+
+  if (!artwork) {
+    if (galleryArtKicker) galleryArtKicker.textContent = "In view";
+    galleryArtTitle.textContent = "Move through the gallery";
+    galleryArtDetail.textContent = "Turn toward a surface to discover it.";
+    galleryArtInspect.disabled = true;
+    return;
+  }
+
+  const isDetail = /detail|surface/i.test(artwork.representation || artwork.detail || "");
+  if (galleryArtKicker) galleryArtKicker.textContent = isDetail ? "Genuine surface detail" : "In view";
+  galleryArtTitle.textContent = artwork.title || "Danny Hirsch artwork";
+  galleryArtDetail.textContent = isDetail
+    ? "Genuine surface photography from the collection."
+    : /wartrobe/i.test(`${artwork.id || ""} ${artwork.title || ""}`)
+      ? "Genuine wARTrobe photography in a modeled gallery."
+      : "Genuine artwork photography in a modeled gallery.";
+
+  const stem = (path = "") => path.split("/").pop()?.replace(/\.[^.]+$/, "").toLowerCase();
+  const expected = stem(artwork.source);
+  const trigger = lightboxTriggers.find((item) => {
+    const source = item.dataset.lightboxSrc || item.getAttribute("href") || "";
+    return expected && stem(source) === expected;
+  });
+  if (trigger?.dataset.lightboxTitle) {
+    galleryArtTitle.textContent = isDetail
+      ? `${trigger.dataset.lightboxTitle} · detail`
+      : trigger.dataset.lightboxTitle;
+  }
+  galleryArtInspect.disabled = !trigger;
+  galleryArtInspect.dataset.galleryTrigger = trigger ? String(lightboxTriggers.indexOf(trigger)) : "";
+};
+
+const setGalleryFallback = (reason = "fallback") => {
+  if (!roomExperience) return;
+  roomExperience.classList.remove("is-gallery-loading", "is-webgl-ready");
+  roomExperience.classList.add("is-gallery-fallback");
+  if (galleryControls) galleryControls.hidden = true;
+  if (roomExperienceFallbackControls) roomExperienceFallbackControls.hidden = false;
+  const status = galleryLoading?.querySelector("small");
+  if (status) status.textContent = reason === "reduced-motion" ? "Curated still room" : "360° fallback ready";
+};
+
+const ensureGalleryRoom = () => {
+  if (!roomExperience || !galleryMount) return Promise.resolve(null);
+  if (galleryRoomController) return Promise.resolve(galleryRoomController);
+  if (galleryRoomLoadingPromise) return galleryRoomLoadingPromise;
+  if (reducedMotion.matches) {
+    setGalleryFallback("reduced-motion");
+    return Promise.resolve(null);
+  }
+
+  roomExperience.classList.remove("is-gallery-fallback");
+  roomExperience.classList.add("is-gallery-loading");
+  setGalleryArtwork(null);
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-21")
+    .then(({ initWalkableGallery3D }) => {
+      galleryRoomController = initWalkableGallery3D({
+        root: roomExperience,
+        mount: galleryMount,
+        modelUrl: "assets/cinematic/danny-gallery-360.glb",
+        theme: body.dataset.theme,
+        onLoading: ({ progress }) => {
+          const status = galleryLoading?.querySelector("small");
+          if (!status) return;
+          status.textContent = progress === null
+            ? "Preparing the 360° gallery"
+            : `Preparing the 360° gallery · ${Math.round(progress * 100)}%`;
+        },
+        onReady: () => {
+          roomExperience.classList.remove("is-gallery-loading", "is-gallery-fallback");
+          roomExperience.classList.add("is-webgl-ready");
+          if (galleryControls) galleryControls.hidden = false;
+          if (roomExperienceFallbackControls) roomExperienceFallbackControls.hidden = true;
+          galleryRoomController?.setTheme?.(body.dataset.theme);
+          galleryRoomController?.setActive?.(roomExperience.open);
+        },
+        onSkip: ({ reason }) => setGalleryFallback(reason),
+        onError: () => setGalleryFallback("load-error"),
+        onArtworkFocus: setGalleryArtwork,
+        onViewChange: ({ label }) => {
+          if (!label || galleryFocusedArtwork) return;
+          if (galleryArtKicker) galleryArtKicker.textContent = "Curated viewpoint";
+          if (galleryArtTitle) galleryArtTitle.textContent = label;
+        }
+      });
+      return galleryRoomController;
+    })
+    .catch(() => {
+      setGalleryFallback("module-error");
+      return null;
+    });
+  return galleryRoomLoadingPromise;
+};
+
 const openRoomExperience = () => {
   if (!roomExperience) return;
   roomExperienceTrigger = roomEnter || document.activeElement;
@@ -399,11 +538,15 @@ const openRoomExperience = () => {
   if (typeof roomExperience.showModal === "function") roomExperience.showModal();
   else roomExperience.setAttribute("open", "");
   roomExperienceClose?.focus({ preventScroll: true });
+  galleryRoomController?.resetView?.();
+  galleryRoomController?.setActive?.(true);
+  ensureGalleryRoom();
 };
 
 const closeRoomExperience = () => {
   if (!roomExperience?.open) return;
   body.classList.remove("room-experience-open");
+  galleryRoomController?.setActive?.(false);
   if (typeof roomExperience.close === "function") roomExperience.close();
   else {
     roomExperience.removeAttribute("open");
@@ -415,15 +558,39 @@ roomEnter?.addEventListener("click", openRoomExperience);
 roomExperienceClose?.addEventListener("click", closeRoomExperience);
 roomExperiencePrev?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex - 1));
 roomExperienceNext?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex + 1));
-roomExperienceStage?.addEventListener("pointermove", setRoomExperiencePosition, { passive: true });
+galleryViewPrev?.addEventListener("click", () => galleryRoomController?.goToPreviousView?.());
+galleryViewNext?.addEventListener("click", () => galleryRoomController?.goToNextView?.());
+galleryReset?.addEventListener("click", () => galleryRoomController?.resetView?.());
+roomExperienceTheme?.addEventListener("click", () => {
+  const nextTheme = body.dataset.theme === "light" ? "dark" : "light";
+  applyTheme(nextTheme);
+  storage.set("dha-theme", nextTheme);
+});
+galleryArtInspect?.addEventListener("click", () => {
+  const index = Number(galleryArtInspect.dataset.galleryTrigger);
+  const trigger = Number.isInteger(index) ? lightboxTriggers[index] : null;
+  if (!trigger) return;
+  closeRoomExperience();
+  window.setTimeout(() => openLightbox(trigger), 80);
+});
+roomExperienceStage?.addEventListener("pointermove", queueRoomExperiencePosition, { passive: true });
 roomExperienceStage?.addEventListener("pointerdown", (event) => {
+  if (roomExperience?.classList.contains("is-webgl-ready") || event.target.closest("button, a, [role='slider']")) return;
+  roomExperiencePointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  roomExperienceStage.setPointerCapture?.(event.pointerId);
   setRoomExperiencePosition(event);
-  const rect = roomExperienceStage.getBoundingClientRect();
-  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-  setRoomExperienceView(x < 0.34 ? 0 : x > 0.66 ? 2 : 1);
-}, { passive: true });
+});
+roomExperienceStage?.addEventListener("pointerup", (event) => {
+  if (!roomExperiencePointer || event.pointerId !== roomExperiencePointer.id) return;
+  const movement = event.clientX - roomExperiencePointer.x;
+  if (Math.abs(movement) > 46) setRoomExperienceView(roomExperienceIndex + (movement < 0 ? 1 : -1));
+  roomExperienceStage.releasePointerCapture?.(event.pointerId);
+  roomExperiencePointer = null;
+});
+roomExperienceStage?.addEventListener("pointercancel", () => { roomExperiencePointer = null; });
 roomExperience?.addEventListener("close", () => {
   body.classList.remove("room-experience-open");
+  galleryRoomController?.setActive?.(false);
   roomExperienceTrigger?.focus({ preventScroll: true });
 });
 roomExperience?.addEventListener("click", (event) => {
@@ -432,6 +599,8 @@ roomExperience?.addEventListener("click", (event) => {
 
 window.addEventListener("keydown", (event) => {
   if (!roomExperience?.open) return;
+  if (event.key === "Tab") trapFocus(event, roomExperience);
+  if (roomExperience.classList.contains("is-webgl-ready")) return;
   if (event.key === "ArrowLeft") {
     event.preventDefault();
     setRoomExperienceView(roomExperienceIndex - 1);
@@ -440,7 +609,11 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     setRoomExperienceView(roomExperienceIndex + 1);
   }
+  if (event.key === "Home") setRoomExperienceView(0);
+  if (event.key === "End") setRoomExperienceView(roomExperienceViews.length - 1);
 });
+
+setRoomExperienceView(1);
 
 if (finePointer.matches && !reducedMotion.matches) {
   hero?.addEventListener("pointermove", (event) => setPointerPosition(hero, event, 24));
@@ -621,7 +794,7 @@ if (thirdPartyConsent === "accepted") {
       if (!entries.some((entry) => entry.isIntersecting)) return;
       cookieConsent.classList.remove("is-hidden");
       observer.disconnect();
-    }, { rootMargin: "220px 0px" });
+    }, { rootMargin: "0px" });
     consentObserver.observe(instagramSection);
   } else {
     cookieConsent.classList.remove("is-hidden");
@@ -643,6 +816,10 @@ reducedMotion.addEventListener?.("change", () => {
   if (reducedMotion.matches) {
     finishOpening(false);
     privateRoomController?.destroy?.();
+    galleryRoomController?.destroy?.();
+    galleryRoomController = null;
+    galleryRoomLoadingPromise = null;
+    setGalleryFallback("reduced-motion");
   }
   requestScrollUpdate();
 });
@@ -687,7 +864,7 @@ const loadPrivateRoomExperience = async () => {
   }
 
   try {
-    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-threshold-12");
+    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-gallery-21");
     privateRoomController = initPrivateRoom3D({
       root: installation,
       stage: privateRoomStage,
@@ -726,7 +903,10 @@ if (installation && privateRoomStage) {
   }
 }
 
-window.addEventListener("pagehide", () => privateRoomController?.destroy?.(), { once: true });
+window.addEventListener("pagehide", () => {
+  privateRoomController?.destroy?.();
+  galleryRoomController?.destroy?.();
+}, { once: true });
 
 prepareCinematicOpening();
 startOpening();

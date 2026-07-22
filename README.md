@@ -9,8 +9,10 @@ Premium static artist homepage for Danny Hirsch Arts. The site is built with pla
 - `DannyHirschArtsHomepage.css` - base visual system, responsive layouts, and theme styles
 - `DannyHirschArtsCinematic.css` - cinematic editorial layer, collision-safe type, and responsive refinements
 - `DannyHirschArtsHomepage.js` - navigation, theme, sound, intro, scroll effects, lightbox, and progressive 3D loading
-- `DannyHirschArts3D.js` - lightweight Three.js Private Room renderer
+- `DannyHirschArts3D.js` - lightweight Three.js renderer for the inline room teaser
+- `DannyHirschArtsGallery3D.js` - lazy-loaded bounded 360° gallery controller with desktop and touch movement
 - `blender/create_material_threshold.py` - reproducible Blender scene, GLB, poster, and film generator
+- `blender/create_walkable_gallery.py` - reproducible closed gallery, navigation anchors, collision data, plants, lights, and 360° GLB
 - `assets/cinematic/` - Blender GLB, poster, MP4, and WebM intro assets
 - `assets/fonts/` - self-hosted Instrument Serif and Manrope fonts with licenses
 - `assets/vendor/three/` - pinned local Three.js runtime; no CDN is required
@@ -61,9 +63,13 @@ Blender 5.2 LTS was used to create the room from genuine local wARTrobe photogra
 
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/create_material_threshold.py
+
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/create_walkable_gallery.py
 ```
 
-Add `-- --render-video` to also rebuild both browser film formats. The WebGL room is requested only near the Private Room section and is skipped for reduced motion, data-saver, low-memory, or unsupported devices; the cinematic poster/CSS room remains the fallback.
+Add `-- --render-video` to the threshold command to also rebuild both browser film formats. The inline room remains a lightweight cinematic teaser. The separate 360° gallery loads only after a visitor chooses “Explore 360°”; it supports drag-look, W A S D / arrow-key movement, touch controls, bounded collision, curated views, and equal dark/light interaction. Reduced-motion, data-saver, and unsupported devices retain the matching three-view Blender still sequence.
+
+The six side-room surfaces use genuine local macro/detail photographs and are labelled as details, not simulated full paintings. Replace them with straight-on complete-work photography later if realistic framed scale is required. The wARTrobe focal object uses its genuine complete front photograph.
 
 ## Instagram
 

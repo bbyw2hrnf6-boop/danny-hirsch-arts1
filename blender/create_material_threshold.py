@@ -313,7 +313,10 @@ def tag_botanical(obj: bpy.types.Object, *, overlay: bool = True) -> bpy.types.O
     obj["botanical_render"] = True
     if overlay:
         obj["botanical_overlay"] = True
-    return obj
+    # The same restrained dried-leaf installation now belongs to the live
+    # room as well as the cinematic plates. It remains tagged as decorative
+    # so the web runtime never presents it as an artwork.
+    return mark_web(obj)
 
 
 def add_stem(
@@ -736,7 +739,7 @@ def render_private_room_views(scene: bpy.types.Scene) -> None:
 
 
 def render_private_room_light_view(scene: bpy.types.Scene) -> None:
-    """Create a genuine light-gallery render instead of filtering the dark room in CSS."""
+    """Create matching light-gallery viewpoints instead of filtering dark plates."""
     source_camera = scene.camera
     camera_data = source_camera.data.copy()
     camera = bpy.data.objects.new("Render_PrivateRoom_Light_Camera", camera_data)
@@ -774,10 +777,21 @@ def render_private_room_light_view(scene: bpy.types.Scene) -> None:
     world_background.inputs["Color"].default_value = rgba("#8e877a")
     world_background.inputs["Strength"].default_value = 0.32
     scene.frame_set(FRAME_ROOM)
-    camera.location = (0.0, -8.72, 2.96)
     camera.data.lens = 29.0
-    look_at(camera, Vector((0.0, 3.58, 2.48)))
-    save_render(scene, FRAME_ROOM, OUTPUT_DIR / "threshold-room-light.webp", resolution=(1800, 1125), evaluate_frame=False)
+    target = Vector((0.0, 3.58, 2.48))
+    views = {
+        "left": (-1.15, -8.25, 3.04),
+        "center": (0.0, -8.72, 2.96),
+        "right": (1.15, -8.25, 3.04),
+    }
+    for name, location in views.items():
+        camera.location = location
+        look_at(camera, target)
+        output_path = OUTPUT_DIR / f"threshold-room-light-{name}.webp"
+        save_render(scene, FRAME_ROOM, output_path, resolution=(1800, 1125), evaluate_frame=False)
+        if name == "center":
+            # Preserve the original URL for old cached markup and deep links.
+            shutil.copy2(output_path, OUTPUT_DIR / "threshold-room-light.webp")
     for socket, value in material_state:
         socket.default_value = value
     for light, energy in light_state:
