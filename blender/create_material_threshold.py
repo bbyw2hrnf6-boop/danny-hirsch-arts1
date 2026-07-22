@@ -91,6 +91,35 @@ def material(
     return mat
 
 
+def add_micro_surface(
+    mat: bpy.types.Material,
+    *,
+    scale: float = 7.0,
+    detail: float = 4.0,
+    roughness: float = 0.65,
+    strength: float = 0.16,
+    distance: float = 0.08,
+) -> bpy.types.Material:
+    """Add restrained procedural relief so architectural planes catch real light."""
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    principled = nodes.get("Principled BSDF")
+    if not principled:
+        return mat
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.name = f"{mat.name}_micro_texture"
+    set_socket(noise, "Scale", scale)
+    set_socket(noise, "Detail", detail)
+    set_socket(noise, "Roughness", roughness)
+    bump = nodes.new("ShaderNodeBump")
+    bump.name = f"{mat.name}_micro_relief"
+    set_socket(bump, "Strength", strength)
+    set_socket(bump, "Distance", distance)
+    links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], principled.inputs["Normal"])
+    return mat
+
+
 def textured_material(name: str, image_path: Path) -> bpy.types.Material:
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
@@ -354,14 +383,14 @@ def build_scene() -> bpy.types.Scene:
     world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.09
     scene.world = world
 
-    black_stone = material("Room_Architecture", "#111312", roughness=0.5, metallic=0.04)
-    wall_mat = material("Room_Wall", "#171918", roughness=0.83)
+    black_stone = add_micro_surface(material("Room_Architecture", "#111312", roughness=0.5, metallic=0.04), scale=5.2, strength=0.2)
+    wall_mat = add_micro_surface(material("Room_Wall", "#171918", roughness=0.83), scale=3.4, detail=5.5, strength=0.12, distance=0.12)
     ceiling_mat = material("Room_Ceiling", "#0c0e0e", roughness=0.62, metallic=0.02)
     recess_mat = material("Room_Shadow", "#050606", roughness=0.72)
     bronze = material("Object_Frame", "#574427", roughness=0.34, metallic=0.72)
-    floor_a = material("Room_Floor", "#111210", roughness=0.30, metallic=0.12)
-    floor_b = material("Room_Floor_Alt", "#181713", roughness=0.38, metallic=0.08)
-    bench_mat = material("Room_Bench", "#171511", roughness=0.38)
+    floor_a = add_micro_surface(material("Room_Floor", "#111210", roughness=0.30, metallic=0.12), scale=8.0, strength=0.13, distance=0.045)
+    floor_b = add_micro_surface(material("Room_Floor_Alt", "#181713", roughness=0.38, metallic=0.08), scale=6.8, strength=0.11, distance=0.05)
+    bench_mat = add_micro_surface(material("Room_Bench", "#171511", roughness=0.38), scale=16.0, detail=3.0, strength=0.08, distance=0.025)
     emissive = material(
         "Warm aperture",
         "#7b5520",
@@ -385,6 +414,7 @@ def build_scene() -> bpy.types.Scene:
     add_box("Room_LeftWall", (-8.15, -1.65, 3.6), (0.34, 12.0, 7.2), black_stone)
     add_box("Room_RightWall", (8.15, -1.65, 3.6), (0.34, 12.0, 7.2), black_stone)
     add_box("Room_Ceiling", (0.0, -1.65, 7.12), (16.6, 12.0, 0.28), ceiling_mat)
+    add_box("Room_ShadowGap", (0.0, 3.94, 0.17), (15.8, 0.10, 0.11), bronze, bevel=0.012)
     add_box("Floor_Base", (0.0, -1.65, -0.11), (16.6, 12.0, 0.22), recess_mat)
     for column in range(8):
         for row in range(7):
@@ -416,10 +446,10 @@ def build_scene() -> bpy.types.Scene:
     detail_overlay = add_detail_overlay(detail_mat)
 
     # Curatorial bench anchors scale without inviting game-like navigation.
-    add_box("Bench_Seat", (0.0, -1.72, 0.60), (3.62, 0.94, 0.24), bench_mat, bevel=0.075)
-    add_box("Bench_Base", (0.0, -1.72, 0.30), (3.22, 0.62, 0.36), recess_mat, bevel=0.045)
+    add_box("Bench_Seat", (0.0, -1.72, 0.63), (3.62, 0.94, 0.22), bench_mat, bevel=0.11)
+    add_box("Bench_ShadowCore", (0.0, -1.72, 0.42), (3.16, 0.66, 0.20), recess_mat, bevel=0.075)
     for x in (-1.36, 1.36):
-        add_box(f"Bench_Foot_{x:+.0f}", (x, -1.72, 0.10), (0.13, 0.60, 0.20), bronze, bevel=0.02)
+        add_box(f"Bench_Foot_{x:+.0f}", (x, -1.72, 0.22), (0.16, 0.68, 0.44), bronze, bevel=0.035)
 
     # Track and fixtures.
     add_box("Track_Rail", (0.0, 0.72, 6.76), (7.70, 0.075, 0.075), recess_mat, bevel=0.02)
@@ -506,6 +536,88 @@ def save_render(
     scene.render.filepath = str(output_path)
     bpy.ops.render.render(write_still=True)
     scene.render.resolution_x, scene.render.resolution_y = previous_resolution
+
+
+def render_private_room_views(scene: bpy.types.Scene) -> None:
+    """Bake three high-quality viewpoints for responsive, photographic web depth."""
+    camera = scene.camera
+    original_location = camera.location.copy()
+    original_rotation = camera.rotation_euler.copy()
+    original_lens = camera.data.lens
+    target = Vector((0.0, 3.58, 2.48))
+    views = {
+        "left": (-1.15, -8.25, 3.04),
+        "center": (0.0, -8.72, 2.96),
+        "right": (1.15, -8.25, 3.04),
+    }
+    scene.frame_set(FRAME_ROOM)
+    camera.data.lens = 29.0
+    for name, location in views.items():
+        camera.location = location
+        look_at(camera, target)
+        save_render(
+            scene,
+            FRAME_ROOM,
+            OUTPUT_DIR / f"threshold-room-{name}.webp",
+            resolution=(1800, 1125),
+        )
+    camera.location = original_location
+    camera.rotation_euler = original_rotation
+    camera.data.lens = original_lens
+
+
+def render_private_room_light_view(scene: bpy.types.Scene) -> None:
+    """Create a genuine light-gallery render instead of filtering the dark room in CSS."""
+    camera = scene.camera
+    original_location = camera.location.copy()
+    original_rotation = camera.rotation_euler.copy()
+    original_lens = camera.data.lens
+    original_exposure = scene.view_settings.exposure
+    world_background = scene.world.node_tree.nodes.get("Background")
+    original_world_color = world_background.inputs["Color"].default_value[:]
+    original_world_strength = world_background.inputs["Strength"].default_value
+    material_state = []
+    light_state = []
+    palette = {
+        "Room_Architecture": "#8e877d",
+        "Room_Wall": "#b8afa2",
+        "Room_Ceiling": "#81796e",
+        "Room_Floor": "#746d62",
+        "Room_Floor_Alt": "#8c8376",
+        "Room_Shadow": "#4c4942",
+    }
+    for mat in bpy.data.materials:
+        principled = mat.node_tree.nodes.get("Principled BSDF") if mat.use_nodes else None
+        base = principled.inputs.get("Base Color") if principled else None
+        if base:
+            material_state.append((base, base.default_value[:]))
+            for prefix, color in palette.items():
+                if mat.name.startswith(prefix):
+                    base.default_value = rgba(color)
+                    break
+    for light in scene.objects:
+        if light.type != "LIGHT":
+            continue
+        light_state.append((light.data, light.data.energy))
+        light.data.energy *= 1.28
+    scene.view_settings.exposure = 0.18
+    world_background.inputs["Color"].default_value = rgba("#8e877a")
+    world_background.inputs["Strength"].default_value = 0.32
+    scene.frame_set(FRAME_ROOM)
+    camera.location = (0.0, -8.72, 2.96)
+    camera.data.lens = 29.0
+    look_at(camera, Vector((0.0, 3.58, 2.48)))
+    save_render(scene, FRAME_ROOM, OUTPUT_DIR / "threshold-room-light.webp", resolution=(1800, 1125))
+    for socket, value in material_state:
+        socket.default_value = value
+    for light, energy in light_state:
+        light.energy = energy
+    world_background.inputs["Color"].default_value = original_world_color
+    world_background.inputs["Strength"].default_value = original_world_strength
+    scene.view_settings.exposure = original_exposure
+    camera.location = original_location
+    camera.rotation_euler = original_rotation
+    camera.data.lens = original_lens
 
 
 def export_glb() -> None:
@@ -670,6 +782,8 @@ def main() -> None:
         OUTPUT_DIR / "threshold-poster.webp",
         resolution=(1600, 900),
     )
+    render_private_room_views(scene)
+    render_private_room_light_view(scene)
     export_glb()
     if "--render-video" in sys.argv:
         render_video(scene)

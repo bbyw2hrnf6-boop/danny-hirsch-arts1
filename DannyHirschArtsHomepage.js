@@ -52,6 +52,7 @@ let ambientMaster = null;
 let ambientIsOn = false;
 let privateRoomController = null;
 let privateRoomImportObserver = null;
+let roomInteractionUntil = 0;
 
 const storage = {
   get(key, session = false) {
@@ -283,8 +284,13 @@ const updateRoom = () => {
   const rect = roomCamera.getBoundingClientRect();
   const progress = clamp((window.innerHeight - rect.top) / (window.innerHeight + rect.height), 0, 1);
   roomCamera.style.setProperty("--room-progress", progress.toFixed(4));
-  roomCamera.style.setProperty("--room-scale", (0.94 + progress * 0.06).toFixed(4));
-  roomCamera.style.setProperty("--room-y", `${((0.5 - progress) * 24).toFixed(1)}px`);
+  roomCamera.style.setProperty("--room-scale", (0.91 + progress * 0.13).toFixed(4));
+  roomCamera.style.setProperty("--room-y", `${((0.5 - progress) * 34).toFixed(1)}px`);
+  if (performance.now() > roomInteractionUntil) {
+    const lateral = clamp((progress - 0.5) * 1.25, -0.62, 0.62);
+    roomCamera.style.setProperty("--room-view-left", Math.max(0, -lateral).toFixed(3));
+    roomCamera.style.setProperty("--room-view-right", Math.max(0, lateral).toFixed(3));
+  }
 };
 
 const updateScrollEffects = () => {
@@ -333,9 +339,27 @@ const setPointerPosition = (element, event, strength = 1) => {
   element.style.setProperty("--shift-y", `${((y - 0.5) * strength).toFixed(2)}px`);
 };
 
+const setRoomCinematicPosition = (event) => {
+  if (!roomCamera || reducedMotion.matches) return;
+  const rect = roomCamera.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+  const lateral = (x - 0.5) * 1.55;
+  roomInteractionUntil = performance.now() + 2400;
+  roomCamera.style.setProperty("--pointer-x", `${(x * 100).toFixed(2)}%`);
+  roomCamera.style.setProperty("--pointer-y", `${(y * 100).toFixed(2)}%`);
+  roomCamera.style.setProperty("--shift-x", `${((x - 0.5) * (finePointer.matches ? 11 : 18)).toFixed(2)}px`);
+  roomCamera.style.setProperty("--shift-y", `${((y - 0.5) * (finePointer.matches ? 8 : 12)).toFixed(2)}px`);
+  roomCamera.style.setProperty("--room-view-left", Math.max(0, -lateral).toFixed(3));
+  roomCamera.style.setProperty("--room-view-right", Math.max(0, lateral).toFixed(3));
+};
+
+roomCamera?.addEventListener("pointerdown", setRoomCinematicPosition, { passive: true });
+roomCamera?.addEventListener("pointermove", setRoomCinematicPosition, { passive: true });
+
 if (finePointer.matches && !reducedMotion.matches) {
   hero?.addEventListener("pointermove", (event) => setPointerPosition(hero, event, 24));
-  roomCamera?.addEventListener("pointermove", (event) => setPointerPosition(roomCamera, event, 10));
   wartrobeStage?.addEventListener("pointermove", (event) => setPointerPosition(wartrobeStage, event, 12));
   document.querySelectorAll("[data-art-light]").forEach((artwork) => {
     artwork.addEventListener("pointermove", (event) => setPointerPosition(artwork, event, 7));
@@ -547,9 +571,24 @@ const setPrivateRoomFallback = (reason = "fallback") => {
   installation.dataset.privateRoomFallback = reason;
 };
 
+const setPrivateRoomRendered = () => {
+  if (!installation) return;
+  installation.classList.remove("private-room--3d-idle", "private-room--3d-loading", "private-room--3d-ready", "private-room--3d-skipped");
+  installation.classList.add("private-room--rendered");
+  installation.dataset.privateRoom3d = "rendered";
+  installation.dataset.privateRoomFallback = "blender-view-sequence";
+  if (privateRoomStatus) privateRoomStatus.textContent = "Spatial room ready";
+};
+
 const loadPrivateRoomExperience = async () => {
   if (!installation || !privateRoomStage || privateRoomController) return;
   privateRoomImportObserver?.disconnect();
+
+  const realtimeRequested = new URLSearchParams(window.location.search).get("webgl") === "1";
+  if (!realtimeRequested) {
+    setPrivateRoomRendered();
+    return;
+  }
 
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   const compactViewport = window.matchMedia("(max-width: 760px)").matches;
@@ -564,7 +603,7 @@ const loadPrivateRoomExperience = async () => {
   }
 
   try {
-    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260721-threshold-6");
+    const { initPrivateRoom3D } = await import("./DannyHirschArts3D.js?v=20260722-threshold-11");
     privateRoomController = initPrivateRoom3D({
       root: installation,
       stage: privateRoomStage,

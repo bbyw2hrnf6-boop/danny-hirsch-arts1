@@ -2139,12 +2139,64 @@ html:not(.has-js) .opening-pending .site-header {
 .cookie-consent-actions { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 10px; }
 .cookie-consent .button { width: 100%; min-width: 0; padding-inline: 12px; }
 
-.legal-page { min-height: 100svh; }
-.legal-shell { width: min(100%, 980px); min-height: 100svh; display: grid; align-content: center; gap: 48px; margin: 0 auto; padding: 70px var(--gutter); }
-.legal-brand { width: min(240px, 70vw); }
-.legal-card { display: grid; gap: 24px; padding: clamp(30px, 6vw, 72px); border: 1px solid var(--line); background: var(--page-raised); }
-.legal-card h1 { font-size: clamp(3.5rem, 9vw, 8rem); line-height: 0.9; }
-.legal-card p { max-width: 70ch; color: var(--muted); }
+.legal-page {
+  min-height: 100svh;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(181, 143, 84, 0.12), transparent 26%),
+    linear-gradient(118deg, transparent 0 68%, rgba(255, 255, 255, 0.018) 68.1% 68.2%, transparent 68.3%),
+    var(--page);
+}
+
+.legal-header {
+  width: calc(100% - (2 * var(--gutter)));
+  max-width: 1540px;
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.legal-brand { width: min(178px, 42vw); }
+.legal-brand img { width: 100%; max-height: 48px; object-fit: contain; }
+.legal-return { color: var(--muted); font-size: 0.61rem; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; }
+
+.legal-shell {
+  width: min(100%, 1540px);
+  display: grid;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(520px, 1.22fr);
+  gap: clamp(70px, 10vw, 180px);
+  margin: 0 auto;
+  padding: clamp(86px, 10vw, 168px) var(--gutter) clamp(100px, 12vw, 190px);
+}
+
+.legal-hero { position: sticky; top: 120px; align-self: start; }
+.legal-hero h1 { max-width: 8ch; margin: 24px 0 34px; font-size: clamp(4rem, 7vw, 8.2rem); line-height: 0.86; letter-spacing: -0.048em; }
+.legal-hero > p:last-child { max-width: 37ch; color: var(--muted); font-size: 0.82rem; }
+
+.legal-document { display: grid; gap: 0; }
+.legal-document__meta { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--line); color: var(--quiet); font-size: 0.54rem; letter-spacing: 0.11em; text-transform: uppercase; }
+.legal-document > h2 { max-width: 13ch; padding: clamp(48px, 6vw, 84px) 0; font-size: clamp(2.7rem, 4.8vw, 5.8rem); line-height: 0.94; letter-spacing: -0.035em; }
+.legal-document section { display: grid; grid-template-columns: minmax(140px, 0.38fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 74px); padding: 34px 0; border-top: 1px solid var(--line); }
+.legal-document section h3 { font-family: var(--sans); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; line-height: 1.5; text-transform: uppercase; }
+.legal-document section p { max-width: 65ch; color: var(--muted); font-size: 0.8rem; }
+.legal-document section a { color: var(--ink); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--gold) 55%, transparent); text-underline-offset: 4px; }
+.legal-document .legal-notice { margin: 18px 0; padding-inline: 24px; border: 1px solid color-mix(in srgb, var(--gold) 44%, transparent); background: color-mix(in srgb, var(--gold) 6%, transparent); }
+.legal-document__nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px; margin-top: 52px; padding-top: 30px; border-top: 1px solid var(--line); }
+
+@media (max-width: 820px) {
+  .legal-header { min-height: 76px; }
+  .legal-return span { display: none; }
+  .legal-shell { grid-template-columns: 1fr; gap: 70px; padding-top: 72px; }
+  .legal-hero { position: static; }
+  .legal-hero h1 { font-size: clamp(3.8rem, 17vw, 5.8rem); }
+  .legal-document__meta { display: grid; }
+  .legal-document section { grid-template-columns: 1fr; gap: 16px; }
+  .legal-document .legal-notice { padding: 26px 20px; }
+  .legal-document__nav { align-items: flex-start; flex-direction: column; }
+}
 
 /* Reveal language varies by content type */
 

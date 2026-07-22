@@ -368,6 +368,61 @@ body[data-theme="light"] .hero-cinematic__light {
   transition: opacity 900ms ease, background 600ms ease;
 }
 
+.private-room-render {
+  --room-view-left: 0;
+  --room-view-right: 0;
+  position: absolute;
+  inset: -1.5%;
+  z-index: 2;
+  overflow: hidden;
+  background: #070807 url("assets/cinematic/threshold-room-center.webp") 50% 50% / cover no-repeat;
+  transform: translate3d(calc(var(--shift-x) * -0.18), calc(var(--shift-y) * -0.12), 0) scale(calc(1.035 + (var(--room-progress, 0) * 0.018)));
+  transform-origin: 50% 54%;
+  transition: transform 850ms var(--ease-out);
+}
+
+.private-room-render::after {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.32), transparent 26%, transparent 74%, rgba(0, 0, 0, 0.34)),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.28), transparent 44%);
+  content: "";
+  pointer-events: none;
+}
+
+.private-room-render__view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  filter: saturate(0.94) contrast(1.04);
+  transform: scale(1.012);
+  transition: opacity 680ms ease, transform 1100ms var(--ease-out), filter 500ms ease;
+}
+
+.private-room-render__view--center { opacity: 1; }
+.private-room-render__view--left { opacity: var(--room-view-left); }
+.private-room-render__view--right { opacity: var(--room-view-right); }
+.private-room-render__view--light { opacity: 0; }
+
+.private-room-render__spotlight {
+  position: absolute;
+  inset: -18%;
+  z-index: 3;
+  background:
+    radial-gradient(circle at var(--pointer-x, 50%) var(--pointer-y, 38%), rgba(255, 222, 164, 0.2), transparent 19%),
+    linear-gradient(112deg, transparent 25%, rgba(225, 185, 118, 0.1) 44%, transparent 64%);
+  mix-blend-mode: screen;
+  opacity: 0.78;
+  pointer-events: none;
+  transform: translate3d(calc(var(--shift-x) * 0.35), calc(var(--shift-y) * 0.25), 0);
+  transition: transform 600ms var(--ease-out), opacity 400ms ease;
+  animation: privateRoomLightPass 9s ease-in-out infinite alternate;
+}
+
 .private-room-fallback__ceiling,
 .private-room-fallback__light,
 .private-room-fallback__floor,
@@ -375,6 +430,14 @@ body[data-theme="light"] .hero-cinematic__light {
 .private-room-fallback__object {
   position: absolute;
   display: block;
+}
+
+.private-room-render ~ .private-room-fallback__ceiling,
+.private-room-render ~ .private-room-fallback__light,
+.private-room-render ~ .private-room-fallback__floor,
+.private-room-render ~ .private-room-fallback__bench,
+.private-room-render ~ .private-room-fallback__object {
+  display: none;
 }
 
 .private-room-fallback__ceiling {
@@ -577,8 +640,14 @@ body[data-theme="light"] .hero-cinematic__light {
   opacity: 0;
 }
 
-.private-room--3d-ready .private-room-fallback {
-  opacity: 0;
+.private-room--3d-ready .private-room-fallback,
+.private-room--rendered .private-room-fallback {
+  opacity: 1;
+}
+
+.private-room--3d-ready .private-room-webgl {
+  opacity: 0.12 !important;
+  mix-blend-mode: screen;
 }
 
 .private-room .room-caption {
@@ -602,6 +671,13 @@ body[data-theme="light"] .private-room-fallback {
   background:
     linear-gradient(90deg, rgba(90, 73, 51, 0.13), transparent 27%, transparent 73%, rgba(90, 73, 51, 0.14)),
     linear-gradient(180deg, #e7e0d5, #d0c7b9 78%);
+}
+
+body[data-theme="light"] .private-room-render__view--light { opacity: 1; }
+body[data-theme="light"] .private-room-render__view:not(.private-room-render__view--light) { opacity: 0; }
+body[data-theme="light"] .private-room-render { background-image: url("assets/cinematic/threshold-room-light.webp"); }
+body[data-theme="light"] .private-room-render::after {
+  background: linear-gradient(0deg, rgba(45, 38, 28, 0.1), transparent 45%);
 }
 
 body[data-theme="light"] .private-room-fallback__ceiling {
@@ -858,6 +934,12 @@ body[data-theme="light"] .wartrobe-stage__legend {
   100% { opacity: 0; transform: translate3d(18px, -120px, 0); }
 }
 
+@keyframes privateRoomLightPass {
+  0% { opacity: 0.48; transform: translate3d(-2.5%, 1%, 0) scale(1.02); }
+  52% { opacity: 0.8; }
+  100% { opacity: 0.58; transform: translate3d(2.5%, -1%, 0) scale(1.06); }
+}
+
 @media (max-width: 1120px) {
   .private-room {
     grid-template-columns: 1fr;
@@ -1074,6 +1156,26 @@ body[data-theme="light"] .wartrobe-stage__legend {
     aspect-ratio: 4 / 5;
   }
 
+  .private-room-render {
+    inset: -2.5%;
+    transform: translate3d(calc(var(--shift-x) * -0.38), calc(var(--shift-y) * -0.24), 0) scale(calc(1.13 + (var(--room-progress, 0) * 0.035)));
+    transition-duration: 520ms;
+  }
+
+  .private-room-render__view {
+    object-position: 50% 50%;
+    transform: scale(1.025);
+  }
+
+  .private-room-render__spotlight {
+    inset: -24%;
+    background:
+      radial-gradient(circle at var(--pointer-x, 50%) var(--pointer-y, 38%), rgba(255, 226, 175, 0.3), transparent 21%),
+      linear-gradient(108deg, transparent 22%, rgba(236, 199, 136, 0.13) 46%, transparent 66%);
+    opacity: 0.86;
+    animation-duration: 6.8s;
+  }
+
   .private-room-fallback__object {
     top: 17%;
     height: 54%;
@@ -1199,6 +1301,14 @@ body[data-theme="light"] .wartrobe-stage__legend {
 
   .private-room-atmosphere {
     display: none;
+  }
+
+  .private-room-render,
+  .private-room-render__view,
+  .private-room-render__spotlight {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
   }
 
   .private-room-fallback {

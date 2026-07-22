@@ -114,8 +114,8 @@ function imageSizeAttributes(string $path): string
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260721-threshold-10">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260721-threshold-10">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260722-threshold-11">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260722-threshold-11">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -225,6 +225,13 @@ function imageSizeAttributes(string $path): string
         <div class="room-camera" data-room-camera>
           <div class="private-room-stage" data-private-room-stage aria-label="Curated digital room featuring the genuine Danny Hirsch wARTrobe surface">
             <div class="private-room-fallback" aria-hidden="true">
+              <div class="private-room-render" data-room-render>
+                <img class="private-room-render__view private-room-render__view--center" src="assets/cinematic/threshold-room-center.webp" alt="" loading="eager" decoding="async" fetchpriority="low" width="1800" height="1125">
+                <img class="private-room-render__view private-room-render__view--left" src="assets/cinematic/threshold-room-left.webp" alt="" loading="lazy" decoding="async" width="1800" height="1125">
+                <img class="private-room-render__view private-room-render__view--right" src="assets/cinematic/threshold-room-right.webp" alt="" loading="lazy" decoding="async" width="1800" height="1125">
+                <img class="private-room-render__view private-room-render__view--light" src="assets/cinematic/threshold-room-light.webp" alt="" loading="eager" decoding="async" fetchpriority="low" width="1800" height="1125">
+                <span class="private-room-render__spotlight"></span>
+              </div>
               <span class="private-room-fallback__ceiling"></span>
               <span class="private-room-fallback__light"></span>
               <span class="private-room-fallback__floor"></span>
@@ -248,7 +255,7 @@ function imageSizeAttributes(string $path): string
           </div>
         </div>
 
-        <div class="room-caption" aria-hidden="true"><span>Curated camera</span><span>Original surface</span><span>Lightweight WebGL</span></div>
+        <div class="room-caption" aria-hidden="true"><span>Curated camera</span><span>Original surface</span><span>Blender-lit architecture</span></div>
       </section>
 
       <section class="collection" id="collection" aria-labelledby="collection-title" data-chapter="03 · Works">
@@ -441,6 +448,6 @@ function imageSizeAttributes(string $path): string
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260721-threshold-10" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260722-threshold-11" defer></script>
   </body>
 </html>
