@@ -27,6 +27,10 @@ const DARK_PALETTE = {
   botanical: '#29452a',
   botanical_leaf: '#294d2b',
   botanical_stem: '#283821',
+  water: '#405451',
+  water_highlight: '#91a7a2',
+  ceramic: '#181a18',
+  glass: '#675237',
   vessel: '#27231d'
 };
 
@@ -53,6 +57,10 @@ const LIGHT_PALETTE = {
   botanical: '#52684a',
   botanical_leaf: '#607a55',
   botanical_stem: '#4d5d43',
+  water: '#879995',
+  water_highlight: '#c4d0cd',
+  ceramic: '#77736b',
+  glass: '#a68c66',
   vessel: '#5f584e'
 };
 
@@ -388,6 +396,7 @@ export function initWalkableGallery3D(options = {}) {
   const sitePanelMeshes = [];
   const siteNavigationMeshes = [];
   const demoObjects = [];
+  const standardObjects = [];
   const labelEntries = [];
   const themedMaterials = [];
   const importedLights = [];
@@ -481,12 +490,14 @@ export function initWalkableGallery3D(options = {}) {
     };
   };
 
-  const collides = (x, z) => colliders.some((box) => (
-    x + playerRadius > box.minX
-    && x - playerRadius < box.maxX
-    && z + playerRadius > box.minZ
-    && z - playerRadius < box.maxZ
-  ));
+  const collides = (x, z) => colliders.some((box) => {
+    if (box.demoOnly && !demoMode) return false;
+    if (box.hiddenInDemo && demoMode) return false;
+    return x + playerRadius > box.minX
+      && x - playerRadius < box.maxX
+      && z + playerRadius > box.minZ
+      && z - playerRadius < box.maxZ;
+  });
 
   const movePlayer = (x, z) => {
     const nextX = clamp(x, bounds.minX + playerRadius, bounds.maxX - playerRadius);
@@ -651,6 +662,7 @@ export function initWalkableGallery3D(options = {}) {
   const setDemoMode = (nextDemoMode) => {
     demoMode = Boolean(nextDemoMode);
     demoObjects.forEach((object) => { object.visible = demoMode; });
+    standardObjects.forEach((object) => { object.visible = !demoMode; });
     if (!demoMode) mount.classList.remove('has-interactive-target');
     if (!demoMode && focusedSitePanel) {
       focusedSitePanel = null;
@@ -688,11 +700,21 @@ export function initWalkableGallery3D(options = {}) {
     goToView(index);
   };
 
+  const goToDemoRoom = (roomId = 'gallery-hall') => {
+    const index = views.findIndex((view) => view.object.userData?.demo_room_id === roomId);
+    if (index < 0) return;
+    if (!demoMode) setDemoMode(true);
+    activeNavigationId = roomId;
+    refreshLabelMaterials();
+    goToView(index);
+  };
+
   const activateNavigationItem = (item) => {
     if (!item?.id) return;
     activeNavigationId = item.id;
     call(options.onNavigationActivate, item);
     if (item.id === 'artworks') goToWork(1);
+    else if (item.id.startsWith('room-')) goToDemoRoom(item.id.replace(/^room-/, ''));
     else goToSitePanel(item.id);
   };
 
@@ -827,6 +849,14 @@ export function initWalkableGallery3D(options = {}) {
 
     model.traverse((object) => {
       if (object.isCamera) object.visible = false;
+      if (object.userData?.demo_only) {
+        demoObjects.push(object);
+        object.visible = demoMode;
+      }
+      if (object.userData?.demo_hidden) {
+        standardObjects.push(object);
+        object.visible = !demoMode;
+      }
       if (object.isLight) {
         importedLights.push({
           light: object,
@@ -851,10 +881,6 @@ export function initWalkableGallery3D(options = {}) {
       object.frustumCulled = true;
       object.receiveShadow = renderer.shadowMap.enabled;
       object.castShadow = renderer.shadowMap.enabled && /frame|bench|vessel|plant/i.test(object.name);
-      if (object.userData?.demo_only) {
-        demoObjects.push(object);
-        object.visible = demoMode;
-      }
       const owner = findMetadataOwner(object);
       if (object.userData?.catalogue_label || object.userData?.site_panel_id || object.userData?.site_navigation) {
         labelEntries.push({ object, material: null });
@@ -934,7 +960,9 @@ export function initWalkableGallery3D(options = {}) {
           minX: worldPosition.x - Number(half[0]),
           maxX: worldPosition.x + Number(half[0]),
           minZ: worldPosition.z - Number(half[2]),
-          maxZ: worldPosition.z + Number(half[2])
+          maxZ: worldPosition.z + Number(half[2]),
+          demoOnly: Boolean(object.userData?.demo_only),
+          hiddenInDemo: Boolean(object.userData?.demo_hidden)
         });
       }
       object.visible = false;
@@ -1123,6 +1151,7 @@ export function initWalkableGallery3D(options = {}) {
     }),
     goToNextView: () => goToWork(1),
     goToPreviousView: () => goToWork(-1),
+    goToDemoRoom,
     goToSiteDirectory,
     goToSitePanel,
     resetView,

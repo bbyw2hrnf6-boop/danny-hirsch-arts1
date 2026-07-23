@@ -71,6 +71,7 @@ const gallerySiteLink = document.querySelector("[data-gallery-site-link]");
 const gallerySiteClose = document.querySelector("[data-gallery-site-close]");
 const galleryDemoNav = document.querySelector("[data-gallery-demo-nav]");
 const galleryDemoArt = document.querySelector("[data-gallery-demo-art]");
+const galleryDemoRooms = [...document.querySelectorAll("[data-gallery-demo-room]")];
 const galleryDemoPanels = [...document.querySelectorAll("[data-gallery-demo-panel]")];
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -521,7 +522,7 @@ const setGalleryDemo = (active) => {
   if (galleryDemoNav) galleryDemoNav.hidden = !galleryDemoActive;
   if (!galleryDemoActive) setGallerySitePanel(null);
   galleryRoomController?.setDemoMode?.(galleryDemoActive);
-  if (galleryDemoActive) galleryRoomController?.goToSiteDirectory?.();
+  if (galleryDemoActive) galleryRoomController?.goToDemoRoom?.("gallery-hall");
 };
 
 const setGalleryFallback = (reason = "fallback") => {
@@ -546,12 +547,12 @@ const ensureGalleryRoom = () => {
   roomExperience.classList.remove("is-gallery-fallback");
   roomExperience.classList.add("is-gallery-loading");
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260722-gallery-25")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260723-gallery-29")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
         mount: galleryMount,
-        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260722-gallery-25",
+        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260723-gallery-29",
         theme: body.dataset.theme,
         onLoading: ({ progress }) => {
           const status = galleryLoading?.querySelector("small");
@@ -567,7 +568,7 @@ const ensureGalleryRoom = () => {
           if (roomExperienceFallbackControls) roomExperienceFallbackControls.hidden = true;
           galleryRoomController?.setTheme?.(body.dataset.theme);
           galleryRoomController?.setDemoMode?.(galleryDemoActive);
-          if (galleryDemoActive) galleryRoomController?.goToSiteDirectory?.();
+          if (galleryDemoActive) galleryRoomController?.goToDemoRoom?.("gallery-hall");
           galleryRoomController?.setActive?.(roomExperience.open);
         },
         onSkip: ({ reason }) => setGalleryFallback(reason),
@@ -627,6 +628,9 @@ galleryViewNext?.addEventListener("click", () => galleryRoomController?.goToNext
 galleryReset?.addEventListener("click", () => galleryRoomController?.resetView?.());
 roomExperienceDemo?.addEventListener("click", () => setGalleryDemo(!galleryDemoActive));
 galleryDemoArt?.addEventListener("click", () => galleryRoomController?.goToNextView?.());
+galleryDemoRooms.forEach((button) => {
+  button.addEventListener("click", () => galleryRoomController?.goToDemoRoom?.(button.dataset.galleryDemoRoom));
+});
 galleryDemoPanels.forEach((button) => {
   button.addEventListener("click", () => galleryRoomController?.goToSitePanel?.(button.dataset.galleryDemoPanel));
 });

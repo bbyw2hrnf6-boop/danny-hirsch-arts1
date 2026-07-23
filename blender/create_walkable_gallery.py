@@ -141,7 +141,7 @@ ROOM_HALF_WIDTH = 7.0
 ROOM_HALF_DEPTH = 8.0
 ROOM_HEIGHT = 5.8
 WALK_EYE_HEIGHT = 1.65
-WALK_BOUNDS = (-6.20, 6.20, -7.00, 6.62)  # xmin, xmax, ymin, ymax in Blender XY.
+WALK_BOUNDS = (-6.20, 6.20, -15.30, 6.62)  # xmin, xmax, ymin, ymax in Blender XY.
 
 WEB_OBJECTS: list[bpy.types.Object] = []
 
@@ -408,6 +408,32 @@ def add_torus(
     return obj
 
 
+def add_sphere(
+    name: str,
+    location: tuple[float, float, float],
+    scale: tuple[float, float, float],
+    material: bpy.types.Material,
+    *,
+    segments: int = 20,
+    ring_count: int = 12,
+) -> bpy.types.Object:
+    """Create a smooth, economical ellipsoid for furniture and foliage."""
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=segments,
+        ring_count=ring_count,
+        location=location,
+    )
+    obj = bpy.context.object
+    obj.name = name
+    obj.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    assign_material(obj, material)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    mark_web(obj)
+    return obj
+
+
 def apply_modifiers(obj: bpy.types.Object) -> None:
     for modifier in list(obj.modifiers):
         bpy.ops.object.select_all(action="DESELECT")
@@ -531,6 +557,7 @@ def add_view_anchor(
     label: str,
     kind: str,
     surface_index: int | None = None,
+    order: int | None = None,
 ) -> bpy.types.Object:
     anchor = add_empty(name, location, display_type="ARROWS", display_size=0.34)
     look_at(anchor, Vector(target))
@@ -542,6 +569,8 @@ def add_view_anchor(
     if surface_index is not None:
         anchor["surface_index"] = surface_index
         anchor["target_node"] = f"SURFACE_DETAIL_{surface_index:02d}"
+    if order is not None:
+        anchor["order"] = order
     return anchor
 
 
@@ -816,29 +845,32 @@ def add_site_information_panels(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    """Build subtle south-wall boards used only by the optional 3D-site demo."""
-    for index, (panel_data, x) in enumerate(zip(SITE_PANELS, (-5.15, -2.58, 0.0, 2.58, 5.15)), start=1):
-        center_z = 2.42
+    """Build readable information boards on the far wall of the demo wing."""
+    # These behave like discreet museum labels/room directories. Keeping them
+    # below the artworks prevents the optional website layer from turning the
+    # gallery into a wall of UI.
+    for index, (panel_data, x) in enumerate(zip(SITE_PANELS, (-5.55, -2.78, 0.0, 2.78, 5.55)), start=1):
+        center_z = 1.24
         recess = add_box(
             f"SITE_PANEL_{index:02d}_Recess",
-            (x, -7.84, center_z),
-            (2.25, 0.10, 1.58),
+            (x, -15.86, center_z),
+            (1.18, 0.10, 0.86),
             materials["shadow"],
             bevel=0.035,
             theme_role="shadow",
         )
         frame = add_box(
             f"SITE_PANEL_{index:02d}_Frame",
-            (x, -7.72, center_z),
-            (2.15, 0.10, 1.48),
+            (x, -15.74, center_z),
+            (1.10, 0.10, 0.78),
             materials["bronze"],
             bevel=0.035,
             theme_role="bronze",
         )
         backing = add_box(
             f"SITE_PANEL_{index:02d}_Backing",
-            (x, -7.655, center_z),
-            (2.02, 0.055, 1.35),
+            (x, -15.675, center_z),
+            (1.01, 0.055, 0.68),
             materials["plaque"],
             bevel=0.025,
             theme_role="plaque",
@@ -849,9 +881,9 @@ def add_site_information_panels(
         panel = add_vertical_panel(
             f"SITE_PANEL_{panel_data['id'].upper()}",
             "south",
-            (x, -7.622, center_z),
-            1.91,
-            1.24,
+            (x, -15.642, center_z),
+            0.94,
+            0.60,
             materials["plaque"],
         )
         panel["theme_role"] = "site_panel"
@@ -866,8 +898,8 @@ def add_site_information_panels(
         panel["demo_only"] = True
         view = add_view_anchor(
             f"VIEW_Site_{index:02d}",
-            (x, -5.25, WALK_EYE_HEIGHT),
-            (x, -7.62, center_z),
+            ((x if abs(x) > 0.4 else 0.65), -12.55, WALK_EYE_HEIGHT),
+            (x, -15.64, center_z),
             label=panel_data["title"],
             kind="site_panel",
         )
@@ -906,6 +938,9 @@ def add_site_navigation_console(materials: dict[str, bpy.types.Material]) -> Non
         structure["asset_role"] = "optional_3d_site_navigation_architecture"
 
     navigation_items = [
+        {"id": "room-gallery-hall", "label": "Gallery"},
+        {"id": "room-private-room", "label": "Private"},
+        {"id": "room-contact-room", "label": "Contact"},
         {"id": "artworks", "label": "Artworks"},
         *({"id": panel["id"], "label": panel["id"].title()} for panel in SITE_PANELS),
     ]
@@ -1248,10 +1283,37 @@ def build_gallery_shell(
     wall_thickness = 0.30
     groups["wall"].extend([
         add_box("Room_North_Wall", (0, ROOM_HALF_DEPTH, ROOM_HEIGHT / 2), (14.0, wall_thickness, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
-        add_box("Room_South_Wall", (0, -ROOM_HALF_DEPTH, ROOM_HEIGHT / 2), (14.0, wall_thickness, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Room_South_Wall_Left", (-5.78, -ROOM_HALF_DEPTH, ROOM_HEIGHT / 2), (2.44, wall_thickness, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Room_South_Wall_Centre", (0, -ROOM_HALF_DEPTH, ROOM_HEIGHT / 2), (4.88, wall_thickness, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Room_South_Wall_Right", (5.78, -ROOM_HALF_DEPTH, ROOM_HEIGHT / 2), (2.44, wall_thickness, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Room_South_Lintel_Private", (-3.50, -ROOM_HALF_DEPTH, 4.23), (2.12, wall_thickness, 3.15), materials["wall"], theme_role="wall"),
+        add_box("Room_South_Lintel_Contact", (3.50, -ROOM_HALF_DEPTH, 4.23), (2.12, wall_thickness, 3.15), materials["wall"], theme_role="wall"),
         add_box("Room_West_Wall", (-ROOM_HALF_WIDTH, 0, ROOM_HEIGHT / 2), (wall_thickness, 16.0, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
         add_box("Room_East_Wall", (ROOM_HALF_WIDTH, 0, ROOM_HEIGHT / 2), (wall_thickness, 16.0, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
     ])
+
+    # In normal gallery mode these black-stone doors close the optional site
+    # wing. Demo mode hides them and reveals two continuous walk-throughs.
+    for room_id, x in (("Private", -3.50), ("Contact", 3.50)):
+        door = add_box(
+            f"Standard_Door_{room_id}",
+            (x, -7.82, 1.33),
+            (2.04, 0.16, 2.65),
+            materials["shadow"],
+            bevel=0.028,
+            theme_role="shadow",
+        )
+        door["demo_hidden"] = True
+        door["asset_role"] = "normal_gallery_demo_wing_closure"
+        for jamb_x in (x - 1.10, x + 1.10):
+            groups["bronze"].append(add_box(
+                f"Demo_Door_{room_id}_Jamb_{jamb_x:+.2f}",
+                (jamb_x, -7.67, 1.42),
+                (0.055, 0.10, 2.84),
+                materials["bronze"],
+                bevel=0.008,
+                theme_role="bronze",
+            ))
     groups["ceiling"].append(add_box(
         "Room_Matte_Black_Ceiling",
         (0, 0, ROOM_HEIGHT + 0.12),
@@ -1593,6 +1655,415 @@ def add_bench(materials: dict[str, bpy.types.Material], groups: dict[str, list[b
         ))
 
 
+def local_xy(
+    center: tuple[float, float],
+    offset: tuple[float, float],
+    angle: float,
+) -> tuple[float, float]:
+    cosine = math.cos(angle)
+    sine = math.sin(angle)
+    return (
+        center[0] + offset[0] * cosine - offset[1] * sine,
+        center[1] + offset[0] * sine + offset[1] * cosine,
+    )
+
+
+def add_rotated_box(
+    name: str,
+    center: tuple[float, float],
+    offset: tuple[float, float],
+    z: float,
+    dimensions: tuple[float, float, float],
+    angle: float,
+    material: bpy.types.Material,
+    group: list[bpy.types.Object],
+    role: str,
+    *,
+    bevel: float = 0.0,
+) -> bpy.types.Object:
+    x, y = local_xy(center, offset, angle)
+    obj = add_box(name, (x, y, z), dimensions, material, bevel=bevel, theme_role=role)
+    obj.rotation_euler.z = angle
+    group.append(obj)
+    return obj
+
+
+def add_demo_sofa(
+    prefix: str,
+    center: tuple[float, float],
+    angle: float,
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+    width: float = 2.90,
+) -> None:
+    """Tailored low lounge seating matching the dark private-room reference."""
+    add_rotated_box(prefix + "_Plinth", center, (0, 0), 0.28, (width - 0.18, 0.78, 0.24), angle, materials["wood"], groups["wood"], "wood", bevel=0.035)
+    add_rotated_box(prefix + "_Seat", center, (0, -0.02), 0.55, (width, 0.94, 0.30), angle, materials["leather"], groups["leather"], "leather", bevel=0.095)
+    add_rotated_box(prefix + "_Back", center, (0, 0.41), 1.00, (width, 0.20, 0.98), angle, materials["leather"], groups["leather"], "leather", bevel=0.075)
+    for side in (-1, 1):
+        add_rotated_box(prefix + f"_Arm_{side:+d}", center, (side * (width / 2 - 0.10), 0), 0.78, (0.20, 0.90, 0.62), angle, materials["leather"], groups["leather"], "leather", bevel=0.065)
+    for side in (-1, 1):
+        add_rotated_box(prefix + f"_Bronze_Foot_{side:+d}", center, (side * (width * 0.31), 0), 0.105, (0.12, 0.64, 0.21), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.018)
+
+
+def add_demo_coffee_table(
+    prefix: str,
+    center: tuple[float, float],
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    add_rotated_box(prefix + "_Top", center, (0, 0), 0.48, (2.25, 1.15, 0.12), 0, materials["stone"], groups["stone"], "stone", bevel=0.035)
+    add_rotated_box(prefix + "_Shadow", center, (0, 0), 0.31, (1.65, 0.78, 0.22), 0, materials["shadow"], groups["shadow"], "shadow", bevel=0.028)
+    for x in (-0.86, 0.86):
+        add_rotated_box(prefix + f"_Bronze_Leg_{x:+.2f}", center, (x, 0), 0.23, (0.08, 0.82, 0.40), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.015)
+
+
+def add_demo_chair(
+    prefix: str,
+    center: tuple[float, float],
+    angle: float,
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    add_rotated_box(prefix + "_Seat", center, (0, 0), 0.50, (0.70, 0.70, 0.18), angle, materials["leather"], groups["leather"], "leather", bevel=0.065)
+    add_rotated_box(prefix + "_Back", center, (0, 0.31), 0.98, (0.70, 0.15, 0.86), angle, materials["leather"], groups["leather"], "leather", bevel=0.055)
+    for dx in (-0.25, 0.25):
+        for dy in (-0.23, 0.23):
+            add_rotated_box(prefix + f"_Leg_{dx:+.2f}_{dy:+.2f}", center, (dx, dy), 0.24, (0.055, 0.055, 0.48), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.012)
+
+
+def add_demo_meeting_table(
+    center: tuple[float, float],
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    add_rotated_box("Contact_Table_Top", center, (0, 0), 0.80, (3.45, 1.55, 0.16), 0, materials["wood"], groups["wood"], "wood", bevel=0.055)
+    add_rotated_box("Contact_Table_Inlay", center, (0, 0), 0.895, (2.95, 0.15, 0.035), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.012)
+    for x in (-1.18, 1.18):
+        add_rotated_box(f"Contact_Table_Leg_{x:+.2f}", center, (x, 0), 0.40, (0.12, 1.12, 0.76), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.022)
+    for index, x in enumerate((-1.15, 0.0, 1.15), start=1):
+        add_demo_chair(f"Contact_Chair_North_{index}", (center[0] + x, center[1] + 1.25), math.pi, materials, groups)
+        add_demo_chair(f"Contact_Chair_South_{index}", (center[0] + x, center[1] - 1.25), 0, materials, groups)
+
+
+def add_demo_shelving(
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    # Illuminated display library on the east wall of Meet & Contact.
+    for y in (-14.55, -12.95, -11.35, -9.75):
+        groups["wood"].append(add_box(f"Contact_Shelf_Vertical_{y:+.2f}", (6.70, y, 2.62), (0.28, 0.10, 4.30), materials["wood"], bevel=0.018, theme_role="wood"))
+    for z in (0.65, 1.55, 2.45, 3.35, 4.25):
+        groups["wood"].append(add_box(f"Contact_Shelf_Horizontal_{z:.2f}", (6.65, -12.15, z), (0.36, 5.85, 0.10), materials["wood"], bevel=0.015, theme_role="wood"))
+        groups["emissive"].append(add_box(f"Contact_Shelf_Light_{z:.2f}", (6.43, -12.15, z - 0.07), (0.025, 5.55, 0.025), materials["emissive"], bevel=0.006, theme_role="emissive"))
+    for index, (y, z, radius) in enumerate((
+        (-14.05, 1.02, 0.16), (-13.25, 1.95, 0.12), (-12.40, 2.85, 0.18),
+        (-11.55, 1.02, 0.14), (-10.72, 3.72, 0.16), (-9.95, 2.00, 0.13),
+    ), start=1):
+        vessel = add_cylinder(f"Contact_Shelf_Vessel_{index:02d}", (6.38, y, z), radius, radius * 1.85, materials["ceramic"], vertices=20)
+        vessel.rotation_euler.y = math.pi / 2
+        vessel["theme_role"] = "ceramic"
+        groups["ceramic"].append(vessel)
+
+
+def add_demo_desk_lamp(
+    center: tuple[float, float],
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    x, y = center
+    base = add_cylinder("Contact_Lamp_Base", (x, y, 1.30), 0.25, 0.06, materials["bronze"], vertices=28)
+    base["theme_role"] = "bronze"
+    groups["bronze"].append(base)
+    stem = add_cylinder("Contact_Lamp_Stem", (x, y, 1.83), 0.028, 1.02, materials["bronze"], vertices=18)
+    stem["theme_role"] = "bronze"
+    groups["bronze"].append(stem)
+    groups["bronze"].append(add_box("Contact_Lamp_Bar", (x, y, 2.34), (0.82, 0.10, 0.10), materials["bronze"], bevel=0.045, theme_role="bronze"))
+    groups["emissive"].append(add_box("Contact_Lamp_Aperture", (x, y - 0.06, 2.30), (0.68, 0.035, 0.025), materials["emissive"], bevel=0.008, theme_role="emissive"))
+
+
+def add_demo_bonsai(
+    center: tuple[float, float],
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    x, y = center
+    pot = add_cylinder("Contact_Bonsai_Pot", (x, y, 1.43), 0.32, 0.28, materials["planter"], vertices=28)
+    pot["theme_role"] = "planter"
+    groups["planter"].append(pot)
+    trunk_start = Vector((x, y, 1.54))
+    trunk_end = Vector((x + 0.08, y, 2.42))
+    add_stem_between("Contact_Bonsai_Trunk", trunk_start, trunk_end, 0.050, materials["wood"], groups["wood"])
+    for index, (dx, dy, dz, scale) in enumerate((
+        (-0.28, 0.00, 2.16, (0.34, 0.24, 0.18)), (0.22, 0.03, 2.20, (0.38, 0.25, 0.18)),
+        (-0.05, 0.00, 2.43, (0.36, 0.24, 0.20)), (0.38, 0.02, 2.52, (0.26, 0.18, 0.16)),
+        (-0.34, 0.02, 2.54, (0.25, 0.17, 0.15)), (0.08, 0.00, 2.72, (0.28, 0.19, 0.17)),
+    ), start=1):
+        crown = add_sphere(f"Contact_Bonsai_Crown_{index:02d}", (x + dx, y + dy, dz), scale, materials["leaf_a"], segments=16, ring_count=10)
+        crown["theme_role"] = "botanical_leaf"
+        groups["leaf_a"].append(crown)
+
+
+def add_demo_pendant(
+    center: tuple[float, float],
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    x, y = center
+    cord = add_cylinder("Contact_Pendant_Cord", (x, y, 4.55), 0.018, 2.25, materials["bronze"], vertices=14)
+    cord["theme_role"] = "bronze"
+    groups["bronze"].append(cord)
+    ring = add_torus("Contact_Pendant_Bronze_Ring", (x, y, 3.40), 0.36, 0.045, materials["bronze"], major_segments=32, minor_segments=10)
+    ring["theme_role"] = "bronze"
+    ring.rotation_euler.x = math.pi / 2
+    groups["bronze"].append(ring)
+    globe = add_sphere("Contact_Pendant_Glass", (x, y, 3.40), (0.28, 0.28, 0.32), materials["glass"], segments=20, ring_count=12)
+    globe["theme_role"] = "glass"
+    groups["glass"].append(globe)
+    glow = add_sphere("Contact_Pendant_Glow", (x, y, 3.40), (0.09, 0.09, 0.11), materials["emissive"], segments=14, ring_count=8)
+    glow["theme_role"] = "emissive"
+    groups["emissive"].append(glow)
+
+
+def add_demo_waterfall(
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    # Architectural water wall: sculpted dark stone, layered reflective water,
+    # and a deep black-marble catch basin rather than a flat decorative plane.
+    groups["stone"].append(add_box("Private_Waterfall_Stone", (-6.78, -11.18, 2.74), (0.18, 3.10, 4.62), materials["stone"], bevel=0.035, theme_role="stone"))
+
+    # A continuous silvered sheet reads as water at oblique camera angles. The
+    # staggered translucent bands create irregular flow without looking like
+    # architectural wall slats.
+    groups["water"].append(add_box(
+        "Private_Waterfall_Water_Sheet",
+        (-6.664, -11.18, 2.72),
+        (0.022, 2.88, 4.20),
+        materials["water"],
+        bevel=0.018,
+        theme_role="water",
+    ))
+    flow_widths = (0.34, 0.26, 0.38, 0.29, 0.42, 0.25, 0.36, 0.31)
+    cursor = -12.48
+    for index, width in enumerate(flow_widths):
+        y = cursor + width * 0.5
+        depth = 0.015 + (index % 3) * 0.007
+        ribbon = add_box(
+            f"Private_Waterfall_Flow_{index:02d}",
+            (-6.645 - depth * 0.5, y, 2.68 + (index % 2) * 0.035),
+            (depth, width, 4.04 - (index % 3) * 0.09),
+            materials["water_highlight" if index % 3 == 0 else "water"],
+            bevel=0.025,
+            theme_role="water_highlight" if index % 3 == 0 else "water",
+        )
+        ribbon.rotation_euler.y = math.radians((index % 3 - 1) * 0.35)
+        groups["water"].append(ribbon)
+        cursor += width
+    groups["stone"].append(add_box("Private_Waterfall_Basin", (-6.28, -11.18, 0.25), (1.12, 3.35, 0.50), materials["stone"], bevel=0.055, theme_role="stone"))
+    groups["water"].append(add_box("Private_Waterfall_Pool", (-6.14, -11.18, 0.52), (0.76, 3.02, 0.045), materials["water"], bevel=0.025, theme_role="water"))
+    groups["emissive"].append(add_box("Private_Waterfall_Top_Light", (-6.61, -11.18, 5.10), (0.035, 2.82, 0.045), materials["emissive"], bevel=0.008, theme_role="emissive"))
+
+
+def add_demo_artwork(
+    prefix: str,
+    side: str,
+    center: tuple[float, float, float],
+    image_index: int,
+    width: float,
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    catalogue = ARTWORK_CATALOG[image_index - 1]
+    image_material, ratio = create_image_material(
+        prefix + "_LOCKED",
+        SURFACE_TEXTURES[image_index - 1],
+        role="surface_detail_locked",
+        maximum_edge=768,
+    )
+    height = width / ratio
+    panel = add_vertical_panel(prefix, side, center, width, height, image_material)
+    panel["asset_id"] = f"demo-art-{image_index:02d}"
+    panel["artwork_id"] = f"artwork-{image_index:02d}"
+    panel["title"] = catalogue["title"]
+    panel["year"] = catalogue["year"]
+    panel["medium"] = catalogue["medium"]
+    panel["dimensions"] = catalogue["dimensions"]
+    panel["availability"] = catalogue["availability"]
+    panel["description"] = catalogue["description"]
+    panel["representation"] = "genuine local artwork image in the optional 3D site demo"
+    panel["source_asset"] = str(SURFACE_TEXTURES[image_index - 1].relative_to(ROOT))
+    panel["demo_only"] = True
+    panel["demo_only"] = True
+    panel["asset_role"] = "genuine_artwork_surface_detail"
+    panel["asset_id"] = f"demo-artwork-{image_index:02d}"
+    panel["display_label"] = f"{catalogue['title']} · detail"
+    panel["title"] = catalogue["title"]
+    panel["year"] = catalogue["year"]
+    panel["medium"] = catalogue["medium"]
+    panel["dimensions"] = catalogue["dimensions"]
+    panel["availability"] = catalogue["availability"]
+    panel["description"] = catalogue["description"]
+    panel["detail_label"] = f"Surface detail · {catalogue['medium']}"
+    panel["source_asset"] = str(SURFACE_TEXTURES[image_index - 1].relative_to(ROOT))
+    panel["representation"] = "genuine macro/detail photograph; not a complete artwork view"
+
+    # Four real rails, not a solid bronze slab. The previous single-box frame
+    # sat one centimetre in front of the image plane and hid the genuine art.
+    rail = 0.075
+    depth = 0.09
+    if side in ("north", "south"):
+        frame_y = center[1] + (0.035 if side == "north" else -0.035)
+        rail_specs = (
+            ((center[0], frame_y, center[2] + height / 2 + rail / 2), (width + rail * 2, depth, rail)),
+            ((center[0], frame_y, center[2] - height / 2 - rail / 2), (width + rail * 2, depth, rail)),
+            ((center[0] - width / 2 - rail / 2, frame_y, center[2]), (rail, depth, height)),
+            ((center[0] + width / 2 + rail / 2, frame_y, center[2]), (rail, depth, height)),
+        )
+    else:
+        frame_x = center[0] + (-0.035 if side == "west" else 0.035)
+        rail_specs = (
+            ((frame_x, center[1], center[2] + height / 2 + rail / 2), (depth, width + rail * 2, rail)),
+            ((frame_x, center[1], center[2] - height / 2 - rail / 2), (depth, width + rail * 2, rail)),
+            ((frame_x, center[1] - width / 2 - rail / 2, center[2]), (depth, rail, height)),
+            ((frame_x, center[1] + width / 2 + rail / 2, center[2]), (depth, rail, height)),
+        )
+    for index, (location, dimensions) in enumerate(rail_specs, start=1):
+        groups["bronze"].append(add_box(
+            f"{prefix}_Frame_Rail_{index:02d}",
+            location,
+            dimensions,
+            materials["bronze"],
+            bevel=0.018,
+            theme_role="bronze",
+        ))
+
+
+def build_demo_site_rooms(
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    """Screenshot-led private lounge and Meet & Contact extension."""
+    groups["floor"].append(add_box("Demo_Wing_Grout", (0, -12.0, -0.10), (14.0, 8.0, 0.20), materials["floor"], theme_role="floor"))
+    for row in range(4):
+        for column in range(4):
+            x = -5.10 + column * 3.40
+            y = -15.02 + row * 1.92
+            role = "floor_tile_a" if (row + column) % 2 else "floor_tile_b"
+            groups[role].append(add_box(
+                f"Demo_Black_Marble_Slab_{row + 1:02d}_{column + 1:02d}",
+                (x, y, 0.010),
+                (3.36, 1.88, 0.050),
+                materials[role],
+                bevel=0.014,
+                theme_role=role,
+            ))
+
+    groups["ceiling"].append(add_box("Demo_Wing_Ceiling", (0, -12.0, ROOM_HEIGHT + 0.12), (14.0, 8.0, 0.24), materials["ceiling"], theme_role="ceiling"))
+    groups["wall"].extend([
+        add_box("Demo_Wing_West_Wall", (-7.0, -12.0, ROOM_HEIGHT / 2), (0.30, 8.0, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Demo_Wing_East_Wall", (7.0, -12.0, ROOM_HEIGHT / 2), (0.30, 8.0, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Demo_Wing_South_Wall", (0, -16.0, ROOM_HEIGHT / 2), (14.0, 0.30, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Demo_Wing_Partition_North", (0, -9.48, ROOM_HEIGHT / 2), (0.22, 2.96, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Demo_Wing_Partition_South", (0, -14.52, ROOM_HEIGHT / 2), (0.22, 2.96, ROOM_HEIGHT), materials["wall"], theme_role="wall"),
+        add_box("Demo_Wing_Partition_Lintel", (0, -12.0, 4.30), (0.22, 2.12, 3.00), materials["wall"], theme_role="wall"),
+    ])
+
+    # Walnut slat portals and continuous bronze light lines define transitions.
+    for y in (-10.88, -10.62, -13.38, -13.12):
+        for z_index in range(10):
+            z = 0.34 + z_index * 0.52
+            groups["wood"].append(add_box(f"Demo_Walnut_Slat_{y:+.2f}_{z_index:02d}", (0.16, y, z), (0.22, 0.085, 0.40), materials["wood"], bevel=0.008, theme_role="wood"))
+
+    for name, location, dimensions in (
+        ("Demo_Cove_West", (-6.72, -12.0, 5.43), (0.04, 7.55, 0.055)),
+        ("Demo_Cove_East", (6.72, -12.0, 5.43), (0.04, 7.55, 0.055)),
+        ("Demo_Cove_South", (0, -15.68, 5.43), (13.45, 0.04, 0.055)),
+        ("Demo_Cove_Private_North", (-3.50, -8.32, 5.43), (6.45, 0.04, 0.055)),
+        ("Demo_Cove_Contact_North", (3.50, -8.32, 5.43), (6.45, 0.04, 0.055)),
+        ("Demo_Floor_Light_Private", (-3.50, -15.72, 0.28), (6.45, 0.035, 0.04)),
+        ("Demo_Floor_Light_Contact", (3.50, -15.72, 0.28), (6.45, 0.035, 0.04)),
+    ):
+        groups["emissive"].append(add_box(name, location, dimensions, materials["emissive"], bevel=0.008, theme_role="emissive"))
+
+    for x in (-3.5, 3.5):
+        groups["shadow"].append(add_box(f"Demo_Ceiling_Track_{x:+.1f}", (x, -12.0, 5.56), (0.06, 6.9, 0.06), materials["shadow"], bevel=0.010, theme_role="shadow"))
+
+    add_demo_waterfall(materials, groups)
+    add_demo_sofa("Private_Sofa_South", (-3.70, -14.60), 0, materials, groups, width=3.15)
+    add_demo_sofa("Private_Sofa_Partition", (-0.72, -12.38), math.pi / 2, materials, groups, width=2.55)
+    add_demo_coffee_table("Private_Coffee_Table", (-3.55, -12.35), materials, groups)
+    add_demo_meeting_table((3.45, -12.25), materials, groups)
+    add_demo_shelving(materials, groups)
+
+    # The right-side console, lamp and bonsai echo the reference hero view.
+    groups["stone"].append(add_box("Contact_Marble_Console", (4.92, -9.20, 1.10), (3.25, 0.82, 0.16), materials["stone"], bevel=0.035, theme_role="stone"))
+    groups["wood"].append(add_box("Contact_Console_Base", (4.92, -9.20, 0.54), (3.02, 0.62, 0.96), materials["wood"], bevel=0.025, theme_role="wood"))
+    add_demo_desk_lamp((4.12, -9.20), materials, groups)
+    add_demo_bonsai((5.72, -9.20), materials, groups)
+    add_demo_pendant((3.45, -12.25), materials, groups)
+
+    add_lush_botanical("Demo_Private_Plant", (-5.42, -14.55, 0), materials, groups, seed=311)
+    add_lush_botanical("Demo_Contact_Plant", (5.65, -14.55, 0), materials, groups, seed=733)
+
+    add_demo_artwork("DEMO_ART_PRIVATE_WEST", "west", (-6.68, -14.15, 2.75), 3, 2.15, materials, groups)
+    add_demo_artwork("DEMO_ART_PRIVATE_NORTH", "north", (-4.72, -8.18, 2.70), 6, 1.85, materials, groups)
+    add_demo_artwork("DEMO_ART_CONTACT_NORTH", "north", (2.05, -8.18, 2.70), 2, 1.75, materials, groups)
+    # Sit just proud of the south-wall finish; the structural face is at
+    # y=-15.65. This preserves the genuine image texture instead of burying it
+    # inside the wall surface.
+    add_demo_artwork("DEMO_ART_PRIVATE_SOUTH", "south", (-3.48, -15.59, 3.42), 4, 2.05, materials, groups)
+    add_demo_artwork("DEMO_ART_CONTACT_SOUTH", "south", (3.48, -15.59, 3.42), 5, 2.05, materials, groups)
+
+    for index, (location, target) in enumerate((
+        ((-4.80, -12.25, 5.05), (-3.60, -12.25, 1.20)),
+        ((-2.15, -14.45, 5.05), (-3.70, -14.45, 1.25)),
+        ((2.30, -12.10, 5.05), (3.45, -12.25, 1.00)),
+        ((5.45, -10.05, 5.05), (4.95, -9.20, 1.35)),
+    ), start=1):
+        light = add_light(
+            f"Demo_Room_Spot_{index:02d}", "SPOT", location, target,
+            (1.0, 0.67, 0.36), 210, web=True, theme_role="demo_room_spot",
+            spot_size=math.radians(38), spot_blend=0.78,
+        )
+        light["demo_only"] = True
+        add_spot_fixture(light, f"Demo_Room_Spot_{index:02d}", materials, groups)
+
+    pendant_light = add_light(
+        "Demo_Contact_Pendant_Light", "POINT", (3.45, -12.25, 3.32), (3.45, -12.25, 0.8),
+        (1.0, 0.63, 0.30), 115, web=True, theme_role="demo_pendant",
+    )
+    pendant_light["demo_only"] = True
+
+    waterfall_light = add_light(
+        "Demo_Waterfall_Wash", "AREA", (-6.18, -11.18, 4.62), (-6.72, -11.18, 2.45),
+        (0.72, 0.83, 0.80), 145, web=True, theme_role="demo_waterfall",
+    )
+    waterfall_light.data.shape = "RECTANGLE"
+    waterfall_light.data.size = 2.3
+    waterfall_light.data.size_y = 1.1
+    waterfall_light["demo_only"] = True
+
+    # Curated room anchors double as keyboard/mobile shortcuts.
+    for order, (name, location, target, label, room_id) in enumerate((
+        ("VIEW_Demo_Gallery_Hall", (0, -5.90, WALK_EYE_HEIGHT), (0, 6.70, 2.55), "01 · Gallery Hall", "gallery-hall"),
+        ("VIEW_Demo_Private_Room", (-3.50, -8.45, 1.76), (-3.55, -13.20, 1.58), "02 · Private Room", "private-room"),
+        ("VIEW_Demo_Contact_Room", (3.50, -8.45, 1.76), (3.50, -13.20, 1.42), "03 · Meet & Contact", "contact-room"),
+    ), start=40):
+        view = add_view_anchor(name, location, target, label=label, kind="demo_room", order=order)
+        target_object = add_empty(
+            name.replace("VIEW_", "TARGET_"),
+            target,
+            display_type="SPHERE",
+            display_size=0.15,
+        )
+        target_object["demo_only"] = True
+        target_object["navigation_role"] = "demo_room_look_target"
+        view["target_node"] = target_object.name
+        view["demo_room_id"] = room_id
+        view["demo_only"] = True
+
+
 def add_navigation_metadata(scene: bpy.types.Scene) -> None:
     xmin, xmax, ymin, ymax = WALK_BOUNDS
     start = add_empty("Walk_Start", (0, -6.42, WALK_EYE_HEIGHT), display_type="ARROWS", display_size=0.42)
@@ -1626,13 +2097,36 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
     )
 
     add_collider("COLLIDER_Wall_North", (0, 7.82, ROOM_HEIGHT / 2), (14.0, 0.36, ROOM_HEIGHT))
-    add_collider("COLLIDER_Wall_South", (0, -7.82, ROOM_HEIGHT / 2), (14.0, 0.36, ROOM_HEIGHT))
+    add_collider("COLLIDER_Wall_South_Left", (-5.78, -7.82, ROOM_HEIGHT / 2), (2.44, 0.36, ROOM_HEIGHT))
+    add_collider("COLLIDER_Wall_South_Centre", (0, -7.82, ROOM_HEIGHT / 2), (4.88, 0.36, ROOM_HEIGHT))
+    add_collider("COLLIDER_Wall_South_Right", (5.78, -7.82, ROOM_HEIGHT / 2), (2.44, 0.36, ROOM_HEIGHT))
     add_collider("COLLIDER_Wall_West", (-6.82, 0, ROOM_HEIGHT / 2), (0.36, 16.0, ROOM_HEIGHT))
     add_collider("COLLIDER_Wall_East", (6.82, 0, ROOM_HEIGHT / 2), (0.36, 16.0, ROOM_HEIGHT))
     add_collider("COLLIDER_Bench", (0, -1.72, 0.45), (4.18, 1.24, 0.90))
     add_collider("COLLIDER_wARTrobe", (0, 7.35, 2.52), (2.75, 0.74, 3.50))
     add_collider("COLLIDER_Plant_West", (-4.62, 6.18, 0.64), (1.15, 1.15, 1.28))
     add_collider("COLLIDER_Plant_East", (4.62, 6.18, 0.64), (1.15, 1.15, 1.28))
+
+    for room_id, x in (("Private", -3.50), ("Contact", 3.50)):
+        closure = add_collider(f"COLLIDER_Standard_Door_{room_id}", (x, -7.82, 1.32), (2.04, 0.28, 2.64))
+        closure["demo_hidden"] = True
+
+    demo_colliders = [
+        add_collider("COLLIDER_Demo_Wall_West", (-6.82, -12.0, ROOM_HEIGHT / 2), (0.36, 8.0, ROOM_HEIGHT)),
+        add_collider("COLLIDER_Demo_Wall_East", (6.82, -12.0, ROOM_HEIGHT / 2), (0.36, 8.0, ROOM_HEIGHT)),
+        add_collider("COLLIDER_Demo_Wall_South", (0, -15.82, ROOM_HEIGHT / 2), (14.0, 0.36, ROOM_HEIGHT)),
+        add_collider("COLLIDER_Demo_Partition_North", (0, -9.48, ROOM_HEIGHT / 2), (0.32, 2.96, ROOM_HEIGHT)),
+        add_collider("COLLIDER_Demo_Partition_South", (0, -14.52, ROOM_HEIGHT / 2), (0.32, 2.96, ROOM_HEIGHT)),
+        add_collider("COLLIDER_Demo_Waterfall", (-6.18, -11.18, 0.55), (1.35, 3.55, 1.10)),
+        add_collider("COLLIDER_Demo_Private_Sofa", (-3.70, -14.60, 0.60), (3.45, 1.18, 1.20)),
+        add_collider("COLLIDER_Demo_Private_Coffee", (-3.55, -12.35, 0.45), (2.55, 1.45, 0.90)),
+        add_collider("COLLIDER_Demo_Contact_Table", (3.45, -12.25, 0.65), (4.35, 3.65, 1.30)),
+        add_collider("COLLIDER_Demo_Contact_Console", (4.92, -9.20, 0.70), (3.55, 1.12, 1.40)),
+        add_collider("COLLIDER_Demo_Private_Plant", (-5.42, -14.55, 0.65), (1.15, 1.15, 1.30)),
+        add_collider("COLLIDER_Demo_Contact_Plant", (5.65, -14.55, 0.65), (1.15, 1.15, 1.30)),
+    ]
+    for collider in demo_colliders:
+        collider["demo_only"] = True
 
     scene["navigation_type"] = "bounded_walkable_gallery"
     scene["walk_start_node"] = start.name
@@ -1662,7 +2156,12 @@ def create_preview_camera(scene: bpy.types.Scene) -> None:
     scene.camera = camera
 
 
-def optimize_groups(groups: dict[str, list[bpy.types.Object]]) -> None:
+def optimize_groups(
+    groups: dict[str, list[bpy.types.Object]],
+    *,
+    prefix: str = "ARCH",
+    demo_only: bool = False,
+) -> None:
     roles = {
         "wall": "wall",
         "fabric": "fabric",
@@ -1685,11 +2184,17 @@ def optimize_groups(groups: dict[str, list[bpy.types.Object]]) -> None:
         "stem": "botanical_stem",
         "leaf_a": "botanical_leaf",
         "leaf_b": "botanical_leaf",
+        "water": "water",
+        "ceramic": "ceramic",
+        "glass": "glass",
         "wartrobe_shadow": "shadow",
         "wartrobe_bronze": "bronze",
     }
     for group_name, role in roles.items():
-        join_meshes(f"ARCH_{group_name.title()}", groups[group_name], theme_role=role)
+        joined = join_meshes(f"{prefix}_{group_name.title()}", groups[group_name], theme_role=role)
+        if joined and demo_only:
+            joined["demo_only"] = True
+            joined["asset_role"] = "optional_3d_site_architecture"
 
 
 def build_scene() -> bpy.types.Scene:
@@ -1737,6 +2242,10 @@ def build_scene() -> bpy.types.Scene:
         "stem": create_material("Botanical_Stem", "#26351f", "#526044", "botanical_stem", roughness=0.62, clearcoat=0.08),
         "leaf_a": create_material("Botanical_Leaf_Deep_Green", "#244326", "#536e4b", "botanical_leaf", roughness=0.42, clearcoat=0.20, clearcoat_roughness=0.28),
         "leaf_b": create_material("Botanical_Leaf_Olive_Green", "#36592f", "#6d8058", "botanical_leaf", roughness=0.46, clearcoat=0.16, clearcoat_roughness=0.30),
+        "water": create_material("Gallery_Reflective_Water", "#405451", "#879995", "water", roughness=0.08, metallic=0.12, clearcoat=0.96, clearcoat_roughness=0.05, emission="#1c302e", emission_strength=0.14),
+        "water_highlight": create_material("Gallery_Water_Highlight", "#91a7a2", "#c4d0cd", "water_highlight", roughness=0.12, metallic=0.06, clearcoat=0.92, clearcoat_roughness=0.05, emission="#55706b", emission_strength=0.18),
+        "ceramic": create_material("Gallery_Dark_Ceramic", "#171916", "#74716a", "ceramic", roughness=0.32, clearcoat=0.44, clearcoat_roughness=0.18),
+        "glass": create_material("Gallery_Smoked_Glass", "#5d4930", "#a58d68", "glass", roughness=0.12, metallic=0.32, clearcoat=0.88, clearcoat_roughness=0.07),
         "emissive": create_material(
             "Gallery_Warm_Aperture",
             "#8b6128",
@@ -1750,9 +2259,10 @@ def build_scene() -> bpy.types.Scene:
     }
     groups = {name: [] for name in (
         "wall", "fabric", "stone", "ceiling", "floor", "floor_tile_a", "floor_tile_b", "floor_alt", "shadow", "bronze",
-        "emissive", "bench", "wood", "leather", "leather_seam", "planter", "plaque", "plaque_text", "stem", "leaf_a", "leaf_b",
+        "emissive", "bench", "wood", "leather", "leather_seam", "planter", "plaque", "plaque_text", "stem", "leaf_a", "leaf_b", "water", "water_highlight", "ceramic", "glass",
         "wartrobe_shadow", "wartrobe_bronze",
     )}
+    demo_groups = {name: [] for name in groups}
 
     build_gallery_shell(materials, groups)
     add_bench(materials, groups)
@@ -1769,7 +2279,8 @@ def build_scene() -> bpy.types.Scene:
     for index, side, along_wall in portal_layout:
         add_surface_portal(index, side, along_wall, SURFACE_TEXTURES[index - 1], materials, groups)
 
-    add_site_information_panels(materials, groups)
+    build_demo_site_rooms(materials, demo_groups)
+    add_site_information_panels(materials, demo_groups)
     add_site_navigation_console(materials)
 
     add_lush_botanical("Botanical_West", (-4.62, 6.18, 0), materials, groups, seed=1963)
@@ -1825,6 +2336,7 @@ def build_scene() -> bpy.types.Scene:
     )
 
     optimize_groups(groups)
+    optimize_groups(demo_groups, prefix="DEMO", demo_only=True)
 
     scene["experience_name"] = "Danny Hirsch Arts — Material Orbit"
     scene["experience_version"] = 3
