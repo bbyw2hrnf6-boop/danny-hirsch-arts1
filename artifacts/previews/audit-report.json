@@ -3,13 +3,13 @@
     {
       "label": "desktop-hero",
       "size": [
-        1440,
-        1000
+        390,
+        844
       ],
       "scrollY": 0,
-      "pageHeight": 18567,
+      "pageHeight": 19423,
       "fontLoaded": true,
-      "theme": "dark",
+      "theme": "light",
       "horizontalOverflow": 0,
       "outsideHeadings": [],
       "lightboxInert": true
@@ -21,7 +21,7 @@
         1000
       ],
       "scrollY": 1880,
-      "pageHeight": 18567,
+      "pageHeight": 18526,
       "fontLoaded": true,
       "theme": "light",
       "privateRoomState": "rendered",
@@ -36,7 +36,7 @@
         1000
       ],
       "scrollY": 1880,
-      "pageHeight": 18567,
+      "pageHeight": 18526,
       "fontLoaded": true,
       "theme": "dark",
       "privateRoomState": "rendered",
@@ -50,8 +50,8 @@
         1440,
         1000
       ],
-      "scrollY": 17127,
-      "pageHeight": 18567,
+      "scrollY": 17086,
+      "pageHeight": 18526,
       "fontLoaded": true,
       "theme": "dark",
       "privateRoomState": "rendered",
