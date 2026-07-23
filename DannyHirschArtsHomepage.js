@@ -547,12 +547,12 @@ const ensureGalleryRoom = () => {
   roomExperience.classList.remove("is-gallery-fallback");
   roomExperience.classList.add("is-gallery-loading");
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260723-gallery-29")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260723-gallery-30")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
         mount: galleryMount,
-        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260723-gallery-29",
+        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260723-gallery-30",
         theme: body.dataset.theme,
         onLoading: ({ progress }) => {
           const status = galleryLoading?.querySelector("small");

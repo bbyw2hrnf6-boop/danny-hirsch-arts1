@@ -2036,12 +2036,10 @@ def build_demo_site_rooms(
     pendant_light["demo_only"] = True
 
     waterfall_light = add_light(
-        "Demo_Waterfall_Wash", "AREA", (-6.18, -11.18, 4.62), (-6.72, -11.18, 2.45),
-        (0.72, 0.83, 0.80), 145, web=True, theme_role="demo_waterfall",
+        "Demo_Waterfall_Wash", "SPOT", (-5.92, -11.18, 4.72), (-6.70, -11.18, 2.45),
+        (0.72, 0.83, 0.80), 175, web=True, theme_role="demo_waterfall",
+        spot_size=math.radians(52), spot_blend=0.88,
     )
-    waterfall_light.data.shape = "RECTANGLE"
-    waterfall_light.data.size = 2.3
-    waterfall_light.data.size_y = 1.1
     waterfall_light["demo_only"] = True
 
     # Curated room anchors double as keyboard/mobile shortcuts.
