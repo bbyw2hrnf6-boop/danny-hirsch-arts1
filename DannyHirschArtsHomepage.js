@@ -46,7 +46,8 @@ const roomExperienceViews = ["left", "center", "right"].map((view) => [
   document.querySelector(`.room-experience__view--light-${view}`)
 ].filter(Boolean));
 const roomExperienceTheme = document.querySelector("[data-room-theme]");
-const roomExperienceDemo = document.querySelector("[data-room-demo]");
+const roomExperienceKicker = roomExperience?.querySelector(".room-experience__header p");
+const roomExperienceHeading = document.querySelector("#room-experience-title");
 const roomExperienceFallbackControls = document.querySelector("[data-room-fallback-controls]");
 const galleryMount = document.querySelector("[data-gallery-webgl]");
 const galleryLoading = document.querySelector("[data-gallery-loading]");
@@ -73,15 +74,21 @@ const galleryDemoNav = document.querySelector("[data-gallery-demo-nav]");
 const galleryDemoArt = document.querySelector("[data-gallery-demo-art]");
 const galleryDemoRooms = [...document.querySelectorAll("[data-gallery-demo-room]")];
 const galleryDemoPanels = [...document.querySelectorAll("[data-gallery-demo-panel]")];
+const galleryMotionLook = document.querySelector("[data-gallery-motion-look]");
+const experienceChoice = document.querySelector("[data-experience-choice]");
+const experienceClassic = document.querySelector("[data-experience-classic]");
+const experienceSpatial = document.querySelector("[data-experience-3d]");
 const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const mobileNavigation = window.matchMedia("(max-width: 1120px)");
+const mobileSpatialHud = window.matchMedia("(max-width: 760px), (max-height: 560px) and (pointer: coarse)");
 const emptyImageSrc = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 let lastScrollY = window.scrollY;
 let scrollTicking = false;
 let openingFinished = false;
+let experienceChoiceResolved = false;
 let openingTimers = [];
 let activeLightboxIndex = -1;
 let activeLightboxTrigger = null;
@@ -161,6 +168,44 @@ const setOpeningPhase = (phase) => {
   });
 };
 
+const setExperienceBackgroundInert = (inert) => {
+  [header, pageMain, pageFooter].forEach((element) => {
+    if (element) element.inert = inert;
+  });
+};
+
+const hideExperienceChoice = () => {
+  if (!experienceChoice) return;
+  experienceChoice.hidden = true;
+  body.classList.remove("experience-choice-open");
+  setExperienceBackgroundInert(false);
+};
+
+const showExperienceChoice = () => {
+  if (!experienceChoice || experienceChoiceResolved || window.location.hash) return;
+  const requestedView = new URLSearchParams(window.location.search).get("view");
+  if (requestedView === "classic") {
+    experienceChoiceResolved = true;
+    hideExperienceChoice();
+    return;
+  }
+  experienceChoice.hidden = false;
+  body.classList.add("experience-choice-open");
+  setExperienceBackgroundInert(true);
+  window.requestAnimationFrame(() => experienceClassic?.focus({ preventScroll: true }));
+};
+
+const resolveOpeningDestination = () => {
+  const requestedView = new URLSearchParams(window.location.search).get("view");
+  if (requestedView === "3d" && !reducedMotion.matches) {
+    experienceChoiceResolved = true;
+    hideExperienceChoice();
+    window.setTimeout(() => openRoomExperience({ trigger: experienceSpatial, spatial: true }), 80);
+    return;
+  }
+  showExperienceChoice();
+};
+
 const finishOpening = (remember = true) => {
   if (openingFinished) return;
   openingFinished = true;
@@ -174,11 +219,12 @@ const finishOpening = (remember = true) => {
   heroVideo?.pause();
   heroVideo?.classList.remove("is-playing");
   if (remember) storage.set("dha-opening-seen", "true", true);
+  resolveOpeningDestination();
 };
 
 const shouldSkipOpening = () => {
-  const forceOpening = new URLSearchParams(window.location.search).get("intro") === "1";
-  return reducedMotion.matches || (!forceOpening && (window.location.hash || storage.get("dha-opening-seen", true)));
+  const introPreference = new URLSearchParams(window.location.search).get("intro");
+  return reducedMotion.matches || introPreference === "0" || Boolean(window.location.hash);
 };
 
 const playCinematicOpening = () => {
@@ -448,9 +494,18 @@ const queueRoomExperiencePosition = (event) => {
   });
 };
 
+const syncGalleryNavAvailability = () => {
+  if (!galleryDemoNav) return;
+  const overlayActive = roomExperience?.classList.contains("has-artwork-focus")
+    || roomExperience?.classList.contains("has-site-panel-focus");
+  galleryDemoNav.inert = Boolean(mobileSpatialHud.matches && overlayActive);
+};
+mobileSpatialHud.addEventListener?.("change", syncGalleryNavAvailability);
+
 const setGalleryArtwork = (artwork) => {
   galleryFocusedArtwork = artwork;
   roomExperience?.classList.toggle("has-artwork-focus", Boolean(artwork));
+  syncGalleryNavAvailability();
   if (!galleryArtTitle || !galleryArtDetail || !galleryArtInspect) return;
 
   if (!artwork) {
@@ -498,13 +553,14 @@ const setGalleryArtwork = (artwork) => {
 
 const setGallerySitePanel = (panel) => {
   roomExperience?.classList.toggle("has-site-panel-focus", Boolean(panel));
+  syncGalleryNavAvailability();
   if (!gallerySitePanel) return;
   if (!panel) {
     gallerySitePanel.hidden = true;
     return;
   }
   gallerySitePanel.hidden = false;
-  if (gallerySiteKicker) gallerySiteKicker.textContent = panel.kicker || "3D Site Demo";
+  if (gallerySiteKicker) gallerySiteKicker.textContent = panel.kicker || "Spatial exhibition";
   if (gallerySiteTitle) gallerySiteTitle.textContent = panel.title || "Room information";
   if (gallerySiteBody) gallerySiteBody.textContent = panel.body || "";
   if (gallerySiteLink) {
@@ -516,9 +572,13 @@ const setGallerySitePanel = (panel) => {
 const setGalleryDemo = (active) => {
   galleryDemoActive = Boolean(active);
   roomExperience?.classList.toggle("is-demo-mode", galleryDemoActive);
-  roomExperienceDemo?.setAttribute("aria-pressed", String(galleryDemoActive));
-  const label = roomExperienceDemo?.querySelector("b");
-  if (label) label.textContent = galleryDemoActive ? "Exit demo" : "3D site demo";
+  if (roomExperienceKicker) roomExperienceKicker.textContent = galleryDemoActive
+    ? "Interactive 3D Gallery · Spatial site"
+    : "Private Room · 360° gallery";
+  if (roomExperienceHeading) roomExperienceHeading.textContent = galleryDemoActive
+    ? "Walk into the art."
+    : "Walk into the work.";
+  roomExperienceClose?.setAttribute("aria-label", galleryDemoActive ? "Return to the classic site" : "Leave private room");
   if (galleryDemoNav) galleryDemoNav.hidden = !galleryDemoActive;
   if (!galleryDemoActive) setGallerySitePanel(null);
   galleryRoomController?.setDemoMode?.(galleryDemoActive);
@@ -527,12 +587,20 @@ const setGalleryDemo = (active) => {
 
 const setGalleryFallback = (reason = "fallback") => {
   if (!roomExperience) return;
+  const requestedSpatialExperience = galleryDemoActive;
+  if (requestedSpatialExperience) setGalleryDemo(false);
   roomExperience.classList.remove("is-gallery-loading", "is-webgl-ready");
   roomExperience.classList.add("is-gallery-fallback");
   if (galleryControls) galleryControls.hidden = true;
   if (roomExperienceFallbackControls) roomExperienceFallbackControls.hidden = false;
   const status = galleryLoading?.querySelector("small");
   if (status) status.textContent = reason === "reduced-motion" ? "Curated still room" : "360° fallback ready";
+  if (requestedSpatialExperience) {
+    setGalleryArtwork(null);
+    if (galleryArtKicker) galleryArtKicker.textContent = "Classic fallback";
+    if (galleryArtTitle) galleryArtTitle.textContent = "Curated room view";
+    if (galleryArtDetail) galleryArtDetail.textContent = "The live 3D gallery is unavailable on this device. The classic exhibition remains fully accessible.";
+  }
 };
 
 const ensureGalleryRoom = () => {
@@ -547,12 +615,12 @@ const ensureGalleryRoom = () => {
   roomExperience.classList.remove("is-gallery-fallback");
   roomExperience.classList.add("is-gallery-loading");
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260723-gallery-30")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260724-gallery-32")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
         mount: galleryMount,
-        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260723-gallery-30",
+        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260724-gallery-32",
         theme: body.dataset.theme,
         onLoading: ({ progress }) => {
           const status = galleryLoading?.querySelector("small");
@@ -579,6 +647,21 @@ const ensureGalleryRoom = () => {
           galleryDemoActive = Boolean(active);
           roomExperience?.classList.toggle("is-demo-mode", galleryDemoActive);
         },
+        onNavigationChange: ({ id }) => {
+          [...galleryDemoRooms, ...galleryDemoPanels, galleryDemoArt].filter(Boolean).forEach((button) => {
+            const buttonId = button.dataset.galleryDemoRoom
+              || button.dataset.galleryDemoPanel
+              || (button.hasAttribute("data-gallery-demo-art") ? "artworks" : "");
+            const current = buttonId === id;
+            button.toggleAttribute("aria-current", current);
+            button.classList.toggle("is-active", current);
+          });
+        },
+        onMotionState: ({ granted, supported }) => {
+          if (!galleryMotionLook) return;
+          galleryMotionLook.setAttribute("aria-pressed", String(Boolean(granted)));
+          galleryMotionLook.toggleAttribute("data-motion-unsupported", supported === false);
+        },
         onViewChange: ({ label }) => {
           if (!label || galleryFocusedArtwork) return;
           if (galleryArtKicker) galleryArtKicker.textContent = "Curated viewpoint";
@@ -594,15 +677,16 @@ const ensureGalleryRoom = () => {
   return galleryRoomLoadingPromise;
 };
 
-const openRoomExperience = () => {
+const openRoomExperience = ({ trigger = null, spatial = false } = {}) => {
   if (!roomExperience) return;
-  roomExperienceTrigger = roomEnter || document.activeElement;
+  roomExperienceTrigger = trigger || document.activeElement || roomEnter;
+  setGalleryDemo(spatial);
   setRoomExperienceView(1);
   body.classList.add("room-experience-open");
   if (typeof roomExperience.showModal === "function") roomExperience.showModal();
   else roomExperience.setAttribute("open", "");
   roomExperienceClose?.focus({ preventScroll: true });
-  galleryRoomController?.resetView?.();
+  if (!spatial) galleryRoomController?.resetView?.();
   galleryRoomController?.setActive?.(true);
   ensureGalleryRoom();
 };
@@ -616,17 +700,32 @@ const closeRoomExperience = () => {
   else {
     roomExperience.removeAttribute("open");
   }
-  roomExperienceTrigger?.focus({ preventScroll: true });
+  const returnTarget = roomExperienceTrigger?.offsetParent !== null
+    ? roomExperienceTrigger
+    : roomEnter || heroContent?.querySelector("a, button");
+  returnTarget?.focus({ preventScroll: true });
 };
 
-roomEnter?.addEventListener("click", openRoomExperience);
+roomEnter?.addEventListener("click", () => openRoomExperience({ trigger: roomEnter, spatial: false }));
+experienceClassic?.addEventListener("click", () => {
+  experienceChoiceResolved = true;
+  hideExperienceChoice();
+  heroContent?.querySelector("a, button")?.focus({ preventScroll: true });
+});
+experienceSpatial?.addEventListener("click", () => {
+  experienceChoiceResolved = true;
+  hideExperienceChoice();
+  openRoomExperience({ trigger: experienceSpatial, spatial: true });
+});
+experienceChoice?.addEventListener("keydown", (event) => {
+  if (event.key === "Tab") trapFocus(event, experienceChoice);
+});
 roomExperienceClose?.addEventListener("click", closeRoomExperience);
 roomExperiencePrev?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex - 1));
 roomExperienceNext?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex + 1));
 galleryViewPrev?.addEventListener("click", () => galleryRoomController?.goToPreviousView?.());
 galleryViewNext?.addEventListener("click", () => galleryRoomController?.goToNextView?.());
 galleryReset?.addEventListener("click", () => galleryRoomController?.resetView?.());
-roomExperienceDemo?.addEventListener("click", () => setGalleryDemo(!galleryDemoActive));
 galleryDemoArt?.addEventListener("click", () => galleryRoomController?.goToNextView?.());
 galleryDemoRooms.forEach((button) => {
   button.addEventListener("click", () => galleryRoomController?.goToDemoRoom?.(button.dataset.galleryDemoRoom));
@@ -634,7 +733,28 @@ galleryDemoRooms.forEach((button) => {
 galleryDemoPanels.forEach((button) => {
   button.addEventListener("click", () => galleryRoomController?.goToSitePanel?.(button.dataset.galleryDemoPanel));
 });
+galleryMotionLook?.addEventListener("click", async () => {
+  const controller = galleryRoomController || await ensureGalleryRoom();
+  const result = await controller?.requestMotionControl?.();
+  const enabled = Boolean(result?.granted);
+  galleryMotionLook.setAttribute("aria-pressed", String(enabled));
+  const title = galleryMotionLook.querySelector("b");
+  const detail = galleryMotionLook.querySelector("small");
+  if (title) title.textContent = enabled ? "Motion active" : "Motion look";
+  if (detail) {
+    detail.textContent = enabled
+      ? "Move phone to look"
+      : result?.reason === "denied"
+        ? "Permission declined"
+        : result?.reason === "secure-context-required"
+          ? "HTTPS required"
+          : "Not available here";
+  }
+});
 gallerySiteClose?.addEventListener("click", () => setGallerySitePanel(null));
+gallerySiteLink?.addEventListener("click", () => {
+  if (gallerySiteLink.getAttribute("href")?.startsWith("#")) closeRoomExperience();
+});
 roomExperienceTheme?.addEventListener("click", () => {
   const nextTheme = body.dataset.theme === "light" ? "dark" : "light";
   applyTheme(nextTheme);
@@ -665,7 +785,12 @@ roomExperienceStage?.addEventListener("pointercancel", () => { roomExperiencePoi
 roomExperience?.addEventListener("close", () => {
   body.classList.remove("room-experience-open");
   galleryRoomController?.setActive?.(false);
-  roomExperienceTrigger?.focus({ preventScroll: true });
+  // Escape/native dialog dismissal should match the visible close control.
+  setGalleryDemo(false);
+  const returnTarget = roomExperienceTrigger?.offsetParent !== null
+    ? roomExperienceTrigger
+    : roomEnter || heroContent?.querySelector("a, button");
+  returnTarget?.focus({ preventScroll: true });
 });
 roomExperience?.addEventListener("click", (event) => {
   if (event.target === roomExperience) closeRoomExperience();

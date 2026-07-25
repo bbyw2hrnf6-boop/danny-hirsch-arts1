@@ -66,13 +66,33 @@ const capture = async (path) => {
 const state = () => evaluate(`(() => {
   const dialog = document.querySelector('[data-room-experience]');
   const controller = document.querySelector('[data-gallery-webgl]')?.__galleryController;
+  const sidebar = document.querySelector('[data-gallery-demo-nav]');
+  const sidebarRect = sidebar?.getBoundingClientRect();
+  const sidebarScroll = sidebar?.querySelector('.room-experience__sidebar-scroll');
+  const sidebarVisible = Boolean(sidebar && !sidebar.hidden && sidebarRect?.width && sidebarRect?.height);
+  const sidebarButtonRects = [...(sidebar?.querySelectorAll('button') || [])].map((button) => button.getBoundingClientRect());
   return {
+    open: dialog?.open,
     ready: dialog?.classList.contains('is-webgl-ready'),
-    demo: dialog?.classList.contains('is-demo-mode'),
+    spatial: dialog?.classList.contains('is-demo-mode'),
     theme: document.body.dataset.theme,
     controller: controller?.getState?.(),
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    panelHidden: document.querySelector('[data-gallery-site-panel]')?.hidden
+    panelHidden: document.querySelector('[data-gallery-site-panel]')?.hidden,
+    sidebar: {
+      hidden: sidebar?.hidden,
+      visible: sidebarVisible,
+      vertical: Boolean(sidebarVisible && sidebarRect.height > sidebarRect.width),
+      inViewport: Boolean(sidebarVisible
+        && sidebarRect.top >= -1
+        && sidebarRect.left >= -1
+        && sidebarRect.right <= innerWidth + 1
+        && sidebarRect.bottom <= innerHeight + 1),
+      buttonsStacked: Boolean(sidebarVisible && sidebarButtonRects.every((rect, index) => index === 0 || rect.top >= sidebarButtonRects[index - 1].bottom - 1)),
+      buttonCount: sidebarButtonRects.length,
+      rect: sidebarRect ? [sidebarRect.left, sidebarRect.top, sidebarRect.width, sidebarRect.height] : null,
+      scroll: sidebarScroll ? [sidebarScroll.clientHeight, sidebarScroll.scrollHeight] : null
+    }
   };
 })()`);
 
@@ -86,15 +106,16 @@ await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-m
 
 const report = {};
 await viewport(1440, 1000);
-await send('Page.navigate', { url: new URL(`?audit=demo-rooms-${Date.now()}#installation`, base).href });
+await send('Page.navigate', { url: new URL(`?view=3d&audit=demo-rooms-${Date.now()}`, base).href });
 await pause(950);
 await evaluate("Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); true");
+if (await evaluate("document.body.classList.contains('opening-active')")) {
+  await evaluate("document.querySelector('.opening-skip').click(); true");
+}
 await evaluate("if (document.body.dataset.theme === 'light') document.querySelector('.theme-toggle').click(); true");
-await evaluate("document.querySelector('[data-room-enter]').click(); true");
+report.directSpatialEntry = await waitFor("document.querySelector('[data-room-experience]').open && document.querySelector('[data-room-experience]').classList.contains('is-demo-mode')");
 report.loaded = await waitFor("document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready')");
 await pause(700);
-await evaluate("document.querySelector('[data-room-demo]').click(); true");
-await pause(500);
 
 for (const room of ['gallery-hall', 'private-room', 'contact-room']) {
   await evaluate(`document.querySelector('[data-gallery-webgl]').__galleryController.goToDemoRoom('${room}'); true`);

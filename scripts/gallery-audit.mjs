@@ -73,14 +73,42 @@ const capture = async (path) => {
   const result = await send('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false });
   await writeFile(path, Buffer.from(result.data, 'base64'));
 };
+const choiceState = () => evaluate(`(() => {
+  const choice = document.querySelector('[data-experience-choice]');
+  const classic = document.querySelector('[data-experience-classic]');
+  const spatial = document.querySelector('[data-experience-3d]');
+  const rect = choice?.getBoundingClientRect();
+  return {
+    hidden: choice?.hidden,
+    visible: Boolean(choice && !choice.hidden && rect?.width && rect?.height),
+    bodyOpen: document.body.classList.contains('experience-choice-open'),
+    backgroundInert: Boolean(document.querySelector('main')?.inert),
+    focusedOption: document.activeElement === classic
+      ? 'classic'
+      : document.activeElement === spatial
+        ? '3d'
+        : null,
+    options: {
+      classic: classic?.textContent.trim().replace(/\\s+/g, ' '),
+      spatial: spatial?.textContent.trim().replace(/\\s+/g, ' ')
+    }
+  };
+})()`);
 const roomState = () => evaluate(`(() => {
   const dialog = document.querySelector('[data-room-experience]');
   const canvas = dialog?.querySelector('canvas');
   const title = document.querySelector('[data-gallery-art-title]');
+  const sidebar = document.querySelector('[data-gallery-demo-nav]');
+  const sidebarRect = sidebar?.getBoundingClientRect();
+  const sidebarScroll = sidebar?.querySelector('.room-experience__sidebar-scroll');
+  const sidebarButtons = [...(sidebar?.querySelectorAll('button') || [])];
+  const sidebarButtonRects = sidebarButtons.map((button) => button.getBoundingClientRect());
+  const sidebarVisible = Boolean(sidebar && !sidebar.hidden && sidebarRect?.width && sidebarRect?.height);
   return {
     open: dialog?.open,
     ready: dialog?.classList.contains('is-webgl-ready'),
     fallback: dialog?.classList.contains('is-gallery-fallback'),
+    spatial: dialog?.classList.contains('is-demo-mode'),
     theme: document.body.dataset.theme,
     canvas: canvas ? [canvas.width, canvas.height, canvas.getBoundingClientRect().width, canvas.getBoundingClientRect().height] : null,
     controller: document.querySelector('[data-gallery-webgl]')?.__galleryController?.getState?.() || null,
@@ -88,6 +116,20 @@ const roomState = () => evaluate(`(() => {
     fallbackControlsHidden: document.querySelector('[data-room-fallback-controls]')?.hidden,
     artworkLabel: title?.textContent,
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    sidebar: {
+      hidden: sidebar?.hidden,
+      visible: sidebarVisible,
+      vertical: Boolean(sidebarVisible && sidebarRect.height > sidebarRect.width),
+      inViewport: Boolean(sidebarVisible
+        && sidebarRect.top >= -1
+        && sidebarRect.left >= -1
+        && sidebarRect.right <= innerWidth + 1
+        && sidebarRect.bottom <= innerHeight + 1),
+      buttonsStacked: Boolean(sidebarVisible && sidebarButtonRects.every((rect, index) => index === 0 || rect.top >= sidebarButtonRects[index - 1].bottom - 1)),
+      buttonCount: sidebarButtons.length,
+      rect: sidebarRect ? [sidebarRect.left, sidebarRect.top, sidebarRect.width, sidebarRect.height] : null,
+      scroll: sidebarScroll ? [sidebarScroll.clientHeight, sidebarScroll.scrollHeight] : null
+    },
     outsideText: [...dialog.querySelectorAll('h2,p,strong,button')].filter((element) => {
       if (element.offsetParent === null) return false;
       const rect = element.getBoundingClientRect();
@@ -106,26 +148,62 @@ await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-m
 
 const report = {};
 await viewport(1440, 1000);
-await navigate(`?audit=gallery-desktop-${Date.now()}#installation`);
+await navigate(`?intro=1&audit=gallery-choice-classic-${Date.now()}`);
 // Headless Chrome marks background inspection targets as hidden; force the
 // foreground state so the same requestAnimationFrame movement loop is tested.
 await evaluate("Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); true");
+report.desktopOpeningActive = await waitFor("document.body.classList.contains('opening-active')");
+await evaluate("document.querySelector('.opening-skip').click(); true");
+report.desktopChoiceVisible = await waitFor("!document.querySelector('[data-experience-choice]').hidden");
+await pause(100);
+report.desktopChoice = await choiceState();
+await capture('/tmp/dha-gallery-desktop-choice.png');
+await evaluate("document.querySelector('[data-experience-classic]').click(); true");
+report.desktopClassicChoiceResolved = await waitFor("document.querySelector('[data-experience-choice]').hidden && !document.body.classList.contains('experience-choice-open')");
+report.desktopClassicEntry = {
+  choice: await choiceState(),
+  roomOpen: await evaluate("document.querySelector('[data-room-experience]').open"),
+  mainInert: await evaluate("document.querySelector('main').inert")
+};
+
 await evaluate("if (document.body.dataset.theme === 'light') document.querySelector('.theme-toggle').click(); true");
 await evaluate("document.querySelector('[data-room-enter]').click(); true");
 report.desktopLoaded = await waitFor("document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready')");
 await pause(700);
 report.desktopDark = await roomState();
 await capture('/tmp/dha-gallery-desktop-dark.png');
-await evaluate("document.querySelector('[data-room-demo]').click(); true");
-await pause(550);
+await evaluate("document.querySelector('[data-room-close]').click(); true");
+
+await navigate(`?intro=1&audit=gallery-choice-spatial-${Date.now()}`);
+await evaluate("Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); true");
+await waitFor("document.body.classList.contains('opening-active')");
+await evaluate("document.querySelector('.opening-skip').click(); true");
+report.desktopSpatialChoiceVisible = await waitFor("!document.querySelector('[data-experience-choice]').hidden");
+report.desktopSpatialChoice = await choiceState();
+await evaluate("document.querySelector('[data-experience-3d]').click(); true");
+report.desktopSpatialEntry = await waitFor("document.querySelector('[data-room-experience]').open && document.querySelector('[data-room-experience]').classList.contains('is-demo-mode')");
+report.desktopSpatialLoaded = await waitFor("document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready')");
+await pause(700);
+report.desktopDarkSpatial = await roomState();
 await capture('/tmp/dha-gallery-desktop-dark-directory.png');
+// Keep the physical CanvasTexture directory hit mapping covered in spatial mode.
 await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 625, y: 500, button: 'left', clickCount: 1 });
 await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 625, y: 500, button: 'left', clickCount: 1 });
 await pause(450);
 report.desktopDarkDemo = await roomState();
-await evaluate("document.querySelector('[data-room-demo]').click(); true");
+await evaluate("if (!document.querySelector('[data-gallery-site-panel]').hidden) document.querySelector('[data-gallery-site-close]').click(); true");
 if (process.env.AUDIT_FAST === '1') {
-  console.log(JSON.stringify({ desktopLoaded: report.desktopLoaded, desktopDark: report.desktopDark, browserIssues }, null, 2));
+  console.log(JSON.stringify({
+    desktopChoiceVisible: report.desktopChoiceVisible,
+    desktopChoice: report.desktopChoice,
+    desktopClassicEntry: report.desktopClassicEntry,
+    desktopLoaded: report.desktopLoaded,
+    desktopDark: report.desktopDark,
+    desktopSpatialEntry: report.desktopSpatialEntry,
+    desktopSpatialLoaded: report.desktopSpatialLoaded,
+    desktopDarkSpatial: report.desktopDarkSpatial,
+    browserIssues
+  }, null, 2));
   socket.close();
   process.exit(0);
 }
@@ -151,7 +229,7 @@ await pause(500);
 await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.setActive(true); true");
 report.desktopCurated = await roomState();
 await capture('/tmp/dha-gallery-desktop-curated.png');
-await evaluate("document.querySelector('[data-room-demo]').click(); true");
+await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToDemoRoom('gallery-hall'); true");
 await pause(650);
 report.desktopDirectory = await roomState();
 await capture('/tmp/dha-gallery-desktop-demo-directory.png');
@@ -162,22 +240,25 @@ await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 950, y: 500, 
 await pause(650);
 report.desktopDemo = await evaluate(`(() => ({
   active: document.querySelector('[data-room-experience]').classList.contains('is-demo-mode'),
-  pressed: document.querySelector('[data-room-demo]').getAttribute('aria-pressed'),
   navHidden: document.querySelector('[data-gallery-demo-nav]').hidden,
+  navVisible: document.querySelector('[data-gallery-demo-nav]').getBoundingClientRect().width > 0,
+  navVertical: document.querySelector('[data-gallery-demo-nav]').getBoundingClientRect().height > document.querySelector('[data-gallery-demo-nav]').getBoundingClientRect().width,
   panelHidden: document.querySelector('[data-gallery-site-panel]').hidden,
   panelTitle: document.querySelector('[data-gallery-site-title]').textContent,
   panelLink: document.querySelector('[data-gallery-site-link]').getAttribute('href'),
   controller: document.querySelector('[data-gallery-webgl]').__galleryController.getState()
 }))()`);
 await capture('/tmp/dha-gallery-desktop-demo-privacy.png');
-await evaluate("document.querySelector('[data-room-demo]').click(); true");
 await evaluate("document.querySelector('[data-room-close]').click(); true");
 
 await viewport(390, 844, true);
-await navigate(`?audit=gallery-mobile-${Date.now()}#installation`);
+await navigate(`?view=3d&audit=gallery-mobile-${Date.now()}`);
 await evaluate("Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); true");
+if (await evaluate("document.body.classList.contains('opening-active')")) {
+  await evaluate("document.querySelector('.opening-skip').click(); true");
+}
 await evaluate("if (document.body.dataset.theme === 'light') document.querySelector('.theme-toggle').click(); true");
-await evaluate("document.querySelector('[data-room-enter]').click(); true");
+report.mobileSpatialEntry = await waitFor("document.querySelector('[data-room-experience]').open && document.querySelector('[data-room-experience]').classList.contains('is-demo-mode')");
 report.mobileLoaded = await waitFor("document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready')");
 await pause(700);
 report.mobileDark = await roomState();
@@ -195,22 +276,22 @@ await evaluate("document.querySelector('[data-room-theme]').click(); true");
 await pause(750);
 report.mobileLight = await roomState();
 await capture('/tmp/dha-gallery-mobile-light.png');
-await evaluate("document.querySelector('[data-room-demo]').click(); true");
+await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToDemoRoom('gallery-hall'); true");
 await pause(550);
 report.mobileDirectory = await roomState();
 await capture('/tmp/dha-gallery-mobile-demo-directory.png');
-await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 140, y: 420, button: 'left', clickCount: 1 });
-await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 140, y: 420, button: 'left', clickCount: 1 });
+await evaluate("document.querySelector('[data-gallery-demo-panel=\"about\"]').click(); true");
 await pause(600);
 report.mobileDemo = await evaluate(`(() => ({
   active: document.querySelector('[data-room-experience]').classList.contains('is-demo-mode'),
   navHidden: document.querySelector('[data-gallery-demo-nav]').hidden,
+  navVisible: document.querySelector('[data-gallery-demo-nav]').getBoundingClientRect().width > 0,
+  navVertical: document.querySelector('[data-gallery-demo-nav]').getBoundingClientRect().height > document.querySelector('[data-gallery-demo-nav]').getBoundingClientRect().width,
   panelHidden: document.querySelector('[data-gallery-site-panel]').hidden,
   panelTitle: document.querySelector('[data-gallery-site-title]').textContent,
   overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
 }))()`);
 await capture('/tmp/dha-gallery-mobile-demo-about.png');
-await evaluate("document.querySelector('[data-room-demo]').click(); true");
 await evaluate("document.querySelector('[data-room-close]').click(); true");
 
 for (const page of ['privacy.html', 'imprint.html', '404.html']) {
@@ -225,7 +306,7 @@ for (const page of ['privacy.html', 'imprint.html', '404.html']) {
 }
 
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-await navigate(`?audit=gallery-reduced-${Date.now()}#installation`);
+await navigate(`?view=classic&audit=gallery-reduced-${Date.now()}#installation`);
 await evaluate("document.querySelector('[data-room-enter]').click(); true");
 await pause(350);
 report.reducedMotion = await roomState();

@@ -10,7 +10,8 @@ The architecture is a designed spatial interpretation, not a scan.  The
 wARTrobe uses the genuine complete front photograph.  The six side apertures
 use genuine macro/detail photographs and are deliberately labelled in glTF
 extras as surface details, never as complete artwork simulations. Optional
-site-demo boards carry the existing About, Process, Inquiry and legal copy.
+site-information displays carry the existing About, Process, Inquiry and legal
+copy.  The legal displays are designed as reading lecterns, not wall signage.
 """
 
 from __future__ import annotations
@@ -527,6 +528,46 @@ def add_vertical_panel(
     return obj
 
 
+def add_tilted_lectern_panel(
+    name: str,
+    center: tuple[float, float, float],
+    width: float,
+    depth: float,
+    material: bpy.types.Material,
+    *,
+    pitch_degrees: float = 30.0,
+) -> bpy.types.Object:
+    """Create an east-facing museum reading surface with clean UVs.
+
+    Width runs north/south.  Depth rises toward the partition so a visitor in
+    the contact room sees both the physical label and the accessible DOM card.
+    The face normal points east/up, which also gives reliable ray casting.
+    """
+    pitch = math.radians(pitch_degrees)
+    half_width = width / 2
+    half_depth = depth / 2
+    run = math.cos(pitch) * half_depth
+    rise = math.sin(pitch) * half_depth
+    vertices = [
+        (run, -half_width, -rise),
+        (run, half_width, -rise),
+        (-run, half_width, rise),
+        (-run, -half_width, rise),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], [(0, 1, 2, 3)])
+    mesh.update()
+    uv_layer = mesh.uv_layers.new(name="UVMap")
+    for loop, uv in zip(mesh.polygons[0].loop_indices, ((0, 0), (1, 0), (1, 1), (0, 1))):
+        uv_layer.data[loop].uv = uv
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.location = center
+    assign_material(obj, material)
+    mark_web(obj)
+    return obj
+
+
 def add_empty(
     name: str,
     location: tuple[float, float, float],
@@ -845,47 +886,26 @@ def add_site_information_panels(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    """Build readable information boards on the far wall of the demo wing."""
-    # These behave like discreet museum labels/room directories. Keeping them
-    # below the artworks prevents the optional website layer from turning the
-    # gallery into a wall of UI.
-    for index, (panel_data, x) in enumerate(zip(SITE_PANELS, (-5.55, -2.78, 0.0, 2.78, 5.55)), start=1):
-        center_z = 1.24
-        recess = add_box(
-            f"SITE_PANEL_{index:02d}_Recess",
-            (x, -15.86, center_z),
-            (1.18, 0.10, 0.86),
-            materials["shadow"],
-            bevel=0.035,
-            theme_role="shadow",
-        )
-        frame = add_box(
-            f"SITE_PANEL_{index:02d}_Frame",
-            (x, -15.74, center_z),
-            (1.10, 0.10, 0.78),
-            materials["bronze"],
-            bevel=0.035,
-            theme_role="bronze",
-        )
-        backing = add_box(
-            f"SITE_PANEL_{index:02d}_Backing",
-            (x, -15.675, center_z),
-            (1.01, 0.055, 0.68),
-            materials["plaque"],
-            bevel=0.025,
-            theme_role="plaque",
-        )
-        for structure in (recess, frame, backing):
-            structure["demo_only"] = True
-            structure["asset_role"] = "optional_3d_site_architecture"
-        panel = add_vertical_panel(
-            f"SITE_PANEL_{panel_data['id'].upper()}",
-            "south",
-            (x, -15.642, center_z),
-            0.94,
-            0.60,
-            materials["plaque"],
-        )
+    """Build a sparse raised reading rail and two legal lectern stations.
+
+    About, Process and Inquiry remain subtle museum labels, but sit above all
+    lounge furniture and outside the artwork footprints.  Privacy and Imprint
+    live on individual angled lecterns along the solid contact-room partition;
+    their DOM cards remain the authoritative readable presentation.
+    """
+
+    panels_by_id = {panel["id"]: panel for panel in SITE_PANELS}
+
+    def annotate_panel(
+        panel: bpy.types.Object,
+        panel_data: dict[str, str],
+        *,
+        index: int,
+        presentation: str,
+        alignment: str,
+        view_location: tuple[float, float, float],
+        view_target: tuple[float, float, float],
+    ) -> None:
         panel["theme_role"] = "site_panel"
         panel["asset_id"] = f"site-panel-{panel_data['id']}"
         panel["site_panel_id"] = panel_data["id"]
@@ -896,78 +916,155 @@ def add_site_information_panels(
         panel["site_link_label"] = panel_data["link_label"]
         panel["representation"] = "optional 3D-site information panel"
         panel["demo_only"] = True
+        panel["alignment_group"] = alignment
+        panel["presentation_mode"] = presentation
         view = add_view_anchor(
             f"VIEW_Site_{index:02d}",
-            ((x if abs(x) > 0.4 else 0.65), -12.55, WALK_EYE_HEIGHT),
-            (x, -15.64, center_z),
+            view_location,
+            view_target,
             label=panel_data["title"],
             kind="site_panel",
         )
         view["target_node"] = panel.name
         view["demo_only"] = True
 
+    # Raised museum reading rail.  All three frames clear the sofa top by more
+    # than 0.30 m and avoid the south-wall artworks entirely.
+    rail_layout = (
+        (1, "about", -5.92, -5.78),
+        (2, "process", -1.42, -1.42),
+        (3, "inquiry", 1.42, 1.42),
+    )
+    rail_z = 2.14
+    for index, panel_id, x, view_x in rail_layout:
+        panel_data = panels_by_id[panel_id]
+        recess = add_box(
+            f"SITE_PANEL_{index:02d}_Recess",
+            (x, -15.86, rail_z),
+            (1.18, 0.10, 0.86),
+            materials["shadow"],
+            bevel=0.035,
+            theme_role="shadow",
+        )
+        frame = add_box(
+            f"SITE_PANEL_{index:02d}_Frame",
+            (x, -15.74, rail_z),
+            (1.10, 0.10, 0.78),
+            materials["bronze"],
+            bevel=0.035,
+            theme_role="bronze",
+        )
+        backing = add_box(
+            f"SITE_PANEL_{index:02d}_Backing",
+            (x, -15.675, rail_z),
+            (1.01, 0.055, 0.68),
+            materials["plaque"],
+            bevel=0.025,
+            theme_role="plaque",
+        )
+        ledge = add_box(
+            f"SITE_PANEL_{index:02d}_Reading_Ledge",
+            (x, -15.59, rail_z - 0.43),
+            (1.16, 0.16, 0.055),
+            materials["bronze"],
+            bevel=0.014,
+            theme_role="bronze",
+        )
+        for structure in (recess, frame, backing, ledge):
+            structure["demo_only"] = True
+            structure["asset_role"] = "optional_3d_site_architecture"
+        panel = add_vertical_panel(
+            f"SITE_PANEL_{panel_id.upper()}",
+            "south",
+            (x, -15.642, rail_z),
+            0.94,
+            0.60,
+            materials["plaque"],
+        )
+        panel["mounting_height_metres"] = rail_z
+        panel["furniture_clearance_metres"] = 0.35
+        annotate_panel(
+            panel,
+            panel_data,
+            index=index,
+            presentation="raised museum reading rail",
+            alignment="demo-raised-information-rail",
+            view_location=(view_x, -12.60, WALK_EYE_HEIGHT),
+            view_target=(x, -15.64, rail_z),
+        )
 
-def add_site_navigation_console(materials: dict[str, bpy.types.Material]) -> None:
-    """Build the optional website directory as a physical south-wall object."""
-    backing = add_box(
-        "SITE_NAVIGATION_Recess",
-        (0, -7.82, 0.80),
-        (6.82, 0.12, 0.86),
-        materials["shadow"],
-        bevel=0.045,
-        theme_role="shadow",
+    # Privacy and imprint are deliberately separated at opposite ends of the
+    # solid centre partition.  The open doorway between y=-10.96 and -13.04
+    # remains completely free, as does the 1.20 m authored contact-room route.
+    lectern_layout = (
+        (4, "privacy", -9.58),
+        (5, "imprint", -14.24),
     )
-    frame = add_box(
-        "SITE_NAVIGATION_Bronze_Frame",
-        (0, -7.70, 0.80),
-        (6.68, 0.10, 0.75),
-        materials["bronze"],
-        bevel=0.025,
-        theme_role="bronze",
-    )
-    backing_inner = add_box(
-        "SITE_NAVIGATION_Plaque",
-        (0, -7.642, 0.80),
-        (6.54, 0.045, 0.63),
-        materials["plaque"],
-        bevel=0.018,
-        theme_role="plaque",
-    )
-    for structure in (backing, frame, backing_inner):
-        structure["demo_only"] = True
-        structure["asset_role"] = "optional_3d_site_navigation_architecture"
-
-    navigation_items = [
-        {"id": "room-gallery-hall", "label": "Gallery"},
-        {"id": "room-private-room", "label": "Private"},
-        {"id": "room-contact-room", "label": "Contact"},
-        {"id": "artworks", "label": "Artworks"},
-        *({"id": panel["id"], "label": panel["id"].title()} for panel in SITE_PANELS),
-    ]
-    console = add_vertical_panel(
-        "SITE_NAVIGATION_CONSOLE",
-        "south",
-        (0, -7.616, 0.80),
-        6.38,
-        0.51,
-        materials["plaque"],
-    )
-    console["theme_role"] = "site_navigation"
-    console["asset_id"] = "site-navigation-console"
-    console["site_navigation"] = True
-    console["site_navigation_items_json"] = json.dumps(navigation_items, separators=(",", ":"))
-    console["representation"] = "interactive physical navigation directory"
-    console["demo_only"] = True
-
-    view = add_view_anchor(
-        "VIEW_Site_Directory",
-        (0, -1.35, WALK_EYE_HEIGHT),
-        (0, -7.616, 0.80),
-        label="3D site directory",
-        kind="site_navigation",
-    )
-    view["target_node"] = console.name
-    view["demo_only"] = True
+    for index, panel_id, y in lectern_layout:
+        panel_data = panels_by_id[panel_id]
+        base = add_box(
+            f"SITE_LECTERN_{panel_id.upper()}_Base",
+            (0.47, y, 0.075),
+            (0.68, 0.92, 0.15),
+            materials["stone"],
+            bevel=0.035,
+            theme_role="stone",
+        )
+        column = add_box(
+            f"SITE_LECTERN_{panel_id.upper()}_Column",
+            (0.39, y, 0.61),
+            (0.17, 0.20, 1.05),
+            materials["bronze"],
+            bevel=0.025,
+            theme_role="bronze",
+        )
+        support = add_box(
+            f"SITE_LECTERN_{panel_id.upper()}_Support",
+            (0.72, y, 1.27),
+            (0.88, 1.12, 0.065),
+            materials["shadow"],
+            bevel=0.025,
+            theme_role="shadow",
+        )
+        support.rotation_euler.y = math.radians(30)
+        frame = add_tilted_lectern_panel(
+            f"SITE_LECTERN_{panel_id.upper()}_Bronze_Frame",
+            (0.72, y, 1.29),
+            1.08,
+            0.84,
+            materials["bronze"],
+        )
+        panel = add_tilted_lectern_panel(
+            f"SITE_PANEL_{panel_id.upper()}",
+            (0.742, y, 1.312),
+            0.94,
+            0.69,
+            materials["plaque"],
+        )
+        lip = add_box(
+            f"SITE_LECTERN_{panel_id.upper()}_Reading_Lip",
+            (1.095, y, 1.065),
+            (0.055, 1.10, 0.07),
+            materials["bronze"],
+            bevel=0.012,
+            theme_role="bronze",
+        )
+        for structure in (base, column, support, frame, lip):
+            structure["demo_only"] = True
+            structure["asset_role"] = "optional_3d_site_reading_station"
+        panel["mounting_height_metres"] = 1.31
+        panel["lectern_pitch_degrees"] = 30.0
+        panel["clear_of_portals"] = True
+        panel["route_clearance_metres"] = 1.25
+        annotate_panel(
+            panel,
+            panel_data,
+            index=index,
+            presentation="angled contact-room reading lectern",
+            alignment="demo-legal-reading-stations",
+            view_location=(2.15, y, WALK_EYE_HEIGHT),
+            view_target=(0.72, y, 1.29),
+        )
 
 
 def add_stem_between(
@@ -1712,10 +1809,12 @@ def add_demo_coffee_table(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    add_rotated_box(prefix + "_Top", center, (0, 0), 0.48, (2.25, 1.15, 0.12), 0, materials["stone"], groups["stone"], "stone", bevel=0.035)
-    add_rotated_box(prefix + "_Shadow", center, (0, 0), 0.31, (1.65, 0.78, 0.22), 0, materials["shadow"], groups["shadow"], "shadow", bevel=0.028)
-    for x in (-0.86, 0.86):
-        add_rotated_box(prefix + f"_Bronze_Leg_{x:+.2f}", center, (x, 0), 0.23, (0.08, 0.82, 0.40), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.015)
+    # A narrow side-table scale preserves the lounge composition without
+    # plugging the 1.2 m circulation lane from the entrance to the south wall.
+    add_rotated_box(prefix + "_Top", center, (0, 0), 0.45, (1.50, 0.76, 0.11), 0, materials["stone"], groups["stone"], "stone", bevel=0.030)
+    add_rotated_box(prefix + "_Shadow", center, (0, 0), 0.29, (1.04, 0.48, 0.19), 0, materials["shadow"], groups["shadow"], "shadow", bevel=0.024)
+    for x in (-0.54, 0.54):
+        add_rotated_box(prefix + f"_Bronze_Leg_{x:+.2f}", center, (x, 0), 0.21, (0.07, 0.50, 0.36), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.012)
 
 
 def add_demo_chair(
@@ -1725,25 +1824,36 @@ def add_demo_chair(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    add_rotated_box(prefix + "_Seat", center, (0, 0), 0.50, (0.70, 0.70, 0.18), angle, materials["leather"], groups["leather"], "leather", bevel=0.065)
-    add_rotated_box(prefix + "_Back", center, (0, 0.31), 0.98, (0.70, 0.15, 0.86), angle, materials["leather"], groups["leather"], "leather", bevel=0.055)
-    for dx in (-0.25, 0.25):
-        for dy in (-0.23, 0.23):
-            add_rotated_box(prefix + f"_Leg_{dx:+.2f}_{dy:+.2f}", center, (dx, dy), 0.24, (0.055, 0.055, 0.48), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.012)
+    add_rotated_box(prefix + "_Seat", center, (0, 0), 0.49, (0.62, 0.62, 0.17), angle, materials["leather"], groups["leather"], "leather", bevel=0.058)
+    add_rotated_box(prefix + "_Back", center, (0, 0.275), 0.94, (0.62, 0.14, 0.79), angle, materials["leather"], groups["leather"], "leather", bevel=0.050)
+    for dx in (-0.21, 0.21):
+        for dy in (-0.20, 0.20):
+            add_rotated_box(prefix + f"_Leg_{dx:+.2f}_{dy:+.2f}", center, (dx, dy), 0.23, (0.050, 0.050, 0.46), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.010)
 
 
 def add_demo_meeting_table(
     center: tuple[float, float],
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
+    *,
+    angle: float = math.pi / 2,
 ) -> None:
-    add_rotated_box("Contact_Table_Top", center, (0, 0), 0.80, (3.45, 1.55, 0.16), 0, materials["wood"], groups["wood"], "wood", bevel=0.055)
-    add_rotated_box("Contact_Table_Inlay", center, (0, 0), 0.895, (2.95, 0.15, 0.035), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.012)
-    for x in (-1.18, 1.18):
-        add_rotated_box(f"Contact_Table_Leg_{x:+.2f}", center, (x, 0), 0.40, (0.12, 1.12, 0.76), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.022)
-    for index, x in enumerate((-1.15, 0.0, 1.15), start=1):
-        add_demo_chair(f"Contact_Chair_North_{index}", (center[0] + x, center[1] + 1.25), math.pi, materials, groups)
-        add_demo_chair(f"Contact_Chair_South_{index}", (center[0] + x, center[1] - 1.25), 0, materials, groups)
+    # Compact four-seat table, turned along the east wall.  Chairs are placed
+    # in table-local coordinates and their backs point away from the tabletop;
+    # this corrects the previous north/south chairs that faced out of the room.
+    table_length = 2.55
+    table_depth = 1.04
+    add_rotated_box("Contact_Table_Top", center, (0, 0), 0.79, (table_length, table_depth, 0.15), angle, materials["wood"], groups["wood"], "wood", bevel=0.050)
+    add_rotated_box("Contact_Table_Inlay", center, (0, 0), 0.88, (2.12, 0.12, 0.030), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.010)
+    for along in (-0.82, 0.82):
+        add_rotated_box(f"Contact_Table_Leg_{along:+.2f}", center, (along, 0), 0.39, (0.11, 0.76, 0.74), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.020)
+
+    for side, side_label in ((1, "West"), (-1, "East")):
+        chair_angle = angle if side > 0 else angle + math.pi
+        for index, along in enumerate((-0.70, 0.70), start=1):
+            chair_center = local_xy(center, (along, side * 0.98), angle)
+            chair = f"Contact_Chair_{side_label}_{index}"
+            add_demo_chair(chair, chair_center, chair_angle, materials, groups)
 
 
 def add_demo_shelving(
@@ -1825,6 +1935,124 @@ def add_demo_pendant(
     groups["emissive"].append(glow)
 
 
+def add_demo_water_ribbon(
+    name: str,
+    location: tuple[float, float, float],
+    width: float,
+    height: float,
+    phase: float,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    """Low-poly organic water trace with an irregular, tapered silhouette."""
+    segments = 26
+    vertices: list[tuple[float, float, float]] = []
+    faces: list[tuple[int, int, int, int]] = []
+    for segment in range(segments + 1):
+        t = segment / segments
+        z = -height / 2 + t * height
+        centre_drift = math.sin(t * math.tau * 1.35 + phase) * width * 0.105
+        centre_drift += math.sin(t * math.tau * 3.65 + phase * 0.63) * width * 0.035
+        # Collapse both ends into soft points.  A broad minimum here makes the
+        # object read as a hanging banner; this near-zero taper reads as water.
+        end_taper = 0.055 + 0.945 * (math.sin(math.pi * t) ** 0.52)
+        left_breath = 0.78 + math.sin(t * math.tau * 2.10 + phase * 1.31) * 0.17
+        left_breath += math.sin(t * math.tau * 5.20 + phase) * 0.045
+        right_breath = 0.80 + math.sin(t * math.tau * 2.55 + phase * 0.74 + 1.1) * 0.15
+        right_breath += math.sin(t * math.tau * 4.60 + phase * 1.2) * 0.04
+        left_width = width * 0.5 * end_taper * left_breath
+        right_width = width * 0.5 * end_taper * right_breath
+        surface_depth = math.sin(t * math.tau * 2.80 + phase) * 0.015
+        surface_depth += math.sin(t * math.tau * 6.1 + phase * 0.4) * 0.004
+        vertices.extend([
+            (surface_depth, centre_drift - left_width, z),
+            (surface_depth + 0.004, centre_drift + right_width, z),
+        ])
+        if segment:
+            previous = (segment - 1) * 2
+            current = segment * 2
+            faces.append((previous, previous + 1, current + 1, current))
+
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    ribbon = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(ribbon)
+    ribbon.location = location
+    assign_material(ribbon, material)
+    solidify = ribbon.modifiers.new("Water membrane", "SOLIDIFY")
+    solidify.thickness = 0.008
+    solidify.offset = 0.0
+    bevel = ribbon.modifiers.new("Water softened edge", "BEVEL")
+    bevel.width = 0.004
+    bevel.segments = 1
+    for polygon in ribbon.data.polygons:
+        polygon.use_smooth = True
+    mark_web(ribbon)
+    return ribbon
+
+
+def add_demo_water_droplet_chain(
+    name: str,
+    center: tuple[float, float, float],
+    span_y: float,
+    span_z: float,
+    phase: float,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    """Join small irregular ellipsoids into one economical animated stream."""
+    randomizer = random.Random(sum(ord(character) for character in name))
+    droplets: list[bpy.types.Object] = []
+    for index in range(10):
+        t = index / 9
+        y = center[1] + math.sin(t * math.tau * 1.45 + phase) * span_y * 0.34
+        y += randomizer.uniform(-span_y * 0.12, span_y * 0.12)
+        z = center[2] - span_z / 2 + t * span_z + randomizer.uniform(-0.08, 0.08)
+        x = center[0] + randomizer.uniform(-0.018, 0.020)
+        radius = randomizer.uniform(0.030, 0.052)
+        droplet = add_sphere(
+            f"{name}_Droplet_{index + 1:02d}",
+            (x, y, z),
+            (radius * 0.48, radius, radius * randomizer.uniform(1.35, 2.05)),
+            material,
+            segments=12,
+            ring_count=8,
+        )
+        droplets.append(droplet)
+    chain = join_meshes(name, droplets, theme_role="water_highlight")
+    if chain is None:
+        raise RuntimeError(f"Could not build water droplet chain {name}")
+    chain["asset_role"] = "water_droplet_stream"
+    return chain
+
+
+def animate_demo_water_flow(
+    obj: bpy.types.Object,
+    index: int,
+    phase: float,
+) -> None:
+    """Author one seamless two-second transform clip for web playback."""
+    obj["animation_role"] = "water_flow"
+    obj["animation_clip_hint"] = "Waterfall_Flow_Loop"
+    obj["animation_loop"] = True
+    obj["animation_duration_seconds"] = 2.0
+    obj["flow_axis_blender"] = "-Z"
+    obj["flow_axis_gltf"] = "-Y"
+    obj["flow_phase"] = round((phase % math.tau) / math.tau, 4)
+    base_z = float(obj.location.z)
+    base_scale_z = float(obj.scale.z)
+    base_rotation_x = float(obj.rotation_euler.x)
+    for frame, progress in ((1, 0.0), (13, 0.25), (25, 0.5), (37, 0.75), (49, 1.0)):
+        cycle = progress * math.tau + phase
+        obj.location.z = base_z + math.sin(cycle) * 0.075
+        obj.scale.z = base_scale_z * (1.0 + math.cos(cycle) * 0.024)
+        obj.rotation_euler.x = base_rotation_x + math.sin(cycle * 1.0 + 0.7) * math.radians(0.55)
+        obj.keyframe_insert(data_path="location", index=2, frame=frame)
+        obj.keyframe_insert(data_path="scale", index=2, frame=frame)
+        obj.keyframe_insert(data_path="rotation_euler", index=0, frame=frame)
+    if obj.animation_data and obj.animation_data.action:
+        obj.animation_data.action.name = f"Waterfall_Flow_{index:02d}"
+
+
 def add_demo_waterfall(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
@@ -1833,33 +2061,78 @@ def add_demo_waterfall(
     # and a deep black-marble catch basin rather than a flat decorative plane.
     groups["stone"].append(add_box("Private_Waterfall_Stone", (-6.78, -11.18, 2.74), (0.18, 3.10, 4.62), materials["stone"], bevel=0.035, theme_role="stone"))
 
-    # A continuous silvered sheet reads as water at oblique camera angles. The
-    # staggered translucent bands create irregular flow without looking like
-    # architectural wall slats.
-    groups["water"].append(add_box(
-        "Private_Waterfall_Water_Sheet",
-        (-6.664, -11.18, 2.72),
-        (0.022, 2.88, 4.20),
+    # The background membrane is a single organic silhouette, not a rectangular
+    # glass sheet.  Six overlapping flow veils plus two droplet chains create
+    # depth while keeping exactly eight lightweight looped clips.
+    membrane = add_demo_water_ribbon(
+        "Private_Waterfall_Water_Membrane",
+        (-6.655, -11.18, 2.72),
+        2.90,
+        4.24,
+        0.37,
         materials["water"],
-        bevel=0.018,
-        theme_role="water",
-    ))
-    flow_widths = (0.34, 0.26, 0.38, 0.29, 0.42, 0.25, 0.36, 0.31)
-    cursor = -12.48
-    for index, width in enumerate(flow_widths):
-        y = cursor + width * 0.5
-        depth = 0.015 + (index % 3) * 0.007
-        ribbon = add_box(
+    )
+    membrane["theme_role"] = "water"
+    membrane["asset_role"] = "continuous_water_membrane"
+    groups["water"].append(membrane)
+
+    flow_specs = (
+        (-1.10, 0.34, 3.96, 2.70, 0.15),
+        (-0.72, 0.46, 4.14, 2.74, 1.03),
+        (-0.30, 0.30, 3.78, 2.62, 2.18),
+        (0.12, 0.52, 4.08, 2.76, 3.11),
+        (0.55, 0.34, 3.90, 2.67, 4.27),
+        (0.98, 0.38, 4.02, 2.73, 5.22),
+    )
+    for index, (offset_y, width, height, center_z, phase) in enumerate(flow_specs, start=1):
+        depth = 0.018 + (index % 3) * 0.009
+        ribbon = add_demo_water_ribbon(
             f"Private_Waterfall_Flow_{index:02d}",
-            (-6.645 - depth * 0.5, y, 2.68 + (index % 2) * 0.035),
-            (depth, width, 4.04 - (index % 3) * 0.09),
-            materials["water_highlight" if index % 3 == 0 else "water"],
-            bevel=0.025,
-            theme_role="water_highlight" if index % 3 == 0 else "water",
+            (-6.625 - depth * 0.5, -11.18 + offset_y, center_z),
+            width,
+            height,
+            phase,
+            materials["water_highlight" if index in (2, 4) else "water"],
         )
-        ribbon.rotation_euler.y = math.radians((index % 3 - 1) * 0.35)
-        groups["water"].append(ribbon)
-        cursor += width
+        ribbon.rotation_euler.y = math.radians((index % 3 - 1) * 0.55)
+        ribbon["theme_role"] = "water_highlight" if index in (2, 4) else "water"
+        ribbon["asset_role"] = "water_flow"
+        animate_demo_water_flow(ribbon, index, phase)
+        groups["water_highlight"].append(ribbon)
+
+    for index, (offset_y, phase) in enumerate(((-0.48, 1.48), (0.58, 4.66)), start=7):
+        droplets = add_demo_water_droplet_chain(
+            f"Private_Waterfall_Droplet_Stream_{index - 6:02d}",
+            (-6.605, -11.18 + offset_y, 2.46),
+            0.50,
+            3.58,
+            phase,
+            materials["water_highlight"],
+        )
+        animate_demo_water_flow(droplets, index, phase)
+        groups["water_highlight"].append(droplets)
+
+    # Low splash beads break the final horizontal pool edge and sell impact.
+    splash_random = random.Random(2407)
+    for index in range(12):
+        splash = add_sphere(
+            f"Private_Waterfall_Splash_{index + 1:02d}",
+            (
+                -6.05 + splash_random.uniform(-0.16, 0.16),
+                -11.18 + splash_random.uniform(-1.22, 1.22),
+                0.57 + splash_random.uniform(0.01, 0.17),
+            ),
+            (
+                splash_random.uniform(0.018, 0.032),
+                splash_random.uniform(0.028, 0.055),
+                splash_random.uniform(0.025, 0.070),
+            ),
+            materials["water"],
+            segments=10,
+            ring_count=6,
+        )
+        splash["asset_role"] = "water_splash"
+        groups["water"].append(splash)
     groups["stone"].append(add_box("Private_Waterfall_Basin", (-6.28, -11.18, 0.25), (1.12, 3.35, 0.50), materials["stone"], bevel=0.055, theme_role="stone"))
     groups["water"].append(add_box("Private_Waterfall_Pool", (-6.14, -11.18, 0.52), (0.76, 3.02, 0.045), materials["water"], bevel=0.025, theme_role="water"))
     groups["emissive"].append(add_box("Private_Waterfall_Top_Light", (-6.61, -11.18, 5.10), (0.035, 2.82, 0.045), materials["emissive"], bevel=0.008, theme_role="emissive"))
@@ -1990,25 +2263,24 @@ def build_demo_site_rooms(
         groups["shadow"].append(add_box(f"Demo_Ceiling_Track_{x:+.1f}", (x, -12.0, 5.56), (0.06, 6.9, 0.06), materials["shadow"], bevel=0.010, theme_role="shadow"))
 
     add_demo_waterfall(materials, groups)
-    add_demo_sofa("Private_Sofa_South", (-3.70, -14.60), 0, materials, groups, width=3.15)
-    add_demo_sofa("Private_Sofa_Partition", (-0.72, -12.38), math.pi / 2, materials, groups, width=2.55)
-    add_demo_coffee_table("Private_Coffee_Table", (-3.55, -12.35), materials, groups)
-    add_demo_meeting_table((3.45, -12.25), materials, groups)
+    # One smaller sofa replaces the former two-sofa choke point.  Rotating it
+    # 180 degrees puts its back against the south wall and faces the artwork /
+    # water wall, rather than facing into the wall.
+    add_demo_sofa("Private_Sofa_South", (-4.55, -14.72), math.pi, materials, groups, width=2.05)
+    add_demo_coffee_table("Private_Coffee_Table", (-4.55, -13.10), materials, groups)
+    add_demo_meeting_table((4.72, -12.72), materials, groups, angle=math.pi / 2)
     add_demo_shelving(materials, groups)
 
-    # The right-side console, lamp and bonsai echo the reference hero view.
-    groups["stone"].append(add_box("Contact_Marble_Console", (4.92, -9.20, 1.10), (3.25, 0.82, 0.16), materials["stone"], bevel=0.035, theme_role="stone"))
-    groups["wood"].append(add_box("Contact_Console_Base", (4.92, -9.20, 0.54), (3.02, 0.62, 0.96), materials["wood"], bevel=0.025, theme_role="wood"))
-    add_demo_desk_lamp((4.12, -9.20), materials, groups)
-    add_demo_bonsai((5.72, -9.20), materials, groups)
-    add_demo_pendant((3.45, -12.25), materials, groups)
-
-    add_lush_botanical("Demo_Private_Plant", (-5.42, -14.55, 0), materials, groups, seed=311)
-    add_lush_botanical("Demo_Contact_Plant", (5.65, -14.55, 0), materials, groups, seed=733)
+    # The entrance-blocking console, second sofa, and two oversized plants were
+    # intentionally removed.  The water wall and illuminated library already
+    # provide strong room identities; fewer objects make both spaces breathe.
+    add_demo_pendant((4.72, -12.72), materials, groups)
 
     add_demo_artwork("DEMO_ART_PRIVATE_WEST", "west", (-6.68, -14.15, 2.75), 3, 2.15, materials, groups)
-    add_demo_artwork("DEMO_ART_PRIVATE_NORTH", "north", (-4.72, -8.18, 2.70), 6, 1.85, materials, groups)
-    add_demo_artwork("DEMO_ART_CONTACT_NORTH", "north", (2.05, -8.18, 2.70), 2, 1.75, materials, groups)
+    # North-wall works sit in the solid outer bays.  Their inner frame edges are
+    # beyond x=-4.65 / x=+4.65, safely clear of the 2.12 m entrance portals.
+    add_demo_artwork("DEMO_ART_PRIVATE_NORTH", "north", (-5.48, -8.18, 2.70), 6, 1.46, materials, groups)
+    add_demo_artwork("DEMO_ART_CONTACT_NORTH", "north", (5.48, -8.18, 2.70), 2, 1.46, materials, groups)
     # Sit just proud of the south-wall finish; the structural face is at
     # y=-15.65. This preserves the genuine image texture instead of burying it
     # inside the wall surface.
@@ -2017,9 +2289,9 @@ def build_demo_site_rooms(
 
     for index, (location, target) in enumerate((
         ((-4.80, -12.25, 5.05), (-3.60, -12.25, 1.20)),
-        ((-2.15, -14.45, 5.05), (-3.70, -14.45, 1.25)),
-        ((2.30, -12.10, 5.05), (3.45, -12.25, 1.00)),
-        ((5.45, -10.05, 5.05), (4.95, -9.20, 1.35)),
+        ((-2.15, -14.45, 5.05), (-4.55, -14.45, 1.25)),
+        ((2.55, -12.10, 5.05), (4.72, -12.72, 1.00)),
+        ((5.25, -10.05, 5.05), (5.48, -8.18, 2.70)),
     ), start=1):
         light = add_light(
             f"Demo_Room_Spot_{index:02d}", "SPOT", location, target,
@@ -2030,7 +2302,7 @@ def build_demo_site_rooms(
         add_spot_fixture(light, f"Demo_Room_Spot_{index:02d}", materials, groups)
 
     pendant_light = add_light(
-        "Demo_Contact_Pendant_Light", "POINT", (3.45, -12.25, 3.32), (3.45, -12.25, 0.8),
+        "Demo_Contact_Pendant_Light", "POINT", (4.72, -12.72, 3.32), (4.72, -12.72, 0.8),
         (1.0, 0.63, 0.30), 115, web=True, theme_role="demo_pendant",
     )
     pendant_light["demo_only"] = True
@@ -2045,8 +2317,8 @@ def build_demo_site_rooms(
     # Curated room anchors double as keyboard/mobile shortcuts.
     for order, (name, location, target, label, room_id) in enumerate((
         ("VIEW_Demo_Gallery_Hall", (0, -5.90, WALK_EYE_HEIGHT), (0, 6.70, 2.55), "01 · Gallery Hall", "gallery-hall"),
-        ("VIEW_Demo_Private_Room", (-3.50, -8.45, 1.76), (-3.55, -13.20, 1.58), "02 · Private Room", "private-room"),
-        ("VIEW_Demo_Contact_Room", (3.50, -8.45, 1.76), (3.50, -13.20, 1.42), "03 · Meet & Contact", "contact-room"),
+        ("VIEW_Demo_Private_Room", (-3.50, -8.45, 1.76), (-4.15, -13.20, 1.58), "02 · Private Room", "private-room"),
+        ("VIEW_Demo_Contact_Room", (3.50, -8.45, 1.76), (4.45, -12.80, 1.42), "03 · Meet & Contact", "contact-room"),
     ), start=40):
         view = add_view_anchor(name, location, target, label=label, kind="demo_room", order=order)
         target_object = add_empty(
@@ -2116,15 +2388,50 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
         add_collider("COLLIDER_Demo_Partition_North", (0, -9.48, ROOM_HEIGHT / 2), (0.32, 2.96, ROOM_HEIGHT)),
         add_collider("COLLIDER_Demo_Partition_South", (0, -14.52, ROOM_HEIGHT / 2), (0.32, 2.96, ROOM_HEIGHT)),
         add_collider("COLLIDER_Demo_Waterfall", (-6.18, -11.18, 0.55), (1.35, 3.55, 1.10)),
-        add_collider("COLLIDER_Demo_Private_Sofa", (-3.70, -14.60, 0.60), (3.45, 1.18, 1.20)),
-        add_collider("COLLIDER_Demo_Private_Coffee", (-3.55, -12.35, 0.45), (2.55, 1.45, 0.90)),
-        add_collider("COLLIDER_Demo_Contact_Table", (3.45, -12.25, 0.65), (4.35, 3.65, 1.30)),
-        add_collider("COLLIDER_Demo_Contact_Console", (4.92, -9.20, 0.70), (3.55, 1.12, 1.40)),
-        add_collider("COLLIDER_Demo_Private_Plant", (-5.42, -14.55, 0.65), (1.15, 1.15, 1.30)),
-        add_collider("COLLIDER_Demo_Contact_Plant", (5.65, -14.55, 0.65), (1.15, 1.15, 1.30)),
+        add_collider("COLLIDER_Demo_Private_Sofa", (-4.55, -14.72, 0.60), (2.27, 1.10, 1.20)),
+        add_collider("COLLIDER_Demo_Private_Coffee", (-4.55, -13.10, 0.42), (1.68, 0.92, 0.84)),
+        add_collider("COLLIDER_Demo_Contact_Table", (4.72, -12.72, 0.64), (1.24, 2.75, 1.28)),
+        add_collider("COLLIDER_Demo_Contact_Chair_West_01", (3.74, -13.42, 0.55), (0.78, 0.78, 1.10)),
+        add_collider("COLLIDER_Demo_Contact_Chair_West_02", (3.74, -12.02, 0.55), (0.78, 0.78, 1.10)),
+        add_collider("COLLIDER_Demo_Contact_Chair_East_01", (5.70, -13.42, 0.55), (0.78, 0.78, 1.10)),
+        add_collider("COLLIDER_Demo_Contact_Chair_East_02", (5.70, -12.02, 0.55), (0.78, 0.78, 1.10)),
+        add_collider("COLLIDER_Demo_Contact_Shelving", (6.62, -12.15, 2.40), (0.46, 6.05, 4.80)),
+        add_collider("COLLIDER_Demo_Privacy_Lectern", (0.61, -9.58, 0.70), (1.14, 1.12, 1.40)),
+        add_collider("COLLIDER_Demo_Imprint_Lectern", (0.61, -14.24, 0.70), (1.14, 1.12, 1.40)),
     ]
     for collider in demo_colliders:
         collider["demo_only"] = True
+
+    # Explicit authoring metadata lets the web controller and future audits use
+    # the same curated circulation intent.  Both demo routes are 1.2 m wide and
+    # begin inside their corresponding 2.12 m entrance opening.
+    clear_routes = {
+        "private-room": [
+            [-3.50, -8.45],
+            [-3.05, -10.35],
+            [-2.75, -13.30],
+            [-2.75, -14.65],
+        ],
+        "contact-room": [
+            [3.50, -8.45],
+            [3.00, -10.10],
+            [2.55, -12.20],
+            [2.55, -14.65],
+        ],
+    }
+    for route_id, points in clear_routes.items():
+        for point_index, (x, y) in enumerate(points, start=1):
+            waypoint = add_empty(
+                f"ROUTE_{route_id.replace('-', '_').upper()}_{point_index:02d}",
+                (x, y, 0.03),
+                display_type="CIRCLE",
+                display_size=0.16,
+            )
+            waypoint["demo_only"] = True
+            waypoint["navigation_role"] = "clear_route_waypoint"
+            waypoint["route_id"] = route_id
+            waypoint["route_order"] = point_index
+            waypoint["clear_width_metres"] = 1.20
 
     scene["navigation_type"] = "bounded_walkable_gallery"
     scene["walk_start_node"] = start.name
@@ -2136,6 +2443,10 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
     scene["eye_height_metres"] = WALK_EYE_HEIGHT
     scene["movement_speed_metres_per_second"] = 1.5
     scene["collision_padding_metres"] = 0.34
+    scene["demo_room_count"] = 3
+    scene["demo_minimum_clear_route_width_metres"] = 1.20
+    scene["demo_clear_routes_blender_xy_json"] = json.dumps(clear_routes, separators=(",", ":"))
+    scene["demo_entrance_clear_span_metres"] = 2.12
     scene["coordinate_note"] = "Blender XYZ maps to glTF/Three X,Y,Z as X,Z,-Y"
 
 
@@ -2212,6 +2523,10 @@ def build_scene() -> bpy.types.Scene:
     scene.render.film_transparent = False
     scene.view_settings.look = "AgX - Medium High Contrast"
     scene.view_settings.exposure = -0.48
+    scene.render.fps = 24
+    scene.frame_start = 1
+    scene.frame_end = 49
+    scene.frame_set(1)
 
     world = bpy.data.worlds.new("Gallery Atmosphere")
     world.use_nodes = True
@@ -2255,6 +2570,20 @@ def build_scene() -> bpy.types.Scene:
             emission_strength=0.78,
         ),
     }
+    # glTF alpha blending lets the layered veils merge into one water volume
+    # instead of reading as opaque decorative strips.  The runtime adds moving
+    # normals and reflections on top of this physically authored transparency.
+    for water_role, alpha, transmission in (
+        ("water", 0.56, 0.10),
+        ("water_highlight", 0.44, 0.16),
+    ):
+        water_material = materials[water_role]
+        water_material.surface_render_method = "BLENDED"
+        water_material["web_alpha"] = alpha
+        principled = water_material.node_tree.nodes.get("Principled BSDF")
+        set_socket(principled, "Alpha", alpha)
+        set_socket(principled, "Transmission Weight", transmission)
+        set_socket(principled, "Transmission", transmission)
     groups = {name: [] for name in (
         "wall", "fabric", "stone", "ceiling", "floor", "floor_tile_a", "floor_tile_b", "floor_alt", "shadow", "bronze",
         "emissive", "bench", "wood", "leather", "leather_seam", "planter", "plaque", "plaque_text", "stem", "leaf_a", "leaf_b", "water", "water_highlight", "ceramic", "glass",
@@ -2279,7 +2608,9 @@ def build_scene() -> bpy.types.Scene:
 
     build_demo_site_rooms(materials, demo_groups)
     add_site_information_panels(materials, demo_groups)
-    add_site_navigation_console(materials)
+    # The full spatial experience now owns a persistent vertical DOM
+    # navigator.  The former physical centre-pier console duplicated it,
+    # obscured both entrance views under the HUD, and is intentionally omitted.
 
     add_lush_botanical("Botanical_West", (-4.62, 6.18, 0), materials, groups, seed=1963)
     add_lush_botanical("Botanical_East", (4.62, 6.18, 0), materials, groups, seed=2026)
@@ -2335,6 +2666,7 @@ def build_scene() -> bpy.types.Scene:
 
     optimize_groups(groups)
     optimize_groups(demo_groups, prefix="DEMO", demo_only=True)
+    scene.frame_set(1)
 
     scene["experience_name"] = "Danny Hirsch Arts — Material Orbit"
     scene["experience_version"] = 3
@@ -2344,7 +2676,12 @@ def build_scene() -> bpy.types.Scene:
     scene["surface_count"] = 6
     scene["catalogue_label_count"] = 6
     scene["site_demo_panel_count"] = len(SITE_PANELS)
-    scene["site_navigation_embedded"] = True
+    scene["site_navigation_embedded"] = False
+    scene["site_navigation_strategy"] = "persistent accessible DOM sidebar; no physical centre-pier console"
+    scene["waterfall_animation_clip"] = "Waterfall_Flow_Loop"
+    scene["waterfall_animation_duration_seconds"] = 2.0
+    scene["waterfall_animation_frame_range"] = [1, 49]
+    scene["waterfall_animation_strategy"] = "six overlapping organic flow veils and two droplet streams over one tapered membrane; eight seamless transform clips"
     scene["generated_room_materials_json"] = json.dumps({
         key: str(path.relative_to(ROOT)) for key, path in MATERIAL_TEXTURES.items()
     }, separators=(",", ":"))
@@ -2376,7 +2713,9 @@ def export_glb(scene: bpy.types.Scene) -> None:
         export_cameras=True,
         export_lights=True,
         export_extras=True,
-        export_animations=False,
+        export_animations=True,
+        export_animation_mode="SCENE",
+        export_frame_range=True,
         export_image_format="WEBP",
         export_image_quality=72,
         export_image_webp_fallback=False,

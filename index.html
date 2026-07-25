@@ -23,8 +23,8 @@
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260723-gallery-30">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260723-gallery-30">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260724-gallery-32">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260724-gallery-32">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -64,6 +64,38 @@
     </header>
 
     <div class="scroll-progress" aria-hidden="true"></div>
+
+    <section class="experience-choice" data-experience-choice role="dialog" aria-modal="true" aria-labelledby="experience-choice-title" aria-describedby="experience-choice-description" hidden>
+      <div class="experience-choice__atmosphere" aria-hidden="true"><span></span><i></i></div>
+      <div class="experience-choice__shell">
+        <header class="experience-choice__heading">
+          <p>The threshold is open</p>
+          <h2 id="experience-choice-title">Choose how<br>you enter.</h2>
+          <span id="experience-choice-description">Follow the editorial exhibition, or step directly into the walkable 3D gallery.</span>
+        </header>
+        <div class="experience-choice__options" role="group" aria-label="Choose an exhibition experience">
+          <button class="experience-choice__option experience-choice__option--classic" type="button" data-experience-classic aria-describedby="experience-classic-description">
+            <span class="experience-choice__number" aria-hidden="true">01</span>
+            <span class="experience-choice__option-copy">
+              <small>Curated scroll</small>
+              <strong>Classic site</strong>
+              <span id="experience-classic-description">Artwork chapters, surfaces, process, and inquiry in a refined editorial journey.</span>
+            </span>
+            <i aria-hidden="true">Enter site&nbsp; ↘</i>
+          </button>
+          <button class="experience-choice__option experience-choice__option--spatial" type="button" data-experience-3d aria-describedby="experience-spatial-description">
+            <span class="experience-choice__number" aria-hidden="true">02</span>
+            <span class="experience-choice__option-copy">
+              <small>Walkable exhibition</small>
+              <strong>Interactive 3D Gallery</strong>
+              <span id="experience-spatial-description">Move through the Blender-built rooms and approach genuine artwork photography in space.</span>
+            </span>
+            <i aria-hidden="true">Enter gallery&nbsp; ↗</i>
+          </button>
+        </div>
+        <p class="experience-choice__note">The classic site still includes the curated Private Room.</p>
+      </div>
+    </section>
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title" data-cinematic-hero data-chapter="00 · Threshold">
@@ -544,7 +576,6 @@
         <header class="room-experience__header">
           <div><p>Private Room · 360° gallery</p><h2 id="room-experience-title">Walk into the work.</h2></div>
           <div class="room-experience__header-actions">
-            <button class="room-experience__demo" type="button" data-room-demo aria-pressed="false"><span aria-hidden="true"></span><b>3D site demo</b></button>
             <button class="room-experience__theme" type="button" data-room-theme aria-label="Switch room to light theme"><span aria-hidden="true"></span><b>Light</b></button>
             <button class="room-experience__close" type="button" data-room-close aria-label="Leave private room"><span aria-hidden="true"></span></button>
           </div>
@@ -566,32 +597,54 @@
 
         <aside class="room-experience__site-panel" data-gallery-site-panel aria-live="polite" hidden>
           <button type="button" class="room-experience__site-close" data-gallery-site-close aria-label="Close room information">×</button>
-          <p data-gallery-site-kicker>3D Site Demo</p>
+          <p data-gallery-site-kicker>Spatial exhibition</p>
           <h3 data-gallery-site-title>Room information</h3>
           <p data-gallery-site-body></p>
           <a href="#about" data-gallery-site-link>Open information <span aria-hidden="true">↗</span></a>
         </aside>
 
-        <nav class="room-experience__demo-nav" data-gallery-demo-nav aria-label="3D website rooms" hidden>
-          <span>Room tour</span>
-          <button type="button" data-gallery-demo-room="gallery-hall">Gallery hall</button>
-          <button type="button" data-gallery-demo-room="private-room">Private room</button>
-          <button type="button" data-gallery-demo-room="contact-room">Meet &amp; contact</button>
-          <button type="button" data-gallery-demo-art>Artworks</button>
-          <button type="button" data-gallery-demo-panel="about">About</button>
-          <button type="button" data-gallery-demo-panel="process">Process</button>
-          <button type="button" data-gallery-demo-panel="inquiry">Inquiry</button>
-          <button type="button" data-gallery-demo-panel="privacy">Privacy</button>
-          <button type="button" data-gallery-demo-panel="imprint">Imprint</button>
+        <nav class="room-experience__demo-nav room-experience__sidebar" data-gallery-demo-nav aria-label="Navigate the 3D exhibition" hidden>
+          <header class="room-experience__sidebar-heading">
+            <span>Spatial map</span>
+            <small>Choose a room or story</small>
+          </header>
+          <div class="room-experience__sidebar-scroll">
+            <p>Rooms</p>
+            <button type="button" data-index="01" data-gallery-demo-room="gallery-hall">Gallery Hall</button>
+            <button type="button" data-index="02" data-gallery-demo-room="private-room">Private Room</button>
+            <button type="button" data-index="03" data-gallery-demo-room="contact-room">Meet &amp; Contact</button>
+            <p>Explore</p>
+            <button type="button" data-index="04" data-gallery-demo-art>Artwork Index</button>
+            <button type="button" data-index="05" data-gallery-demo-panel="about">About</button>
+            <button type="button" data-index="06" data-gallery-demo-panel="process">Process</button>
+            <button type="button" data-index="07" data-gallery-demo-panel="inquiry">Inquiry</button>
+            <p>Legal</p>
+            <button type="button" data-index="08" data-gallery-demo-panel="privacy">Privacy</button>
+            <button type="button" data-index="09" data-gallery-demo-panel="imprint">Imprint</button>
+          </div>
         </nav>
 
         <div class="room-experience__walk-controls" data-gallery-controls aria-label="Walkable gallery controls" hidden>
-          <div class="room-experience__dpad" role="group" aria-label="Move through gallery">
+          <div class="room-experience__dpad" data-gallery-joystick="move" role="group" aria-label="Movement joystick">
             <button type="button" data-gallery-move="forward" aria-label="Walk forward">↑</button>
             <button type="button" data-gallery-move="left" aria-label="Step left">←</button>
             <button type="button" data-gallery-move="backward" aria-label="Walk backward">↓</button>
             <button type="button" data-gallery-move="right" aria-label="Step right">→</button>
+            <span class="room-experience__stick-ring" aria-hidden="true"></span>
+            <span class="room-experience__stick-knob" aria-hidden="true"></span>
+            <span class="room-experience__stick-label" aria-hidden="true">Move</span>
           </div>
+          <div class="room-experience__look-stick" data-gallery-joystick="look" role="group" aria-label="Look joystick">
+            <button type="button" data-gallery-look-control aria-label="Drag to look around the gallery">
+              <span class="room-experience__stick-ring" aria-hidden="true"></span>
+              <span class="room-experience__stick-knob" aria-hidden="true"></span>
+            </button>
+            <span class="room-experience__stick-label" aria-hidden="true">Look</span>
+          </div>
+          <button class="room-experience__motion-look" type="button" data-gallery-motion-look aria-label="Enable motion look using phone movement" aria-pressed="false">
+            <span class="room-experience__motion-icon" aria-hidden="true"><i></i></span>
+            <span><b>Motion look</b><small>Use phone movement</small></span>
+          </button>
           <div class="room-experience__tour" role="group" aria-label="Curated artwork views">
             <button type="button" data-gallery-view-prev aria-label="Previous curated artwork view">Previous work</button>
             <button type="button" data-gallery-reset aria-label="Return to gallery entrance">Entrance</button>
@@ -625,6 +678,6 @@
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260723-gallery-30" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260724-gallery-32" defer></script>
   </body>
 </html>

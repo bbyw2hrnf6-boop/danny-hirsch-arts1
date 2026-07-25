@@ -318,6 +318,35 @@ const createMicroNormalTexture = (kind = 'stone') => {
   return texture;
 };
 
+const createWaterFlowTexture = () => {
+  const width = 96;
+  const height = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(width, height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const wave = Math.sin(x * 0.31 + y * 0.055) * 0.52
+        + Math.sin(x * 0.09 - y * 0.12) * 0.27
+        + Math.sin(y * 0.34 + x * 0.025) * 0.18;
+      const offset = (y * width + x) * 4;
+      image.data[offset] = 128 + wave * 42;
+      image.data[offset + 1] = 128 + Math.sin(y * 0.16 + x * 0.08) * 34;
+      image.data[offset + 2] = 238;
+      image.data[offset + 3] = 255;
+    }
+  }
+  context.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2.2, 3.8);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+};
+
 /**
  * Fullscreen, user-entered 360 gallery. The canvas is decorative to assistive
  * technology; every movement and artwork action has an equivalent DOM control.
@@ -334,8 +363,10 @@ export function initWalkableGallery3D(options = {}) {
       destroy() {},
       goToNextView() {},
       goToPreviousView() {},
+      goToDemoRoom() {},
       goToSiteDirectory() {},
       goToSitePanel() {},
+      requestMotionControl: async () => ({ supported: false, granted: false, reason }),
       resetView() {},
       setActive() {},
       setDemoMode() {},
@@ -348,7 +379,13 @@ export function initWalkableGallery3D(options = {}) {
   if (connection?.saveData) return inertController('save-data');
   if (!hasWebGL2()) return inertController('webgl2-unavailable');
 
-  const compact = window.matchMedia('(max-width: 760px)').matches;
+  // CSS width alone stops identifying a phone as soon as it rotates. Keep the
+  // touch controller, conservative render budget, motion look and haptics on
+  // coarse-pointer phones in landscape without classifying mouse tablets as
+  // compact devices.
+  const compact = window.matchMedia(
+    '(max-width: 760px), (max-height: 560px) and (pointer: coarse)'
+  ).matches;
   const lowPower = document.documentElement.classList.contains('low-power')
     || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
     || (navigator.deviceMemory && navigator.deviceMemory <= 4);
@@ -406,7 +443,23 @@ export function initWalkableGallery3D(options = {}) {
   const detailTextures = {
     stone: createMicroNormalTexture('stone'),
     wood: createMicroNormalTexture('wood'),
-    leather: createMicroNormalTexture('leather')
+    leather: createMicroNormalTexture('leather'),
+    water: createWaterFlowTexture()
+  };
+  const analogMove = { x: 0, y: 0 };
+  const analogLook = { x: 0, y: 0 };
+  const waterMaterials = new Set();
+  const motion = {
+    supported: compact && typeof window.DeviceOrientationEvent !== 'undefined',
+    enabled: false,
+    listening: false,
+    baseAlpha: null,
+    baseBeta: null,
+    baseGamma: null,
+    baseYaw: 0,
+    basePitch: 0,
+    targetYaw: 0,
+    targetPitch: 0
   };
 
   let destroyed = false;
@@ -414,6 +467,8 @@ export function initWalkableGallery3D(options = {}) {
   let ready = false;
   let frameRequest = 0;
   let model = null;
+  let animationMixer = null;
+  let animationClipCount = 0;
   let currentTheme = options.theme === 'light' ? 'light' : 'dark';
   let yaw = 0;
   let pitch = 0;
@@ -427,6 +482,90 @@ export function initWalkableGallery3D(options = {}) {
   let demoMode = false;
   let lastFocusCheck = 0;
   let themeTransition = 1;
+  let lastHapticAt = 0;
+
+  const triggerHaptic = (duration = 8) => {
+    if (!compact || typeof navigator.vibrate !== 'function') return;
+    const now = performance.now();
+    if (now - lastHapticAt < 360) return;
+    lastHapticAt = now;
+    navigator.vibrate(duration);
+  };
+
+  const resetMotionBaseline = () => {
+    motion.baseAlpha = null;
+    motion.baseBeta = null;
+    motion.baseGamma = null;
+    motion.baseYaw = yaw;
+    motion.basePitch = pitch;
+    motion.targetYaw = yaw;
+    motion.targetPitch = pitch;
+  };
+
+  const shortestAngle = (from, to) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
+
+  const onDeviceOrientation = (event) => {
+    if (!active || !motion.enabled || event.beta == null || event.gamma == null) return;
+    const alpha = Number(event.alpha || 0);
+    const beta = Number(event.beta);
+    const gamma = Number(event.gamma);
+    if (motion.baseBeta == null) {
+      motion.baseAlpha = alpha;
+      motion.baseBeta = beta;
+      motion.baseGamma = gamma;
+      motion.baseYaw = yaw;
+      motion.basePitch = pitch;
+      return;
+    }
+    const screenAngle = Number(window.screen?.orientation?.angle || window.orientation || 0);
+    const landscape = Math.abs(screenAngle) === 90;
+    const horizontalDelta = THREE.MathUtils.degToRad(
+      landscape ? beta - motion.baseBeta : gamma - motion.baseGamma
+    );
+    const verticalDelta = THREE.MathUtils.degToRad(
+      landscape ? gamma - motion.baseGamma : beta - motion.baseBeta
+    );
+    const landscapeDirection = screenAngle === -90 || screenAngle === 270 ? -1 : 1;
+    motion.targetYaw = motion.baseYaw - clamp(horizontalDelta * (landscape ? landscapeDirection : 1), -0.92, 0.92);
+    motion.targetPitch = clamp(motion.basePitch - clamp(verticalDelta, -0.68, 0.68), -1.05, 1.05);
+    ensureFrame();
+  };
+
+  const attachMotion = () => {
+    if (!motion.enabled || motion.listening || !active) return;
+    window.addEventListener('deviceorientation', onDeviceOrientation, true);
+    motion.listening = true;
+    resetMotionBaseline();
+  };
+
+  const detachMotion = () => {
+    if (!motion.listening) return;
+    window.removeEventListener('deviceorientation', onDeviceOrientation, true);
+    motion.listening = false;
+  };
+
+  const requestMotionControl = async () => {
+    if (!motion.supported || !window.isSecureContext) {
+      const result = { supported: motion.supported, granted: false, reason: window.isSecureContext ? 'unsupported' : 'secure-context-required' };
+      call(options.onMotionState, result);
+      return result;
+    }
+    try {
+      let permission = 'granted';
+      if (typeof window.DeviceOrientationEvent.requestPermission === 'function') {
+        permission = await window.DeviceOrientationEvent.requestPermission();
+      }
+      motion.enabled = permission === 'granted';
+      if (motion.enabled) attachMotion();
+      const result = { supported: true, granted: motion.enabled, reason: motion.enabled ? 'enabled' : 'denied' };
+      call(options.onMotionState, result);
+      return result;
+    } catch (error) {
+      const result = { supported: true, granted: false, reason: 'permission-error' };
+      call(options.onMotionState, result);
+      return result;
+    }
+  };
 
   const refreshLabelMaterials = () => {
     const lightTheme = currentTheme === 'light';
@@ -502,8 +641,12 @@ export function initWalkableGallery3D(options = {}) {
   const movePlayer = (x, z) => {
     const nextX = clamp(x, bounds.minX + playerRadius, bounds.maxX - playerRadius);
     const nextZ = clamp(z, bounds.minZ + playerRadius, bounds.maxZ - playerRadius);
-    if (!collides(nextX, camera.position.z)) camera.position.x = nextX;
-    if (!collides(camera.position.x, nextZ)) camera.position.z = nextZ;
+    const xBlocked = nextX !== x || collides(nextX, camera.position.z);
+    const zBlocked = nextZ !== z || collides(camera.position.x, nextZ);
+    if (!xBlocked) camera.position.x = nextX;
+    if (!zBlocked) camera.position.z = nextZ;
+    if (xBlocked || zBlocked) triggerHaptic(9);
+    return { xBlocked, zBlocked };
   };
 
   const orientToward = (target) => {
@@ -556,6 +699,12 @@ export function initWalkableGallery3D(options = {}) {
     }
   };
 
+  const setNavigationId = (id) => {
+    activeNavigationId = id;
+    call(options.onNavigationChange, { id });
+    if (demoMode) refreshLabelMaterials();
+  };
+
   const goToWork = (direction) => {
     const workIndices = views
       .map((view, index) => ({ index, label: view.label }))
@@ -566,8 +715,7 @@ export function initWalkableGallery3D(options = {}) {
     const nextWork = currentWork < 0
       ? (direction > 0 ? 0 : workIndices.length - 1)
       : (currentWork + direction + workIndices.length) % workIndices.length;
-    activeNavigationId = 'artworks';
-    if (demoMode) refreshLabelMaterials();
+    setNavigationId('artworks');
     goToView(workIndices[nextWork]);
   };
 
@@ -627,7 +775,7 @@ export function initWalkableGallery3D(options = {}) {
       focusedSitePanel = {
         id,
         title: owner.userData.site_title || 'Room information',
-        kicker: owner.userData.site_kicker || '3D Site Demo',
+        kicker: owner.userData.site_kicker || 'Spatial exhibition',
         body: owner.userData.site_body || '',
         link: owner.userData.site_link || '',
         linkLabel: owner.userData.site_link_label || 'Open information'
@@ -686,8 +834,7 @@ export function initWalkableGallery3D(options = {}) {
     ));
     if (index < 0) return;
     if (!demoMode) setDemoMode(true);
-    activeNavigationId = panelId || 'about';
-    refreshLabelMaterials();
+    setNavigationId(panelId || 'about');
     goToView(index);
   };
 
@@ -696,7 +843,7 @@ export function initWalkableGallery3D(options = {}) {
       || /site directory/i.test(view.label));
     if (index < 0) return;
     if (!demoMode) setDemoMode(true);
-    refreshLabelMaterials();
+    setNavigationId('directory');
     goToView(index);
   };
 
@@ -704,14 +851,13 @@ export function initWalkableGallery3D(options = {}) {
     const index = views.findIndex((view) => view.object.userData?.demo_room_id === roomId);
     if (index < 0) return;
     if (!demoMode) setDemoMode(true);
-    activeNavigationId = roomId;
-    refreshLabelMaterials();
+    setNavigationId(roomId);
     goToView(index);
   };
 
   const activateNavigationItem = (item) => {
     if (!item?.id) return;
-    activeNavigationId = item.id;
+    setNavigationId(item.id);
     call(options.onNavigationActivate, item);
     if (item.id === 'artworks') goToWork(1);
     else if (item.id.startsWith('room-')) goToDemoRoom(item.id.replace(/^room-/, ''));
@@ -749,12 +895,22 @@ export function initWalkableGallery3D(options = {}) {
   };
 
   const updateMovement = (delta) => {
-    const forwardInput = (keys.has('KeyW') || keys.has('ArrowUp') || held.has('forward') ? 1 : 0)
-      - (keys.has('KeyS') || keys.has('ArrowDown') || held.has('backward') ? 1 : 0);
-    const sideInput = (keys.has('KeyD') || held.has('right') ? 1 : 0)
-      - (keys.has('KeyA') || held.has('left') ? 1 : 0);
+    const forwardInput = clamp((keys.has('KeyW') || keys.has('ArrowUp') || held.has('forward') ? 1 : 0)
+      - (keys.has('KeyS') || keys.has('ArrowDown') || held.has('backward') ? 1 : 0)
+      - analogMove.y, -1, 1);
+    const sideInput = clamp((keys.has('KeyD') || held.has('right') ? 1 : 0)
+      - (keys.has('KeyA') || held.has('left') ? 1 : 0)
+      + analogMove.x, -1, 1);
     const turnInput = (keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0);
     if (turnInput) yaw -= turnInput * delta * 1.32;
+    if (Math.abs(analogLook.x) > 0.01 || Math.abs(analogLook.y) > 0.01) {
+      yaw -= analogLook.x * delta * 1.75;
+      pitch = clamp(pitch - analogLook.y * delta * 1.38, -1.05, 1.05);
+    } else if (motion.enabled && motion.listening) {
+      const blend = 1 - Math.exp(-delta * 7.5);
+      yaw += shortestAngle(yaw, motion.targetYaw) * blend;
+      pitch += (motion.targetPitch - pitch) * blend;
+    }
     if (!forwardInput && !sideInput) return;
     setCameraFov(baseCameraFov);
     forward.set(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
@@ -795,8 +951,19 @@ export function initWalkableGallery3D(options = {}) {
     const delta = Math.min(clock.getDelta(), 0.05);
     updateMovement(delta);
     updateTheme(delta);
+    // The water wall belongs to the room, not only to the spatial-site mode.
+    // Keep its lightweight authored clips alive in both Classic Private Room
+    // and the full Interactive Gallery.
+    animationMixer?.update(delta);
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
     const elapsed = clock.elapsedTime;
+    if (waterMaterials.size) {
+      detailTextures.water.offset.y = (detailTextures.water.offset.y - delta * 0.22) % 1;
+      detailTextures.water.offset.x = Math.sin(elapsed * 0.23) * 0.035;
+      waterMaterials.forEach((material, index) => {
+        material.roughness = clamp(0.10 + Math.sin(elapsed * 1.35 + index) * 0.025, 0.06, 0.16);
+      });
+    }
     importedLights.forEach((entry, index) => {
       entry.light.intensity = entry.targetIntensity * (1 + Math.sin(elapsed * 0.42 + index * 1.7) * 0.028);
     });
@@ -819,6 +986,17 @@ export function initWalkableGallery3D(options = {}) {
     active = Boolean(nextActive);
     keys.clear();
     held.clear();
+    analogMove.x = 0;
+    analogMove.y = 0;
+    analogLook.x = 0;
+    analogLook.y = 0;
+    root.querySelectorAll('[data-gallery-joystick]').forEach((zone) => {
+      zone.classList.remove('is-engaged');
+      zone.style.setProperty('--stick-x', '0px');
+      zone.style.setProperty('--stick-y', '0px');
+    });
+    if (active) attachMotion();
+    else detachMotion();
     if (!active && frameRequest) {
       window.cancelAnimationFrame(frameRequest);
       frameRequest = 0;
@@ -843,6 +1021,13 @@ export function initWalkableGallery3D(options = {}) {
   const prepareModel = (gltf) => {
     model = gltf.scene;
     scene.add(model);
+    if (gltf.animations?.length) {
+      animationClipCount = gltf.animations.length;
+      animationMixer = new THREE.AnimationMixer(model);
+      gltf.animations.forEach((clip) => {
+        animationMixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play();
+      });
+    }
     model.updateMatrixWorld(true);
     const materialEntries = new Map();
     const colliderNodes = [];
@@ -930,6 +1115,12 @@ export function initWalkableGallery3D(options = {}) {
           } else if (/leather/.test(role)) {
             material.normalMap = detailTextures.leather;
             material.normalScale?.set(0.20, 0.20);
+          } else if (/water/.test(role)) {
+            material.normalMap = detailTextures.water;
+            material.normalScale?.set(role === 'water_highlight' ? 0.42 : 0.66, role === 'water_highlight' ? 0.82 : 1.1);
+            material.envMapIntensity = 1.12;
+            material.clearcoat = Math.max(0.84, material.clearcoat || 0);
+            waterMaterials.add(material);
           }
           if (/botanical_leaf|botanical/.test(role)) {
             material.side = THREE.DoubleSide;
@@ -995,11 +1186,15 @@ export function initWalkableGallery3D(options = {}) {
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
+    detachMotion();
     if (frameRequest) window.cancelAnimationFrame(frameRequest);
     listeners.splice(0).forEach((remove) => remove());
     resizeObserver.disconnect();
+    animationMixer?.stopAllAction();
+    animationMixer = null;
     disposeObject(model);
     environmentTexture.dispose();
+    Object.values(detailTextures).forEach((texture) => texture.dispose?.());
     renderer.dispose();
     renderer.forceContextLoss?.();
     renderer.domElement.remove();
@@ -1014,6 +1209,7 @@ export function initWalkableGallery3D(options = {}) {
     pointer.startX = event.clientX;
     pointer.startY = event.clientY;
     pointer.dragged = false;
+    if (motion.enabled) resetMotionBaseline();
     mount.setPointerCapture?.(event.pointerId);
     mount.classList.add('is-dragging');
   };
@@ -1034,6 +1230,7 @@ export function initWalkableGallery3D(options = {}) {
     yaw = (yaw - dx * (compact ? 0.0052 : 0.0038)) % TAU;
     pitch = clamp(pitch - dy * (compact ? 0.0046 : 0.0034), -1.05, 1.05);
     currentViewIndex = -1;
+    if (motion.enabled) resetMotionBaseline();
   };
 
   const releasePointer = (event) => {
@@ -1110,6 +1307,66 @@ export function initWalkableGallery3D(options = {}) {
     listen(button, 'lostpointercapture', release);
   });
 
+  const bindAnalogJoystick = (zone, target, { ignoreButtons = false } = {}) => {
+    if (!zone) return;
+    let pointerId = null;
+    const setPosition = (x = 0, y = 0) => {
+      target.x = x;
+      target.y = y;
+      zone.style.setProperty('--stick-x', `${(x * 24).toFixed(1)}px`);
+      zone.style.setProperty('--stick-y', `${(y * 24).toFixed(1)}px`);
+      zone.classList.toggle('is-engaged', Math.abs(x) + Math.abs(y) > 0.02);
+      ensureFrame();
+    };
+    const update = (event) => {
+      const rect = zone.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const radius = Math.max(28, Math.min(rect.width, rect.height) * 0.36);
+      let x = (event.clientX - rect.left - rect.width / 2) / radius;
+      let y = (event.clientY - rect.top - rect.height / 2) / radius;
+      const length = Math.hypot(x, y);
+      if (length > 1) {
+        x /= length;
+        y /= length;
+      }
+      if (length < 0.12) x = y = 0;
+      setPosition(x, y);
+    };
+    const press = (event) => {
+      if (pointerId !== null || !event.isPrimary) return;
+      if (ignoreButtons && event.target.closest('[data-gallery-move]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      pointerId = event.pointerId;
+      zone.setPointerCapture?.(pointerId);
+      triggerHaptic(6);
+      update(event);
+    };
+    const move = (event) => {
+      if (event.pointerId !== pointerId) return;
+      event.preventDefault();
+      update(event);
+    };
+    const release = (event) => {
+      if (pointerId === null || (event.pointerId != null && event.pointerId !== pointerId)) return;
+      event.preventDefault?.();
+      zone.releasePointerCapture?.(pointerId);
+      pointerId = null;
+      setPosition();
+    };
+    listen(zone, 'pointerdown', press);
+    listen(zone, 'pointermove', move);
+    listen(zone, 'pointerup', release);
+    listen(zone, 'pointercancel', release);
+    listen(zone, 'lostpointercapture', release);
+  };
+
+  bindAnalogJoystick(root.querySelector('[data-gallery-joystick="move"]'), analogMove, { ignoreButtons: true });
+  bindAnalogJoystick(
+    root.querySelector('[data-gallery-look-control]') || root.querySelector('[data-gallery-joystick="look"]'),
+    analogLook
+  );
+
   call(options.onLoading, { progress: null });
   const loader = new GLTFLoader();
   loader.load(
@@ -1123,7 +1380,12 @@ export function initWalkableGallery3D(options = {}) {
       ready = true;
       resize();
       ensureFrame();
-      call(options.onReady, { controller: api, views: views.length, artworks: new Set(artworkMeshes.map((mesh) => findMetadataOwner(mesh))).size });
+      call(options.onReady, {
+        controller: api,
+        views: views.length,
+        artworks: new Set(artworkMeshes.map((mesh) => findMetadataOwner(mesh))).size,
+        animations: animationClipCount
+      });
     },
     (event) => call(options.onLoading, {
       progress: event.total > 0 ? event.loaded / event.total : null
@@ -1142,7 +1404,10 @@ export function initWalkableGallery3D(options = {}) {
       focusedArtwork,
       focusedSitePanel,
       activeNavigationId,
+      animationClipCount,
       demoMode,
+      motionEnabled: motion.enabled,
+      motionSupported: motion.supported,
       pitch,
       ready,
       theme: currentTheme,
@@ -1154,6 +1419,7 @@ export function initWalkableGallery3D(options = {}) {
     goToDemoRoom,
     goToSiteDirectory,
     goToSitePanel,
+    requestMotionControl,
     resetView,
     setActive,
     setDemoMode,
