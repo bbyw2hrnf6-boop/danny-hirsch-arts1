@@ -23,8 +23,8 @@
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260724-gallery-32">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260724-gallery-32">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260726-gallery-34">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260726-gallery-34">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -576,23 +576,42 @@
         <header class="room-experience__header">
           <div><p>Private Room · 360° gallery</p><h2 id="room-experience-title">Walk into the work.</h2></div>
           <div class="room-experience__header-actions">
+            <button class="room-experience__ambient" type="button" data-gallery-ambient aria-label="Start ambient room sound" aria-pressed="false">
+              <span class="room-experience__ambient-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+              <b data-gallery-ambient-label>Room tone</b>
+            </button>
             <button class="room-experience__theme" type="button" data-room-theme aria-label="Switch room to light theme"><span aria-hidden="true"></span><b>Light</b></button>
             <button class="room-experience__close" type="button" data-room-close aria-label="Leave private room"><span aria-hidden="true"></span></button>
           </div>
         </header>
-        <p class="room-experience__description" id="room-experience-description">Drag to look around. Use W A S D, arrow keys, or the movement controls to walk. The room is a Blender-built spatial interpretation using genuine artwork photography.</p>
+        <p class="room-experience__description" id="room-experience-description">Drag to look around. Use W A S D, arrow keys, or the movement controls to walk. Scroll or press + / − to adjust your view. The room is a Blender-built spatial interpretation using genuine artwork photography.</p>
 
-        <aside class="room-experience__art" data-gallery-art-card aria-live="polite">
-          <p data-gallery-art-kicker>In view</p>
-          <strong data-gallery-art-title>Enter the gallery</strong>
-          <span data-gallery-art-detail>Turn toward a surface to discover it.</span>
-          <dl class="room-experience__facts" data-gallery-art-facts hidden>
-            <div><dt>Year</dt><dd data-gallery-art-year></dd></div>
-            <div><dt>Material</dt><dd data-gallery-art-medium></dd></div>
-            <div><dt>Dimensions</dt><dd data-gallery-art-dimensions></dd></div>
-            <div><dt>Availability</dt><dd data-gallery-art-availability></dd></div>
-          </dl>
-          <button type="button" data-gallery-art-inspect disabled>View artwork <i aria-hidden="true">↗</i></button>
+        <aside class="room-experience__art" data-gallery-art-card data-proximity="ambient" aria-live="polite">
+          <figure class="room-experience__art-media">
+            <img src="assets/cinematic/threshold-room-center.webp" alt="" data-gallery-art-image width="1800" height="1125" decoding="async">
+            <figcaption>
+              <span data-gallery-art-proximity>Free look</span>
+              <output data-gallery-zoom aria-label="Gallery zoom level">100%</output>
+            </figcaption>
+          </figure>
+          <div class="room-experience__art-copy">
+            <div class="room-experience__art-overline">
+              <p data-gallery-art-kicker>Spatial gallery</p>
+              <span data-gallery-art-index aria-hidden="true">Room view</span>
+            </div>
+            <strong data-gallery-art-title>Move through the gallery</strong>
+            <span class="room-experience__art-detail" data-gallery-art-detail>Turn toward a surface. The dossier will respond when a genuine work enters your view.</span>
+            <dl class="room-experience__facts" data-gallery-art-facts hidden>
+              <div><dt>Year</dt><dd data-gallery-art-year></dd></div>
+              <div><dt>Material</dt><dd data-gallery-art-medium></dd></div>
+              <div><dt>Dimensions</dt><dd data-gallery-art-dimensions></dd></div>
+              <div><dt>Availability</dt><dd data-gallery-art-availability></dd></div>
+            </dl>
+            <div class="room-experience__art-action">
+              <button type="button" data-gallery-art-inspect disabled><span>View artwork</span><i aria-hidden="true">↗</i></button>
+              <small><kbd>Scroll</kbd> to move closer</small>
+            </div>
+          </div>
         </aside>
 
         <aside class="room-experience__site-panel" data-gallery-site-panel aria-live="polite" hidden>
@@ -607,8 +626,11 @@
           <header class="room-experience__sidebar-heading">
             <span>Spatial map</span>
             <small>Choose a room or story</small>
+            <button class="room-experience__sidebar-toggle" type="button" data-gallery-sidebar-toggle aria-expanded="true" aria-controls="gallery-spatial-navigation">
+              <i aria-hidden="true"><span></span><span></span><span></span></i><b>Map</b>
+            </button>
           </header>
-          <div class="room-experience__sidebar-scroll">
+          <div class="room-experience__sidebar-scroll" id="gallery-spatial-navigation">
             <p>Rooms</p>
             <button type="button" data-index="01" data-gallery-demo-room="gallery-hall">Gallery Hall</button>
             <button type="button" data-index="02" data-gallery-demo-room="private-room">Private Room</button>
@@ -678,6 +700,6 @@
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260724-gallery-32" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260726-gallery-34" defer></script>
   </body>
 </html>

@@ -58,6 +58,9 @@ const galleryReset = document.querySelector("[data-gallery-reset]");
 const galleryArtKicker = document.querySelector("[data-gallery-art-kicker]");
 const galleryArtTitle = document.querySelector("[data-gallery-art-title]");
 const galleryArtDetail = document.querySelector("[data-gallery-art-detail]");
+const galleryArtCard = document.querySelector("[data-gallery-art-card]");
+const galleryArtImage = document.querySelector("[data-gallery-art-image]");
+const galleryArtIndex = document.querySelector("[data-gallery-art-index]");
 const galleryArtFacts = document.querySelector("[data-gallery-art-facts]");
 const galleryArtYear = document.querySelector("[data-gallery-art-year]");
 const galleryArtMedium = document.querySelector("[data-gallery-art-medium]");
@@ -75,6 +78,8 @@ const galleryDemoArt = document.querySelector("[data-gallery-demo-art]");
 const galleryDemoRooms = [...document.querySelectorAll("[data-gallery-demo-room]")];
 const galleryDemoPanels = [...document.querySelectorAll("[data-gallery-demo-panel]")];
 const galleryMotionLook = document.querySelector("[data-gallery-motion-look]");
+const galleryAmbientToggle = document.querySelector("[data-gallery-ambient]");
+const galleryAmbientLabel = document.querySelector("[data-gallery-ambient-label]");
 const experienceChoice = document.querySelector("[data-experience-choice]");
 const experienceClassic = document.querySelector("[data-experience-classic]");
 const experienceSpatial = document.querySelector("[data-experience-3d]");
@@ -96,6 +101,10 @@ let lightboxCloseTimer = null;
 let ambientContext = null;
 let ambientMaster = null;
 let ambientIsOn = false;
+let ambientStartedFromRoom = false;
+let ambientDisposeTimer = null;
+let ambientSources = [];
+let ambientNodes = [];
 let privateRoomController = null;
 let privateRoomImportObserver = null;
 let galleryRoomController = null;
@@ -496,11 +505,56 @@ const queueRoomExperiencePosition = (event) => {
 
 const syncGalleryNavAvailability = () => {
   if (!galleryDemoNav) return;
-  const overlayActive = roomExperience?.classList.contains("has-artwork-focus")
-    || roomExperience?.classList.contains("has-site-panel-focus");
+  const overlayActive = roomExperience?.classList.contains("has-site-panel-focus");
   galleryDemoNav.inert = Boolean(mobileSpatialHud.matches && overlayActive);
 };
 mobileSpatialHud.addEventListener?.("change", syncGalleryNavAvailability);
+
+const galleryArtworkAccents = {
+  "artwork-01": "#b9a53b",
+  "artwork-02": "#9e6875",
+  "artwork-03": "#b77d50",
+  "artwork-04": "#527d86",
+  "artwork-05": "#3f82a1",
+  "artwork-06": "#8c745f",
+  "gallery-04": "#4e8b8c",
+};
+
+const galleryAssetStem = (path = "") => path.split("/").pop()?.replace(/\.[^.]+$/, "").toLowerCase() || "";
+
+const galleryOptimizedAsset = (path = "") => {
+  if (!path) return "assets/cinematic/threshold-room-center.webp";
+  if (path.startsWith("assets/optimized/")) return path;
+  const match = path.match(/^assets\/(artworks|gallery)\/([^/]+)\.[^.]+$/i);
+  return match ? `assets/optimized/${match[1].toLowerCase()}/${match[2]}.webp` : path;
+};
+
+const setGalleryArtworkVisual = (artwork, isDetail = false) => {
+  const stem = galleryAssetStem(artwork?.source);
+  if (galleryArtImage) {
+    galleryArtImage.src = galleryOptimizedAsset(artwork?.source);
+    galleryArtImage.alt = artwork
+      ? `${isDetail ? "Magnified surface study from" : "Preview of"} ${artwork.title || "a Danny Hirsch artwork"}`
+      : "";
+  }
+  if (galleryArtIndex) {
+    const workNumber = stem.match(/artwork-(\d+)/)?.[1];
+    galleryArtIndex.textContent = isDetail
+      ? "Surface study"
+      : /wartrobe|gallery-04/i.test(`${stem} ${artwork?.title || ""}`)
+        ? "Art object"
+        : workNumber
+          ? `Work ${workNumber.padStart(2, "0")}`
+          : "Original work";
+  }
+  if (galleryArtCard) {
+    if (artwork) galleryArtCard.style.setProperty("--room-art-accent", galleryArtworkAccents[stem] || "#c6a36b");
+    else {
+      galleryArtCard.style.removeProperty("--room-art-accent");
+      galleryArtCard.dataset.proximity = "ambient";
+    }
+  }
+};
 
 const setGalleryArtwork = (artwork) => {
   galleryFocusedArtwork = artwork;
@@ -509,22 +563,27 @@ const setGalleryArtwork = (artwork) => {
   if (!galleryArtTitle || !galleryArtDetail || !galleryArtInspect) return;
 
   if (!artwork) {
-    if (galleryArtKicker) galleryArtKicker.textContent = "In view";
+    setGalleryArtworkVisual(null);
+    if (galleryArtKicker) galleryArtKicker.textContent = "Spatial gallery";
+    if (galleryArtIndex) galleryArtIndex.textContent = "Room view";
     galleryArtTitle.textContent = "Move through the gallery";
-    galleryArtDetail.textContent = "Turn toward a surface to discover it.";
+    galleryArtDetail.textContent = "Turn toward a surface. The dossier will respond when a genuine work enters your view.";
     if (galleryArtFacts) galleryArtFacts.hidden = true;
     galleryArtInspect.disabled = true;
+    galleryArtInspect.dataset.galleryTrigger = "";
     return;
   }
 
   const isDetail = /detail|surface/i.test(artwork.representation || artwork.detail || "");
+  setGalleryArtworkVisual(artwork, isDetail);
   if (galleryArtKicker) galleryArtKicker.textContent = isDetail ? "Genuine surface detail" : "In view";
   galleryArtTitle.textContent = artwork.title || "Danny Hirsch artwork";
-  galleryArtDetail.textContent = artwork.description || (isDetail
-    ? "Genuine surface photography from the collection."
-    : /wartrobe/i.test(`${artwork.id || ""} ${artwork.title || ""}`)
-      ? "Genuine wARTrobe photography in a modeled gallery."
-      : "Genuine artwork photography in a modeled gallery.");
+  galleryArtDetail.textContent = isDetail
+    ? `Magnified surface study · not shown to scale.${artwork.description ? ` ${artwork.description}` : " Genuine surface photography from the collection."}`
+    : artwork.description || (
+      /wartrobe/i.test(`${artwork.id || ""} ${artwork.title || ""}`)
+        ? "Genuine wARTrobe photography in a modeled gallery."
+        : "Genuine artwork photography in a modeled gallery.");
   const setFact = (node, value) => {
     if (!node) return;
     node.textContent = value || "—";
@@ -536,11 +595,10 @@ const setGalleryArtwork = (artwork) => {
   setFact(galleryArtAvailability, artwork.availability);
   if (galleryArtFacts) galleryArtFacts.hidden = ![artwork.year, artwork.medium, artwork.dimensions, artwork.availability].some(Boolean);
 
-  const stem = (path = "") => path.split("/").pop()?.replace(/\.[^.]+$/, "").toLowerCase();
-  const expected = stem(artwork.source);
+  const expected = galleryAssetStem(artwork.source);
   const trigger = lightboxTriggers.find((item) => {
     const source = item.dataset.lightboxSrc || item.getAttribute("href") || "";
-    return expected && stem(source) === expected;
+    return expected && galleryAssetStem(source) === expected;
   });
   if (trigger?.dataset.lightboxTitle) {
     galleryArtTitle.textContent = isDetail
@@ -615,12 +673,12 @@ const ensureGalleryRoom = () => {
   roomExperience.classList.remove("is-gallery-fallback");
   roomExperience.classList.add("is-gallery-loading");
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260724-gallery-32")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260726-gallery-34")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
         mount: galleryMount,
-        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260724-gallery-32",
+        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260726-gallery-34",
         theme: body.dataset.theme,
         onLoading: ({ progress }) => {
           const status = galleryLoading?.querySelector("small");
@@ -653,7 +711,8 @@ const ensureGalleryRoom = () => {
               || button.dataset.galleryDemoPanel
               || (button.hasAttribute("data-gallery-demo-art") ? "artworks" : "");
             const current = buttonId === id;
-            button.toggleAttribute("aria-current", current);
+            if (current) button.setAttribute("aria-current", "location");
+            else button.removeAttribute("aria-current");
             button.classList.toggle("is-active", current);
           });
         },
@@ -694,6 +753,7 @@ const openRoomExperience = ({ trigger = null, spatial = false } = {}) => {
 const closeRoomExperience = () => {
   if (!roomExperience?.open) return;
   body.classList.remove("room-experience-open");
+  if (ambientStartedFromRoom) stopAmbient({ dispose: true });
   galleryRoomController?.setActive?.(false);
   setGalleryDemo(false);
   if (typeof roomExperience.close === "function") roomExperience.close();
@@ -784,6 +844,7 @@ roomExperienceStage?.addEventListener("pointerup", (event) => {
 roomExperienceStage?.addEventListener("pointercancel", () => { roomExperiencePointer = null; });
 roomExperience?.addEventListener("close", () => {
   body.classList.remove("room-experience-open");
+  if (ambientStartedFromRoom) stopAmbient({ dispose: true });
   galleryRoomController?.setActive?.(false);
   // Escape/native dialog dismissal should match the visible close control.
   setGalleryDemo(false);
@@ -890,10 +951,17 @@ window.addEventListener("keydown", (event) => {
 });
 
 const updateAmbientButton = () => {
-  if (!ambientToggle) return;
-  ambientToggle.setAttribute("aria-pressed", String(ambientIsOn));
-  ambientToggle.setAttribute("aria-label", ambientIsOn ? "Stop ambient gallery sound" : "Start ambient gallery sound");
-  ambientToggle.querySelector(".control-label").textContent = ambientIsOn ? "Sound on" : "Sound";
+  if (ambientToggle) {
+    ambientToggle.setAttribute("aria-pressed", String(ambientIsOn));
+    ambientToggle.setAttribute("aria-label", ambientIsOn ? "Stop ambient gallery sound" : "Start ambient gallery sound");
+    const label = ambientToggle.querySelector(".control-label");
+    if (label) label.textContent = ambientIsOn ? "Sound on" : "Sound";
+  }
+  if (galleryAmbientToggle) {
+    galleryAmbientToggle.setAttribute("aria-pressed", String(ambientIsOn));
+    galleryAmbientToggle.setAttribute("aria-label", ambientIsOn ? "Stop ambient room sound" : "Start ambient room sound");
+  }
+  if (galleryAmbientLabel) galleryAmbientLabel.textContent = ambientIsOn ? "Room tone on" : "Room tone";
 };
 
 const createNoiseSource = (context, seconds, brown = false) => {
@@ -942,11 +1010,56 @@ const createAmbientSound = () => {
   air.start();
   texture.start();
   pulse.start();
+  ambientSources = [air, texture, pulse];
+  ambientNodes = [airFilter, airGain, textureFilter, textureGain, pulseGain, master];
   return master;
 };
 
-const toggleAmbient = async () => {
-  if (!ambientToggle) return;
+const disposeAmbientSound = () => {
+  window.clearTimeout(ambientDisposeTimer);
+  ambientDisposeTimer = null;
+  ambientSources.forEach((source) => {
+    try { source.stop(); } catch (error) { /* Source may already be stopped. */ }
+    try { source.disconnect(); } catch (error) { /* A disconnected node is harmless. */ }
+  });
+  ambientNodes.forEach((node) => {
+    try { node.disconnect(); } catch (error) { /* A disconnected node is harmless. */ }
+  });
+  ambientContext?.close?.().catch?.(() => {});
+  ambientSources = [];
+  ambientNodes = [];
+  ambientMaster = null;
+  ambientContext = null;
+  ambientIsOn = false;
+  ambientStartedFromRoom = false;
+  updateAmbientButton();
+};
+
+const stopAmbient = ({ dispose = true } = {}) => {
+  ambientIsOn = false;
+  ambientStartedFromRoom = false;
+  if (ambientContext && ambientMaster) {
+    const now = ambientContext.currentTime;
+    ambientMaster.gain.cancelScheduledValues(now);
+    ambientMaster.gain.setTargetAtTime(0, now, 0.16);
+  }
+  updateAmbientButton();
+  window.clearTimeout(ambientDisposeTimer);
+  if (dispose) {
+    ambientDisposeTimer = window.setTimeout(() => {
+      if (!ambientIsOn) disposeAmbientSound();
+    }, 520);
+  } else ambientContext?.suspend?.().catch?.(() => {});
+};
+
+const toggleAmbient = async (origin = "page") => {
+  if (!ambientToggle && !galleryAmbientToggle) return;
+  if (ambientIsOn) {
+    stopAmbient({ dispose: true });
+    return;
+  }
+  window.clearTimeout(ambientDisposeTimer);
+  ambientDisposeTimer = null;
   if (!ambientContext) {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
@@ -954,11 +1067,12 @@ const toggleAmbient = async () => {
     ambientMaster = createAmbientSound();
   }
 
-  ambientIsOn = !ambientIsOn;
+  ambientIsOn = true;
+  ambientStartedFromRoom = origin === "room";
   const now = ambientContext.currentTime;
   ambientMaster.gain.cancelScheduledValues(now);
-  ambientMaster.gain.setTargetAtTime(ambientIsOn ? 0.05 : 0, now, ambientIsOn ? 0.8 : 0.25);
-  if (ambientIsOn) await ambientContext.resume().catch(() => {});
+  ambientMaster.gain.setTargetAtTime(0.05, now, 0.8);
+  await ambientContext.resume().catch(() => {});
   updateAmbientButton();
 };
 
@@ -968,7 +1082,9 @@ themeToggle?.addEventListener("click", () => {
   storage.set("dha-theme", nextTheme);
 });
 
-ambientToggle?.addEventListener("click", toggleAmbient);
+ambientToggle?.addEventListener("click", () => toggleAmbient("page"));
+galleryAmbientToggle?.addEventListener("click", () => toggleAmbient("room"));
+updateAmbientButton();
 
 const hideCookieConsent = () => cookieConsent?.classList.add("is-hidden");
 const loadInstagramWidget = () => {
@@ -1103,6 +1219,7 @@ if (installation && privateRoomStage) {
 }
 
 window.addEventListener("pagehide", () => {
+  disposeAmbientSound();
   privateRoomController?.destroy?.();
   galleryRoomController?.destroy?.();
 }, { once: true });

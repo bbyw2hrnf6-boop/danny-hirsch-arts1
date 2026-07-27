@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Iterable
 
 import bpy
-from mathutils import Vector
+from mathutils import Quaternion, Vector
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -141,7 +141,9 @@ SITE_PANELS = [
 ROOM_HALF_WIDTH = 7.0
 ROOM_HALF_DEPTH = 8.0
 ROOM_HEIGHT = 5.8
-WALK_EYE_HEIGHT = 1.65
+WALK_EYE_HEIGHT = 1.80
+CURATED_EYE_HEIGHT = 1.88
+STANDARD_ARTWORK_SCALE = 0.82
 WALK_BOUNDS = (-6.20, 6.20, -15.30, 6.62)  # xmin, xmax, ymin, ymax in Blender XY.
 
 WEB_OBJECTS: list[bpy.types.Object] = []
@@ -606,7 +608,10 @@ def add_view_anchor(
     anchor["view_id"] = name.removeprefix("VIEW_").lower()
     anchor["view_label"] = label
     anchor["view_kind"] = kind
-    anchor["eye_height"] = WALK_EYE_HEIGHT
+    # Curated anchors may sit slightly above the walk controller's default
+    # eye line.  Export the authored value instead of flattening every view
+    # back to WALK_EYE_HEIGHT so the web camera keeps artwork centred.
+    anchor["eye_height"] = float(location[2])
     if surface_index is not None:
         anchor["surface_index"] = surface_index
         anchor["target_node"] = f"SURFACE_DETAIL_{surface_index:02d}"
@@ -723,12 +728,12 @@ def add_surface_portal(
         maximum_edge=1024,
     )
     if ratio >= 1.0:
-        width = 2.48
+        width = 2.48 * STANDARD_ARTWORK_SCALE
         height = width / ratio
     else:
-        height = 2.72
+        height = 2.72 * STANDARD_ARTWORK_SCALE
         width = height * ratio
-    center_z = 2.72
+    center_z = 2.82
     wall_x = -6.79 if side == "west" else 6.79
     center = (wall_x, along_wall, center_z)
 
@@ -789,12 +794,12 @@ def add_surface_portal(
     # The modeled linework makes it legible as an object at room scale; the
     # exact accessible catalogue copy is supplied by the DOM information card.
     plaque_x = -6.695 if side == "west" else 6.695
-    plaque_y = along_wall + width / 2 + 0.56
-    plaque_z = max(1.24, center_z - height * 0.20)
+    plaque_y = along_wall + width / 2 + 0.40
+    plaque_z = center_z - height * 0.16
     groups["plaque"].append(add_box(
         f"Surface_{index:02d}_Catalogue_Plaque",
         (plaque_x, plaque_y, plaque_z),
-        (0.075, 1.14, 0.80),
+        (0.075, 0.92, 0.64),
         materials["plaque"],
         bevel=0.025,
         theme_role="plaque",
@@ -803,8 +808,8 @@ def add_surface_portal(
         f"CATALOGUE_LABEL_{index:02d}",
         side,
         ((-6.646 if side == "west" else 6.646), plaque_y, plaque_z),
-        1.04,
-        0.70,
+        0.84,
+        0.54,
         materials["plaque"],
     )
     label["theme_role"] = "catalogue_label"
@@ -836,6 +841,8 @@ def add_surface_portal(
     panel["source_asset"] = str((ROOT / "assets" / "artworks" / f"artwork-{index:02d}.jpg").relative_to(ROOT))
     panel["optimized_asset"] = str(image_path.relative_to(ROOT))
     panel["representation"] = "genuine macro/detail photograph; not a complete artwork view"
+    panel["display_scale_note"] = "Magnified surface study — not shown to catalogue scale"
+    panel["physical_display_not_to_scale"] = True
     panel["is_complete_artwork_view"] = False
     panel["catalogue_metadata_status"] = "verified against local website catalogue"
     panel["colour_locked"] = True
@@ -853,7 +860,10 @@ def add_surface_portal(
     hotspot["asset_id"] = panel["asset_id"]
     hotspot["display_label"] = panel["display_label"]
     hotspot["representation"] = panel["representation"]
-    for key in ("title", "year", "medium", "dimensions", "availability", "description", "detail_label", "source_asset"):
+    for key in (
+        "title", "year", "medium", "dimensions", "availability",
+        "description", "detail_label", "source_asset", "display_scale_note",
+    ):
         hotspot[key] = panel[key]
 
     light_x = -4.85 if side == "west" else 4.85
@@ -870,10 +880,12 @@ def add_surface_portal(
     )
     add_spot_fixture(portal_light, f"Surface_Spot_{index:02d}", materials, groups)
 
-    view_x = -3.55 if side == "west" else 3.55
+    # Pull the curated camera toward the room centre so an artwork opens with
+    # its complete frame and a margin of architecture, not a cropped macro.
+    view_x = -2.82 if side == "west" else 2.82
     add_view_anchor(
         f"VIEW_Surface_{index:02d}",
-        (view_x, along_wall, WALK_EYE_HEIGHT),
+        (view_x, along_wall, CURATED_EYE_HEIGHT),
         center,
         label=f"{catalogue['title']} · detail",
         kind="surface_detail",
@@ -1287,6 +1299,36 @@ def add_lush_leaf(
     return leaf
 
 
+def animate_botanical_breeze(
+    leaf: bpy.types.Object,
+    clip_index: int,
+    phase: float,
+) -> None:
+    """Add a nearly imperceptible, seamless gallery-air movement.
+
+    Only four hero leaves are animated in the complete scene.  Keeping the
+    amplitude below two degrees avoids a decorative/game-like plant motion,
+    while separate object actions survive glTF export on desktop and mobile.
+    """
+    leaf["animation_role"] = "ambient_botanical_breeze"
+    leaf["animation_loop"] = True
+    leaf["animation_duration_seconds"] = 2.0
+    leaf["motion_amplitude_degrees"] = 1.65
+    base_rotation = leaf.rotation_quaternion.copy()
+    for frame, progress in ((1, 0.0), (13, 0.25), (25, 0.5), (37, 0.75), (49, 1.0)):
+        cycle = progress * math.tau + phase
+        bend = math.sin(cycle) * math.radians(1.65)
+        flutter = math.sin(cycle * 2.0 + phase * 0.37) * math.radians(0.42)
+        leaf.rotation_quaternion = (
+            base_rotation
+            @ Quaternion((1.0, 0.0, 0.0), bend)
+            @ Quaternion((0.0, 0.0, 1.0), flutter)
+        )
+        leaf.keyframe_insert(data_path="rotation_quaternion", frame=frame)
+    if leaf.animation_data and leaf.animation_data.action:
+        leaf.animation_data.action.name = f"Botanical_Breeze_{clip_index:02d}"
+
+
 def add_lush_botanical(
     prefix: str,
     origin: tuple[float, float, float],
@@ -1353,15 +1395,26 @@ def add_lush_botanical(
         leaf_length = random.uniform(0.76, 1.30)
         leaf_group = groups["leaf_a"] if index % 3 else groups["leaf_b"]
         leaf_material = materials["leaf_a"] if index % 3 else materials["leaf_b"]
-        add_lush_leaf(
+        # These two silhouette leaves remain individual so their subtle
+        # actions are not destroyed by the static leaf batching pass.
+        animated_leaf = index in (4, 12)
+        export_group: list[bpy.types.Object] = [] if animated_leaf else leaf_group
+        leaf = add_lush_leaf(
             f"{prefix}_Broad_Leaf_{index:02d}",
             leaf_base,
             outward,
             leaf_length,
             random.uniform(0.19, 0.32),
             leaf_material,
-            leaf_group,
+            export_group,
         )
+        if animated_leaf:
+            clip_offset = 0 if prefix.endswith("West") else 2
+            animate_botanical_breeze(
+                leaf,
+                clip_offset + (1 if index == 4 else 2),
+                phase=seed * 0.013 + index * 0.71,
+            )
         vein_end = leaf_base + outward * leaf_length * 0.92
         add_stem_between(
             f"{prefix}_Leaf_Vein_{index:02d}",
@@ -1687,8 +1740,8 @@ def add_wartrobe(
 
     add_view_anchor(
         "VIEW_wARTrobe",
-        (0, 3.58, WALK_EYE_HEIGHT),
-        (0, 7.40, 2.48),
+        (0, 3.58, CURATED_EYE_HEIGHT),
+        (0, 7.40, 2.62),
         label="wARTrobe · Front",
         kind="focal_object",
     )["target_node"] = surface.name
@@ -1785,6 +1838,115 @@ def add_rotated_box(
     return obj
 
 
+def add_floor_wayfinding_segment(
+    name: str,
+    start: tuple[float, float],
+    end: tuple[float, float],
+    material: bpy.types.Material,
+    group: list[bpy.types.Object],
+    *,
+    width: float = 0.042,
+) -> bpy.types.Object:
+    """Lay a thin, non-colliding bronze route line above the marble."""
+    delta_x = end[0] - start[0]
+    delta_y = end[1] - start[1]
+    length = math.hypot(delta_x, delta_y)
+    if length <= 0.001:
+        raise ValueError(f"Wayfinding segment {name} has no length")
+    obj = add_box(
+        name,
+        ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, 0.046),
+        (length, width, 0.008),
+        material,
+        bevel=0.010,
+        theme_role="wayfinding",
+    )
+    obj.rotation_euler.z = math.atan2(delta_y, delta_x)
+    obj["asset_role"] = "premium_floor_wayfinding"
+    obj["navigation_role"] = "visual_wayfinding_only"
+    obj["collision_role"] = "none"
+    obj["demo_only"] = True
+    group.append(obj)
+    return obj
+
+
+def add_floor_wayfinding_chevron(
+    name: str,
+    point: tuple[float, float],
+    direction: tuple[float, float],
+    material: bpy.types.Material,
+    group: list[bpy.types.Object],
+) -> None:
+    """Add one restrained airport-style direction chevron."""
+    direction_vector = Vector((direction[0], direction[1]))
+    if direction_vector.length <= 0.001:
+        return
+    direction_vector.normalize()
+    perpendicular = Vector((-direction_vector.y, direction_vector.x))
+    centre = Vector(point)
+    tip = centre + direction_vector * 0.23
+    tail_centre = centre - direction_vector * 0.17
+    for side in (-1.0, 1.0):
+        tail = tail_centre + perpendicular * 0.16 * side
+        add_floor_wayfinding_segment(
+            f"{name}_{'L' if side < 0 else 'R'}",
+            (float(tail.x), float(tail.y)),
+            (float(tip.x), float(tip.y)),
+            material,
+            group,
+            width=0.034,
+        )
+
+
+def add_floor_wayfinding(
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> int:
+    """Guide visitors through the clear circulation spine without barriers."""
+    points = [
+        (0.00, -3.55),
+        (-1.85, -5.05),
+        (-3.50, -7.12),
+        (-3.50, -8.62),
+        (-3.05, -10.35),
+        (-2.75, -12.00),
+        (0.00, -12.00),
+        (2.55, -12.00),
+        (2.55, -14.55),
+    ]
+    for index, (start, end) in enumerate(zip(points, points[1:]), start=1):
+        add_floor_wayfinding_segment(
+            f"Demo_Wayfinding_Path_{index:02d}",
+            start,
+            end,
+            materials["wayfinding"],
+            groups["wayfinding"],
+        )
+
+    add_floor_wayfinding_chevron(
+        "Demo_Wayfinding_Private_Arrow",
+        (-3.50, -8.20),
+        (0.20, -1.0),
+        materials["wayfinding"],
+        groups["wayfinding"],
+    )
+    add_floor_wayfinding_chevron(
+        "Demo_Wayfinding_CrossGallery_Arrow",
+        (-0.45, -12.00),
+        (1.0, 0.0),
+        materials["wayfinding"],
+        groups["wayfinding"],
+    )
+    add_floor_wayfinding_chevron(
+        "Demo_Wayfinding_Contact_Arrow",
+        (2.55, -13.72),
+        (0.0, -1.0),
+        materials["wayfinding"],
+        groups["wayfinding"],
+    )
+    return len(points) - 1 + 6
+
+
 def add_demo_sofa(
     prefix: str,
     center: tuple[float, float],
@@ -1811,10 +1973,10 @@ def add_demo_coffee_table(
 ) -> None:
     # A narrow side-table scale preserves the lounge composition without
     # plugging the 1.2 m circulation lane from the entrance to the south wall.
-    add_rotated_box(prefix + "_Top", center, (0, 0), 0.45, (1.50, 0.76, 0.11), 0, materials["stone"], groups["stone"], "stone", bevel=0.030)
-    add_rotated_box(prefix + "_Shadow", center, (0, 0), 0.29, (1.04, 0.48, 0.19), 0, materials["shadow"], groups["shadow"], "shadow", bevel=0.024)
-    for x in (-0.54, 0.54):
-        add_rotated_box(prefix + f"_Bronze_Leg_{x:+.2f}", center, (x, 0), 0.21, (0.07, 0.50, 0.36), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.012)
+    add_rotated_box(prefix + "_Top", center, (0, 0), 0.45, (1.34, 0.68, 0.11), 0, materials["stone"], groups["stone"], "stone", bevel=0.030)
+    add_rotated_box(prefix + "_Shadow", center, (0, 0), 0.29, (0.94, 0.42, 0.19), 0, materials["shadow"], groups["shadow"], "shadow", bevel=0.024)
+    for x in (-0.46, 0.46):
+        add_rotated_box(prefix + f"_Bronze_Leg_{x:+.2f}", center, (x, 0), 0.21, (0.07, 0.44, 0.36), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.012)
 
 
 def add_demo_chair(
@@ -1824,10 +1986,10 @@ def add_demo_chair(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    add_rotated_box(prefix + "_Seat", center, (0, 0), 0.49, (0.62, 0.62, 0.17), angle, materials["leather"], groups["leather"], "leather", bevel=0.058)
-    add_rotated_box(prefix + "_Back", center, (0, 0.275), 0.94, (0.62, 0.14, 0.79), angle, materials["leather"], groups["leather"], "leather", bevel=0.050)
-    for dx in (-0.21, 0.21):
-        for dy in (-0.20, 0.20):
+    add_rotated_box(prefix + "_Seat", center, (0, 0), 0.49, (0.56, 0.56, 0.17), angle, materials["leather"], groups["leather"], "leather", bevel=0.058)
+    add_rotated_box(prefix + "_Back", center, (0, 0.245), 0.94, (0.56, 0.14, 0.79), angle, materials["leather"], groups["leather"], "leather", bevel=0.050)
+    for dx in (-0.18, 0.18):
+        for dy in (-0.18, 0.18):
             add_rotated_box(prefix + f"_Leg_{dx:+.2f}_{dy:+.2f}", center, (dx, dy), 0.23, (0.050, 0.050, 0.46), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.010)
 
 
@@ -1838,22 +2000,20 @@ def add_demo_meeting_table(
     *,
     angle: float = math.pi / 2,
 ) -> None:
-    # Compact four-seat table, turned along the east wall.  Chairs are placed
-    # in table-local coordinates and their backs point away from the tabletop;
-    # this corrects the previous north/south chairs that faced out of the room.
-    table_length = 2.55
-    table_depth = 1.04
+    # A two-seat consultation table leaves a generous route from the portal to
+    # the south artwork.  The offset pair feels intentional without presenting
+    # a wall of chair backs to the visitor's entrance camera.
+    table_length = 1.96
+    table_depth = 0.78
     add_rotated_box("Contact_Table_Top", center, (0, 0), 0.79, (table_length, table_depth, 0.15), angle, materials["wood"], groups["wood"], "wood", bevel=0.050)
-    add_rotated_box("Contact_Table_Inlay", center, (0, 0), 0.88, (2.12, 0.12, 0.030), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.010)
-    for along in (-0.82, 0.82):
-        add_rotated_box(f"Contact_Table_Leg_{along:+.2f}", center, (along, 0), 0.39, (0.11, 0.76, 0.74), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.020)
+    add_rotated_box("Contact_Table_Inlay", center, (0, 0), 0.88, (1.62, 0.10, 0.030), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.010)
+    for along in (-0.58, 0.58):
+        add_rotated_box(f"Contact_Table_Leg_{along:+.2f}", center, (along, 0), 0.39, (0.11, 0.64, 0.74), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.020)
 
-    for side, side_label in ((1, "West"), (-1, "East")):
+    for side, side_label, along in ((1, "West", -0.48), (-1, "East", 0.48)):
         chair_angle = angle if side > 0 else angle + math.pi
-        for index, along in enumerate((-0.70, 0.70), start=1):
-            chair_center = local_xy(center, (along, side * 0.98), angle)
-            chair = f"Contact_Chair_{side_label}_{index}"
-            add_demo_chair(chair, chair_center, chair_angle, materials, groups)
+        chair_center = local_xy(center, (along, side * 0.72), angle)
+        add_demo_chair(f"Contact_Chair_{side_label}", chair_center, chair_angle, materials, groups)
 
 
 def add_demo_shelving(
@@ -2156,20 +2316,10 @@ def add_demo_artwork(
     )
     height = width / ratio
     panel = add_vertical_panel(prefix, side, center, width, height, image_material)
-    panel["asset_id"] = f"demo-art-{image_index:02d}"
-    panel["artwork_id"] = f"artwork-{image_index:02d}"
-    panel["title"] = catalogue["title"]
-    panel["year"] = catalogue["year"]
-    panel["medium"] = catalogue["medium"]
-    panel["dimensions"] = catalogue["dimensions"]
-    panel["availability"] = catalogue["availability"]
-    panel["description"] = catalogue["description"]
-    panel["representation"] = "genuine local artwork image in the optional 3D site demo"
-    panel["source_asset"] = str(SURFACE_TEXTURES[image_index - 1].relative_to(ROOT))
-    panel["demo_only"] = True
     panel["demo_only"] = True
     panel["asset_role"] = "genuine_artwork_surface_detail"
     panel["asset_id"] = f"demo-artwork-{image_index:02d}"
+    panel["artwork_id"] = f"artwork-{image_index:02d}"
     panel["display_label"] = f"{catalogue['title']} · detail"
     panel["title"] = catalogue["title"]
     panel["year"] = catalogue["year"]
@@ -2180,6 +2330,8 @@ def add_demo_artwork(
     panel["detail_label"] = f"Surface detail · {catalogue['medium']}"
     panel["source_asset"] = str(SURFACE_TEXTURES[image_index - 1].relative_to(ROOT))
     panel["representation"] = "genuine macro/detail photograph; not a complete artwork view"
+    panel["display_scale_note"] = "Magnified surface study — not shown to catalogue scale"
+    panel["physical_display_not_to_scale"] = True
 
     # Four real rails, not a solid bronze slab. The previous single-box frame
     # sat one centimetre in front of the image plane and hid the genuine art.
@@ -2266,32 +2418,32 @@ def build_demo_site_rooms(
     # One smaller sofa replaces the former two-sofa choke point.  Rotating it
     # 180 degrees puts its back against the south wall and faces the artwork /
     # water wall, rather than facing into the wall.
-    add_demo_sofa("Private_Sofa_South", (-4.55, -14.72), math.pi, materials, groups, width=2.05)
-    add_demo_coffee_table("Private_Coffee_Table", (-4.55, -13.10), materials, groups)
-    add_demo_meeting_table((4.72, -12.72), materials, groups, angle=math.pi / 2)
+    add_demo_sofa("Private_Sofa_South", (-4.85, -14.72), math.pi, materials, groups, width=1.85)
+    add_demo_coffee_table("Private_Coffee_Table", (-4.85, -13.10), materials, groups)
+    add_demo_meeting_table((5.15, -12.85), materials, groups, angle=math.pi / 2)
     add_demo_shelving(materials, groups)
 
     # The entrance-blocking console, second sofa, and two oversized plants were
     # intentionally removed.  The water wall and illuminated library already
     # provide strong room identities; fewer objects make both spaces breathe.
-    add_demo_pendant((4.72, -12.72), materials, groups)
+    add_demo_pendant((5.15, -12.85), materials, groups)
 
-    add_demo_artwork("DEMO_ART_PRIVATE_WEST", "west", (-6.68, -14.15, 2.75), 3, 2.15, materials, groups)
+    add_demo_artwork("DEMO_ART_PRIVATE_WEST", "west", (-6.68, -14.15, 2.82), 3, 2.15 * STANDARD_ARTWORK_SCALE, materials, groups)
     # North-wall works sit in the solid outer bays.  Their inner frame edges are
     # beyond x=-4.65 / x=+4.65, safely clear of the 2.12 m entrance portals.
-    add_demo_artwork("DEMO_ART_PRIVATE_NORTH", "north", (-5.48, -8.18, 2.70), 6, 1.46, materials, groups)
-    add_demo_artwork("DEMO_ART_CONTACT_NORTH", "north", (5.48, -8.18, 2.70), 2, 1.46, materials, groups)
+    add_demo_artwork("DEMO_ART_PRIVATE_NORTH", "north", (-5.70, -8.18, 2.84), 6, 1.46 * STANDARD_ARTWORK_SCALE, materials, groups)
+    add_demo_artwork("DEMO_ART_CONTACT_NORTH", "north", (5.70, -8.18, 2.84), 2, 1.46 * STANDARD_ARTWORK_SCALE, materials, groups)
     # Sit just proud of the south-wall finish; the structural face is at
     # y=-15.65. This preserves the genuine image texture instead of burying it
     # inside the wall surface.
-    add_demo_artwork("DEMO_ART_PRIVATE_SOUTH", "south", (-3.48, -15.59, 3.42), 4, 2.05, materials, groups)
-    add_demo_artwork("DEMO_ART_CONTACT_SOUTH", "south", (3.48, -15.59, 3.42), 5, 2.05, materials, groups)
+    add_demo_artwork("DEMO_ART_PRIVATE_SOUTH", "south", (-3.48, -15.59, 3.28), 4, 2.05 * STANDARD_ARTWORK_SCALE, materials, groups)
+    add_demo_artwork("DEMO_ART_CONTACT_SOUTH", "south", (3.48, -15.59, 3.18), 5, 2.05 * STANDARD_ARTWORK_SCALE, materials, groups)
 
     for index, (location, target) in enumerate((
-        ((-4.80, -12.25, 5.05), (-3.60, -12.25, 1.20)),
-        ((-2.15, -14.45, 5.05), (-4.55, -14.45, 1.25)),
-        ((2.55, -12.10, 5.05), (4.72, -12.72, 1.00)),
-        ((5.25, -10.05, 5.05), (5.48, -8.18, 2.70)),
+        ((-4.80, -12.25, 5.05), (-6.68, -14.15, 2.82)),
+        ((-2.15, -14.45, 5.05), (-3.48, -15.59, 3.28)),
+        ((2.55, -12.10, 5.05), (3.48, -15.59, 3.18)),
+        ((5.25, -10.05, 5.05), (5.70, -8.18, 2.84)),
     ), start=1):
         light = add_light(
             f"Demo_Room_Spot_{index:02d}", "SPOT", location, target,
@@ -2302,7 +2454,7 @@ def build_demo_site_rooms(
         add_spot_fixture(light, f"Demo_Room_Spot_{index:02d}", materials, groups)
 
     pendant_light = add_light(
-        "Demo_Contact_Pendant_Light", "POINT", (4.72, -12.72, 3.32), (4.72, -12.72, 0.8),
+        "Demo_Contact_Pendant_Light", "POINT", (5.15, -12.85, 3.32), (5.15, -12.85, 0.8),
         (1.0, 0.63, 0.30), 115, web=True, theme_role="demo_pendant",
     )
     pendant_light["demo_only"] = True
@@ -2314,11 +2466,31 @@ def build_demo_site_rooms(
     )
     waterfall_light["demo_only"] = True
 
+    # One economical punctual fill per room lets marble, leather and the clear
+    # floor route read between artwork pools.  This is deliberately sparse for
+    # mobile; the room keeps its dark cinematic contrast instead of becoming a
+    # uniformly lit showroom.
+    for name, location, target, energy in (
+        ("Demo_Private_Ambient_Fill", (-3.20, -11.65, 4.05), (-4.10, -13.35, 1.65), 420),
+        ("Demo_Contact_Ambient_Fill", (3.35, -11.65, 4.05), (4.65, -13.20, 1.55), 380),
+    ):
+        ambient = add_light(
+            name,
+            "POINT",
+            location,
+            target,
+            (1.0, 0.69, 0.42),
+            energy,
+            web=True,
+            theme_role="demo_ambient_fill",
+        )
+        ambient["demo_only"] = True
+
     # Curated room anchors double as keyboard/mobile shortcuts.
     for order, (name, location, target, label, room_id) in enumerate((
-        ("VIEW_Demo_Gallery_Hall", (0, -5.90, WALK_EYE_HEIGHT), (0, 6.70, 2.55), "01 · Gallery Hall", "gallery-hall"),
-        ("VIEW_Demo_Private_Room", (-3.50, -8.45, 1.76), (-4.15, -13.20, 1.58), "02 · Private Room", "private-room"),
-        ("VIEW_Demo_Contact_Room", (3.50, -8.45, 1.76), (4.45, -12.80, 1.42), "03 · Meet & Contact", "contact-room"),
+        ("VIEW_Demo_Gallery_Hall", (0, -5.90, CURATED_EYE_HEIGHT), (0, 6.70, 2.72), "01 · Gallery Hall", "gallery-hall"),
+        ("VIEW_Demo_Private_Room", (-3.50, -8.45, CURATED_EYE_HEIGHT), (-3.48, -15.59, 3.28), "02 · Private Room", "private-room"),
+        ("VIEW_Demo_Contact_Room", (2.65, -8.65, CURATED_EYE_HEIGHT), (3.48, -15.59, 3.18), "03 · Meet & Contact", "contact-room"),
     ), start=40):
         view = add_view_anchor(name, location, target, label=label, kind="demo_room", order=order)
         target_object = add_empty(
@@ -2337,7 +2509,7 @@ def build_demo_site_rooms(
 def add_navigation_metadata(scene: bpy.types.Scene) -> None:
     xmin, xmax, ymin, ymax = WALK_BOUNDS
     start = add_empty("Walk_Start", (0, -6.42, WALK_EYE_HEIGHT), display_type="ARROWS", display_size=0.42)
-    target = add_empty("Walk_LookTarget", (0, 7.38, 2.50), display_type="SPHERE", display_size=0.22)
+    target = add_empty("Walk_LookTarget", (0, 7.38, 2.68), display_type="SPHERE", display_size=0.22)
     look_at(start, target.location)
     start["navigation_role"] = "walk_start"
     start["look_target_node"] = target.name
@@ -2360,8 +2532,8 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
     )
     add_view_anchor(
         "VIEW_Overview",
-        (0, -0.55, 1.92),
-        (0, 7.38, 2.45),
+        (0, -0.55, CURATED_EYE_HEIGHT),
+        (0, 7.38, 2.68),
         label="Gallery overview",
         kind="overview",
     )
@@ -2388,13 +2560,11 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
         add_collider("COLLIDER_Demo_Partition_North", (0, -9.48, ROOM_HEIGHT / 2), (0.32, 2.96, ROOM_HEIGHT)),
         add_collider("COLLIDER_Demo_Partition_South", (0, -14.52, ROOM_HEIGHT / 2), (0.32, 2.96, ROOM_HEIGHT)),
         add_collider("COLLIDER_Demo_Waterfall", (-6.18, -11.18, 0.55), (1.35, 3.55, 1.10)),
-        add_collider("COLLIDER_Demo_Private_Sofa", (-4.55, -14.72, 0.60), (2.27, 1.10, 1.20)),
-        add_collider("COLLIDER_Demo_Private_Coffee", (-4.55, -13.10, 0.42), (1.68, 0.92, 0.84)),
-        add_collider("COLLIDER_Demo_Contact_Table", (4.72, -12.72, 0.64), (1.24, 2.75, 1.28)),
-        add_collider("COLLIDER_Demo_Contact_Chair_West_01", (3.74, -13.42, 0.55), (0.78, 0.78, 1.10)),
-        add_collider("COLLIDER_Demo_Contact_Chair_West_02", (3.74, -12.02, 0.55), (0.78, 0.78, 1.10)),
-        add_collider("COLLIDER_Demo_Contact_Chair_East_01", (5.70, -13.42, 0.55), (0.78, 0.78, 1.10)),
-        add_collider("COLLIDER_Demo_Contact_Chair_East_02", (5.70, -12.02, 0.55), (0.78, 0.78, 1.10)),
+        add_collider("COLLIDER_Demo_Private_Sofa", (-4.85, -14.72, 0.60), (2.05, 1.08, 1.20)),
+        add_collider("COLLIDER_Demo_Private_Coffee", (-4.85, -13.10, 0.42), (1.50, 0.82, 0.84)),
+        add_collider("COLLIDER_Demo_Contact_Table", (5.15, -12.85, 0.64), (0.96, 2.15, 1.28)),
+        add_collider("COLLIDER_Demo_Contact_Chair_West", (4.43, -13.33, 0.55), (0.68, 0.68, 1.10)),
+        add_collider("COLLIDER_Demo_Contact_Chair_East", (5.87, -12.37, 0.55), (0.68, 0.68, 1.10)),
         add_collider("COLLIDER_Demo_Contact_Shelving", (6.62, -12.15, 2.40), (0.46, 6.05, 4.80)),
         add_collider("COLLIDER_Demo_Privacy_Lectern", (0.61, -9.58, 0.70), (1.14, 1.12, 1.40)),
         add_collider("COLLIDER_Demo_Imprint_Lectern", (0.61, -14.24, 0.70), (1.14, 1.12, 1.40)),
@@ -2447,6 +2617,7 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
     scene["demo_minimum_clear_route_width_metres"] = 1.20
     scene["demo_clear_routes_blender_xy_json"] = json.dumps(clear_routes, separators=(",", ":"))
     scene["demo_entrance_clear_span_metres"] = 2.12
+    scene["demo_north_art_jamb_breathing_metres"] = 0.40
     scene["coordinate_note"] = "Blender XYZ maps to glTF/Three X,Y,Z as X,Z,-Y"
 
 
@@ -2454,12 +2625,12 @@ def create_preview_camera(scene: bpy.types.Scene) -> None:
     camera_data = bpy.data.cameras.new("Gallery Preview Camera")
     camera = bpy.data.objects.new("Gallery_Preview_Camera", camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (0, -6.35, 1.82)
+    camera.location = (0, -6.35, 1.96)
     camera_data.sensor_width = 36.0
     camera_data.lens = 25.0
     camera_data.clip_start = 0.05
     camera_data.clip_end = 70.0
-    look_at(camera, Vector((0, 7.38, 2.42)))
+    look_at(camera, Vector((0, 7.38, 2.70)))
     camera["camera_role"] = "non_authoritative_preview"
     mark_web(camera)
     scene.camera = camera
@@ -2481,6 +2652,7 @@ def optimize_groups(
         "floor_alt": "floor_alt",
         "stone": "stone",
         "bronze": "bronze",
+        "wayfinding": "wayfinding",
         "shadow": "shadow",
         "emissive": "emissive",
         "bench": "bench",
@@ -2545,6 +2717,18 @@ def build_scene() -> bpy.types.Scene:
         "floor_alt": create_textured_material("Gallery_Backlit_Black_Marble", MATERIAL_TEXTURES["black_marble"], "#aaa69d", "#d8d2c8", "floor_alt", roughness=0.17, metallic=0.02, clearcoat=0.62, clearcoat_roughness=0.10),
         "shadow": create_material("Gallery_Shadow", "#030504", "#4c4943", "shadow", roughness=0.76),
         "bronze": create_material("Gallery_Patinated_Bronze", "#634922", "#866331", "bronze", roughness=0.21, metallic=0.90, clearcoat=0.16, clearcoat_roughness=0.18),
+        "wayfinding": create_material(
+            "Gallery_Bronze_Wayfinding",
+            "#6b4d24",
+            "#9a7442",
+            "wayfinding",
+            roughness=0.27,
+            metallic=0.72,
+            clearcoat=0.16,
+            clearcoat_roughness=0.20,
+            emission="#5e3b18",
+            emission_strength=0.16,
+        ),
         "bench": create_material("Gallery_Bench", "#17140f", "#7c7162", "bench", roughness=0.42),
         "wood": create_textured_material("Gallery_Dark_Stained_Oak", MATERIAL_TEXTURES["walnut"], "#5e4433", "#8c705a", "wood", roughness=0.33, clearcoat=0.22, clearcoat_roughness=0.20, uv_repeat=2.0),
         "leather": create_textured_material("Gallery_Saddle_Leather", MATERIAL_TEXTURES["leather"], "#6a5a4d", "#9b8b7c", "leather", roughness=0.40, clearcoat=0.10, clearcoat_roughness=0.30, uv_repeat=3.0),
@@ -2585,7 +2769,7 @@ def build_scene() -> bpy.types.Scene:
         set_socket(principled, "Transmission Weight", transmission)
         set_socket(principled, "Transmission", transmission)
     groups = {name: [] for name in (
-        "wall", "fabric", "stone", "ceiling", "floor", "floor_tile_a", "floor_tile_b", "floor_alt", "shadow", "bronze",
+        "wall", "fabric", "stone", "ceiling", "floor", "floor_tile_a", "floor_tile_b", "floor_alt", "shadow", "bronze", "wayfinding",
         "emissive", "bench", "wood", "leather", "leather_seam", "planter", "plaque", "plaque_text", "stem", "leaf_a", "leaf_b", "water", "water_highlight", "ceramic", "glass",
         "wartrobe_shadow", "wartrobe_bronze",
     )}
@@ -2607,6 +2791,7 @@ def build_scene() -> bpy.types.Scene:
         add_surface_portal(index, side, along_wall, SURFACE_TEXTURES[index - 1], materials, groups)
 
     build_demo_site_rooms(materials, demo_groups)
+    wayfinding_piece_count = add_floor_wayfinding(materials, demo_groups)
     add_site_information_panels(materials, demo_groups)
     # The full spatial experience now owns a persistent vertical DOM
     # navigator.  The former physical centre-pier console duplicated it,
@@ -2682,6 +2867,12 @@ def build_scene() -> bpy.types.Scene:
     scene["waterfall_animation_duration_seconds"] = 2.0
     scene["waterfall_animation_frame_range"] = [1, 49]
     scene["waterfall_animation_strategy"] = "six overlapping organic flow veils and two droplet streams over one tapered membrane; eight seamless transform clips"
+    scene["botanical_animation_clip_count"] = 4
+    scene["botanical_animation_strategy"] = "four isolated hero leaves with sub-two-degree seamless breeze; static foliage remains batched"
+    scene["demo_ambient_fill_count"] = 2
+    scene["demo_ambient_fill_strategy"] = "one warm punctual fill per secondary room for mobile-safe material readability"
+    scene["wayfinding_piece_count"] = wayfinding_piece_count
+    scene["wayfinding_strategy"] = "low-emission patinated-bronze floor line and three chevrons; visual only, no collision geometry"
     scene["generated_room_materials_json"] = json.dumps({
         key: str(path.relative_to(ROOT)) for key, path in MATERIAL_TEXTURES.items()
     }, separators=(",", ":"))
@@ -2696,7 +2887,7 @@ def build_scene() -> bpy.types.Scene:
     return scene
 
 
-def export_glb(scene: bpy.types.Scene) -> None:
+def export_glb(scene: bpy.types.Scene, output_path: Path) -> None:
     bpy.ops.object.select_all(action="DESELECT")
     selected = []
     for obj in scene.objects:
@@ -2707,7 +2898,7 @@ def export_glb(scene: bpy.types.Scene) -> None:
         raise RuntimeError("No web-export objects were created")
     bpy.context.view_layer.objects.active = next((obj for obj in selected if obj.type == "MESH"), selected[0])
     bpy.ops.export_scene.gltf(
-        filepath=str(GLB_PATH),
+        filepath=str(output_path),
         export_format="GLB",
         use_selection=True,
         export_cameras=True,
@@ -2733,7 +2924,8 @@ def main() -> None:
     bpy.context.preferences.filepaths.save_version = 0
     scene = build_scene()
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH), compress=True)
-    export_glb(scene)
+    # One canonical runtime GLB avoids shipping duplicate 5 MB scene assets.
+    export_glb(scene, GLB_PATH)
     mesh_count = sum(1 for obj in scene.objects if obj.get("web_export") and obj.type == "MESH")
     node_count = sum(1 for obj in scene.objects if obj.get("web_export"))
     print(f"BLEND={BLEND_PATH}")

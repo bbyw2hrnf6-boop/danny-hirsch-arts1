@@ -67,7 +67,9 @@ Blender 5.2 LTS was used to create the room from genuine local wARTrobe photogra
 /Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/create_walkable_gallery.py
 ```
 
-Add `-- --render-video` to the threshold command to also rebuild both browser film formats. The inline room remains a lightweight cinematic teaser. The separate 360° gallery loads only after a visitor chooses “Explore 360°”; it supports drag-look, W A S D / arrow-key movement, touch controls, bounded collision, curated views, and equal dark/light interaction. Reduced-motion, data-saver, and unsupported devices retain the matching three-view Blender still sequence.
+Add `-- --render-video` to the threshold command to also rebuild both browser film formats. After the opening, visitors can choose the Classic site or enter the full Interactive Gallery. The 360° gallery is lazy-loaded and supports drag-look, W A S D / arrow-key movement, mouse-wheel and + / − zoom, bounded collision, curated camera rails, artwork dossiers, an opt-in room tone, and equal dark/light interaction. Mobile receives two virtual joysticks, a collapsible spatial map, optional device-orientation look and light haptic feedback. Reduced-motion, data-saver, and unsupported devices retain the matching three-view Blender still sequence.
+
+The exported scene includes subtle looping foliage and waterfall motion plus a floor-level bronze route toward the inquiry area. The canonical runtime model is `assets/cinematic/danny-gallery-360.glb`; do not publish a duplicate copy under another asset path.
 
 The six side-room surfaces use genuine local macro/detail photographs and are labelled as details, not simulated full paintings. Replace them with straight-on complete-work photography later if realistic framed scale is required. The wARTrobe focal object uses its genuine complete front photograph.
 

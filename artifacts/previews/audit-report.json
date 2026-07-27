@@ -3,13 +3,13 @@
     {
       "label": "desktop-hero",
       "size": [
-        390,
-        844
+        1440,
+        1000
       ],
       "scrollY": 0,
-      "pageHeight": 19423,
+      "pageHeight": 18567,
       "fontLoaded": true,
-      "theme": "light",
+      "theme": "dark",
       "horizontalOverflow": 0,
       "outsideHeadings": [],
       "lightboxInert": true
@@ -21,7 +21,7 @@
         1000
       ],
       "scrollY": 1880,
-      "pageHeight": 18526,
+      "pageHeight": 18567,
       "fontLoaded": true,
       "theme": "light",
       "privateRoomState": "rendered",
@@ -36,7 +36,7 @@
         1000
       ],
       "scrollY": 1880,
-      "pageHeight": 18526,
+      "pageHeight": 18567,
       "fontLoaded": true,
       "theme": "dark",
       "privateRoomState": "rendered",
@@ -50,8 +50,8 @@
         1440,
         1000
       ],
-      "scrollY": 17086,
-      "pageHeight": 18526,
+      "scrollY": 17127,
+      "pageHeight": 18567,
       "fontLoaded": true,
       "theme": "dark",
       "privateRoomState": "rendered",
@@ -114,6 +114,15 @@
     "reducedMotion": true,
     "horizontalOverflow": 0,
     "headings": [
+      {
+        "text": "Choose howyou enter.",
+        "width": 258,
+        "height": 110,
+        "scrollWidth": 258,
+        "lineHeight": "54.912px",
+        "fontFamily": "\"Instrument Serif\", Georgia, serif",
+        "outsideViewport": false
+      },
       {
         "text": "Danny HirschArts",
         "width": 348,
@@ -268,7 +277,7 @@
         "outsideViewport": false
       }
     ],
-    "visibleFocusableCount": 47,
+    "visibleFocusableCount": 49,
     "lightboxInert": true
   },
   "browserIssues": []

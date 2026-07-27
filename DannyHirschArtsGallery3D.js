@@ -127,7 +127,11 @@ const readRole = (object, material) => {
 const findMetadataOwner = (object) => {
   let cursor = object;
   while (cursor) {
-    if (cursor.userData?.asset_id || cursor.userData?.artwork_id || cursor.userData?.representation) return cursor;
+    if (cursor.userData?.asset_id
+      || cursor.userData?.artwork_id
+      || cursor.userData?.representation
+      || cursor.userData?.site_panel_id
+      || cursor.userData?.site_navigation) return cursor;
     cursor = cursor.parent;
   }
   return null;
@@ -411,8 +415,12 @@ export function initWalkableGallery3D(options = {}) {
   const environmentTexture = createGalleryEnvironment(renderer);
   scene.environment = environmentTexture;
   const baseCameraFov = compact ? 68 : 62;
+  const minimumCameraFov = compact ? 46 : 38;
+  const maximumCameraFov = compact ? 82 : 78;
   const camera = new THREE.PerspectiveCamera(baseCameraFov, 1, 0.04, 120);
   camera.rotation.order = 'YXZ';
+  const lookProbe = new THREE.PerspectiveCamera();
+  lookProbe.rotation.order = 'YXZ';
   const ambient = new THREE.AmbientLight(0xfff4df, 0.1);
   const hemisphere = new THREE.HemisphereLight(0xffe6ba, 0x111310, 0.38);
   scene.add(ambient, hemisphere);
@@ -432,6 +440,7 @@ export function initWalkableGallery3D(options = {}) {
   const artworkMeshes = [];
   const sitePanelMeshes = [];
   const siteNavigationMeshes = [];
+  const focusRayMeshes = [];
   const demoObjects = [];
   const standardObjects = [];
   const labelEntries = [];
@@ -448,6 +457,12 @@ export function initWalkableGallery3D(options = {}) {
   };
   const analogMove = { x: 0, y: 0 };
   const analogLook = { x: 0, y: 0 };
+  const artCard = root.querySelector('[data-gallery-art-card]');
+  const artProximity = root.querySelector('[data-gallery-art-proximity]');
+  const zoomStatus = root.querySelector('[data-gallery-zoom]');
+  const sidebar = root.querySelector('[data-gallery-demo-nav]');
+  const sidebarToggle = root.querySelector('[data-gallery-sidebar-toggle]');
+  const sidebarScroll = root.querySelector('.room-experience__sidebar-scroll');
   const waterMaterials = new Set();
   const motion = {
     supported: compact && typeof window.DeviceOrientationEvent !== 'undefined',
@@ -472,6 +487,9 @@ export function initWalkableGallery3D(options = {}) {
   let currentTheme = options.theme === 'light' ? 'light' : 'dark';
   let yaw = 0;
   let pitch = 0;
+  let targetCameraFov = baseCameraFov;
+  let cameraRail = null;
+  let cameraRailTimer = 0;
   let bounds = { minX: -6.8, maxX: 6.8, minZ: -3.2, maxZ: 6.4 };
   let startPosition = new THREE.Vector3(0, 1.68, 4.8);
   let startTarget = new THREE.Vector3(0, 2.4, -2.8);
@@ -483,6 +501,9 @@ export function initWalkableGallery3D(options = {}) {
   let lastFocusCheck = 0;
   let themeTransition = 1;
   let lastHapticAt = 0;
+  let focusCandidateKey = null;
+  let focusCandidateSince = 0;
+  let sidebarCollapsed = compact;
 
   const triggerHaptic = (duration = 8) => {
     if (!compact || typeof navigator.vibrate !== 'function') return;
@@ -595,18 +616,29 @@ export function initWalkableGallery3D(options = {}) {
           navigationItems = [];
         }
       }
-      entry.material = new THREE.MeshPhysicalMaterial({
-        color: '#ffffff',
-        map: navigation
-          ? createNavigationTexture(navigationItems, lightTheme, activeNavigationId)
-          : createLabelTexture(data, lightTheme, sitePanel),
-        roughness: 0.32,
-        metalness: 0.02,
-        clearcoat: 0.22,
-        clearcoatRoughness: 0.18,
-        envMapIntensity: 0.52,
-        side: THREE.DoubleSide
-      });
+      const labelMap = navigation
+        ? createNavigationTexture(navigationItems, lightTheme, activeNavigationId)
+        : createLabelTexture(data, lightTheme, sitePanel);
+      // Museum text must remain readable under every virtual spotlight. In the
+      // bright room, use an unlit print surface so exposure cannot bleach its
+      // ink; the dark room keeps a restrained physical paper response.
+      entry.material = lightTheme
+        ? new THREE.MeshBasicMaterial({
+          color: '#ffffff',
+          map: labelMap,
+          side: THREE.DoubleSide,
+          toneMapped: false
+        })
+        : new THREE.MeshPhysicalMaterial({
+          color: '#ffffff',
+          map: labelMap,
+          roughness: 0.42,
+          metalness: 0.02,
+          clearcoat: 0.16,
+          clearcoatRoughness: 0.28,
+          envMapIntensity: 0.42,
+          side: THREE.DoubleSide
+        });
       entry.object.material = entry.material;
       entry.object.visible = (sitePanel || navigation) ? demoMode : true;
     });
@@ -616,6 +648,16 @@ export function initWalkableGallery3D(options = {}) {
     target.addEventListener(type, handler, settings);
     listeners.push(() => target.removeEventListener(type, handler, settings));
   };
+
+  const setSidebarCollapsed = (collapsed) => {
+    sidebarCollapsed = compact ? Boolean(collapsed) : false;
+    sidebar?.classList.toggle('is-collapsed', sidebarCollapsed);
+    root.classList.toggle('is-sidebar-collapsed', sidebarCollapsed);
+    sidebarToggle?.setAttribute('aria-expanded', String(!sidebarCollapsed));
+    if (sidebarScroll) sidebarScroll.hidden = sidebarCollapsed;
+  };
+
+  setSidebarCollapsed(sidebarCollapsed);
 
   const resolveBounds = (minimum, maximum) => {
     if (!minimum || !maximum) return;
@@ -657,19 +699,108 @@ export function initWalkableGallery3D(options = {}) {
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
   };
 
-  const setCameraFov = (fieldOfView) => {
-    if (Math.abs(camera.fov - fieldOfView) < 0.01) return;
-    camera.fov = fieldOfView;
+  const updateZoomStatus = () => {
+    if (!zoomStatus) return;
+    const percentage = Math.round((baseCameraFov / targetCameraFov) * 100);
+    zoomStatus.value = `${percentage}%`;
+    zoomStatus.textContent = `${percentage}%`;
+    zoomStatus.setAttribute('aria-label', `Gallery zoom level ${percentage} percent`);
+  };
+
+  const setCameraFov = (fieldOfView, instant = true) => {
+    targetCameraFov = clamp(fieldOfView, minimumCameraFov, maximumCameraFov);
+    updateZoomStatus();
+    if (!instant && !reducedMotion.matches) return;
+    if (Math.abs(camera.fov - targetCameraFov) < 0.01) return;
+    camera.fov = targetCameraFov;
     camera.updateProjectionMatrix();
   };
 
+  const clearCameraRailTimer = () => {
+    if (!cameraRailTimer) return;
+    window.clearTimeout(cameraRailTimer);
+    cameraRailTimer = 0;
+  };
+
+  const cancelCameraRail = ({ preserveZoom = true } = {}) => {
+    if (!cameraRail) return;
+    clearCameraRailTimer();
+    cameraRail = null;
+    if (preserveZoom) {
+      targetCameraFov = camera.fov;
+      updateZoomStatus();
+    }
+  };
+
+  const anglesToward = (position, target) => {
+    // Cameras look down their local -Z axis. A generic Object3D looks along
+    // +Z, which would turn a curated viewpoint away from its artwork.
+    lookProbe.position.copy(position);
+    lookProbe.up.copy(camera.up);
+    lookProbe.lookAt(target);
+    lookEuler.setFromQuaternion(lookProbe.quaternion, 'YXZ');
+    return {
+      pitch: clamp(lookEuler.x, -1.05, 1.05),
+      yaw: lookEuler.y
+    };
+  };
+
+  const moveCameraTo = (position, target, fieldOfView, instant = false) => {
+    const destinationAngles = anglesToward(position, target);
+    const shouldSnap = instant || !ready || reducedMotion.matches || !active;
+    targetCameraFov = clamp(fieldOfView, minimumCameraFov, maximumCameraFov);
+    updateZoomStatus();
+    focusCandidateKey = null;
+    focusCandidateSince = performance.now();
+    if (shouldSnap) {
+      clearCameraRailTimer();
+      cameraRail = null;
+      camera.position.copy(position);
+      yaw = destinationAngles.yaw;
+      pitch = destinationAngles.pitch;
+      camera.rotation.set(pitch, yaw, 0, 'YXZ');
+      setCameraFov(targetCameraFov, true);
+      return;
+    }
+    cameraRail = {
+      startedAt: performance.now(),
+      duration: 650,
+      fromPosition: camera.position.clone(),
+      toPosition: position.clone(),
+      fromYaw: yaw,
+      yawDelta: shortestAngle(yaw, destinationAngles.yaw),
+      fromPitch: pitch,
+      toPitch: destinationAngles.pitch,
+      fromFov: camera.fov,
+      toFov: targetCameraFov
+    };
+    const pendingRail = cameraRail;
+    clearCameraRailTimer();
+    // requestAnimationFrame can be suspended while a browser tab is being
+    // restored or captured. A timer guarantees the curated destination still
+    // settles, instead of leaving the visitor between two rooms indefinitely.
+    cameraRailTimer = window.setTimeout(() => {
+      cameraRailTimer = 0;
+      if (destroyed || cameraRail !== pendingRail) return;
+      camera.position.copy(pendingRail.toPosition);
+      yaw = pendingRail.fromYaw + pendingRail.yawDelta;
+      pitch = pendingRail.toPitch;
+      camera.fov = pendingRail.toFov;
+      cameraRail = null;
+      camera.rotation.set(pitch, yaw, 0, 'YXZ');
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld(true);
+      updateArtworkFocus({ immediate: true });
+      if (active) renderer.render(scene, camera);
+    }, cameraRail.duration + 34);
+    ensureFrame();
+  };
+
   const resetView = () => {
-    setCameraFov(baseCameraFov);
-    camera.position.copy(startPosition);
-    orientToward(startTarget);
     currentViewIndex = -1;
+    moveCameraTo(startPosition, startTarget, baseCameraFov, !ready);
     call(options.onViewChange, { index: -1, label: 'Gallery entrance' });
-    if (ready) {
+    if (ready && !cameraRail) {
       camera.updateMatrixWorld(true);
       updateArtworkFocus();
       renderer.render(scene, camera);
@@ -680,27 +811,32 @@ export function initWalkableGallery3D(options = {}) {
     if (!views.length) return resetView();
     currentViewIndex = (index + views.length) % views.length;
     const view = views[currentViewIndex];
-    setCameraFov(view.object.userData?.view_kind === 'site_navigation'
-      ? (compact ? 88 : 66)
-      : baseCameraFov);
+    const viewFov = view.object.userData?.view_kind === 'site_navigation'
+      ? (compact ? 82 : 66)
+      : baseCameraFov;
     view.object.getWorldPosition(worldPosition);
-    camera.position.copy(worldPosition);
-    if (view.target) orientToward(view.target.getWorldPosition(new THREE.Vector3()));
-    else orientToward(startTarget);
+    const target = view.target
+      ? view.target.getWorldPosition(new THREE.Vector3())
+      : startTarget;
+    moveCameraTo(worldPosition, target, viewFov);
     call(options.onViewChange, {
       index: currentViewIndex,
       label: view.label,
       total: views.length
     });
-    if (ready) {
+    if (ready && !cameraRail) {
       camera.updateMatrixWorld(true);
-      updateArtworkFocus();
+      // A reduced-motion jump has no rail frames in which to establish the
+      // dwell candidate. Resolve its centred work immediately so the dossier
+      // is never delayed or left stale after an accessible view change.
+      updateArtworkFocus({ immediate: reducedMotion.matches });
       renderer.render(scene, camera);
     }
   };
 
   const setNavigationId = (id) => {
     activeNavigationId = id;
+    if (compact && id !== 'directory') setSidebarCollapsed(true);
     call(options.onNavigationChange, { id });
     if (demoMode) refreshLabelMaterials();
   };
@@ -763,12 +899,40 @@ export function initWalkableGallery3D(options = {}) {
     }
   };
 
-  const updateArtworkFocus = () => {
-    if (!artworkMeshes.length && !sitePanelMeshes.length) return;
-    raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-    const hit = raycaster.intersectObjects(demoMode ? [...artworkMeshes, ...sitePanelMeshes] : artworkMeshes, false)[0];
-    let owner = hit ? findMetadataOwner(hit.object) : null;
-    if (owner?.userData?.site_panel_id && hit.distance > 6.2) owner = null;
+  const isVisibleForFocus = (object) => {
+    let cursor = object;
+    while (cursor) {
+      if (cursor.visible === false) return false;
+      cursor = cursor.parent;
+    }
+    return true;
+  };
+
+  const setArtworkProximity = (owner, distance = Infinity) => {
+    const isArtwork = Boolean(owner && !owner.userData?.site_panel_id && !owner.userData?.site_navigation);
+    const state = !isArtwork
+      ? 'ambient'
+      : distance <= 1.85
+        ? 'near'
+        : distance <= 3.15
+          ? 'focused'
+          : 'distant';
+    if (artCard?.dataset.proximity === state && root.dataset.artProximity === state) return;
+    if (artCard) artCard.dataset.proximity = state;
+    root.dataset.artProximity = state;
+    if (artProximity) {
+      artProximity.textContent = state === 'near'
+        ? 'Within reach'
+        : state === 'focused'
+          ? 'Focused view'
+          : state === 'distant'
+            ? 'Approach the work'
+            : 'Free look';
+    }
+    if (compact && demoMode && state !== 'ambient') setSidebarCollapsed(true);
+  };
+
+  const commitFocus = (owner, hit) => {
     if (owner?.userData?.site_panel_id) {
       const id = owner.userData.site_panel_id;
       if (id === focusedSitePanel?.id) return;
@@ -781,6 +945,7 @@ export function initWalkableGallery3D(options = {}) {
         linkLabel: owner.userData.site_link_label || 'Open information'
       };
       focusedArtwork = null;
+      setArtworkProximity(null);
       call(options.onArtworkFocus, null);
       call(options.onSitePanelFocus, focusedSitePanel);
       return;
@@ -790,9 +955,14 @@ export function initWalkableGallery3D(options = {}) {
       call(options.onSitePanelFocus, null);
     }
     const id = owner?.userData?.asset_id || owner?.userData?.artwork_id || null;
-    if (id === focusedArtwork?.id) return;
+    const focusKey = owner
+      ? owner.userData.asset_id || owner.userData.artwork_id || owner.uuid
+      : null;
+    setArtworkProximity(owner, hit?.distance);
+    if (focusKey === focusedArtwork?.focusKey) return;
     focusedArtwork = owner ? {
       id,
+      focusKey,
       title: owner.userData.title || owner.userData.display_label || owner.userData.label || owner.name.replaceAll('_', ' '),
       detail: owner.userData.detail_label || owner.userData.medium || owner.userData.representation || 'Genuine artwork photography',
       source: owner.userData.source_asset || owner.userData.delivery_asset || '',
@@ -802,13 +972,52 @@ export function initWalkableGallery3D(options = {}) {
       medium: owner.userData.medium || '',
       dimensions: owner.userData.dimensions || '',
       availability: owner.userData.availability || owner.userData.status || '',
-      description: owner.userData.description || ''
+      description: owner.userData.description || '',
+      distance: hit?.distance || null
     } : null;
     call(options.onArtworkFocus, focusedArtwork);
   };
 
+  const updateArtworkFocus = ({ immediate = false } = {}) => {
+    if (!focusRayMeshes.length) return;
+    raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+    const hit = raycaster
+      .intersectObjects(focusRayMeshes.filter(isVisibleForFocus), false)[0] || null;
+    let owner = hit ? findMetadataOwner(hit.object) : null;
+    const isSitePanel = Boolean(owner?.userData?.site_panel_id);
+    const isArtwork = Boolean(owner && !isSitePanel && !owner.userData?.site_navigation);
+    if ((isSitePanel && (!demoMode || hit.distance > 5.2)) || (isArtwork && hit.distance > 4.8)) owner = null;
+    if (owner?.userData?.site_navigation) owner = null;
+
+    const key = owner?.userData?.site_panel_id
+      ? `panel:${owner.userData.site_panel_id}`
+      : owner
+        ? `art:${owner.userData.asset_id || owner.userData.artwork_id || owner.uuid}`
+        : 'none';
+    const committedKey = focusedSitePanel
+      ? `panel:${focusedSitePanel.id}`
+      : focusedArtwork
+        ? `art:${focusedArtwork.focusKey || focusedArtwork.id || focusedArtwork.title}`
+        : 'none';
+    const now = performance.now();
+    if (key === committedKey) {
+      focusCandidateKey = key;
+      focusCandidateSince = now;
+      if (owner && !isSitePanel) setArtworkProximity(owner, hit?.distance);
+      return;
+    }
+    if (key !== focusCandidateKey) {
+      focusCandidateKey = key;
+      focusCandidateSince = now;
+      if (!immediate) return;
+    }
+    if (!immediate && now - focusCandidateSince < 650) return;
+    commitFocus(owner, owner ? hit : null);
+  };
+
   const setDemoMode = (nextDemoMode) => {
     demoMode = Boolean(nextDemoMode);
+    if (compact) setSidebarCollapsed(true);
     demoObjects.forEach((object) => { object.visible = demoMode; });
     standardObjects.forEach((object) => { object.visible = !demoMode; });
     if (!demoMode) mount.classList.remove('has-interactive-target');
@@ -823,7 +1032,8 @@ export function initWalkableGallery3D(options = {}) {
     });
     if (ready) {
       camera.updateMatrixWorld(true);
-      updateArtworkFocus();
+      focusCandidateKey = null;
+      updateArtworkFocus({ immediate: true });
       renderer.render(scene, camera);
     }
   };
@@ -894,6 +1104,38 @@ export function initWalkableGallery3D(options = {}) {
     return true;
   };
 
+  const updateCameraRail = () => {
+    if (!cameraRail) return;
+    const rail = cameraRail;
+    const progress = clamp((performance.now() - rail.startedAt) / rail.duration, 0, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    camera.position.lerpVectors(rail.fromPosition, rail.toPosition, eased);
+    yaw = rail.fromYaw + rail.yawDelta * eased;
+    pitch = THREE.MathUtils.lerp(rail.fromPitch, rail.toPitch, eased);
+    const nextFov = THREE.MathUtils.lerp(rail.fromFov, rail.toFov, eased);
+    if (Math.abs(camera.fov - nextFov) > 0.005) {
+      camera.fov = nextFov;
+      camera.updateProjectionMatrix();
+    }
+    if (progress >= 1) {
+      clearCameraRailTimer();
+      camera.position.copy(rail.toPosition);
+      yaw = rail.fromYaw + rail.yawDelta;
+      pitch = rail.toPitch;
+      cameraRail = null;
+      camera.fov = targetCameraFov;
+      camera.updateProjectionMatrix();
+    }
+  };
+
+  const updateZoom = (delta) => {
+    if (cameraRail || Math.abs(camera.fov - targetCameraFov) < 0.015) return;
+    const amount = reducedMotion.matches ? 1 : 1 - Math.exp(-delta * 11);
+    camera.fov = THREE.MathUtils.lerp(camera.fov, targetCameraFov, amount);
+    if (Math.abs(camera.fov - targetCameraFov) < 0.02) camera.fov = targetCameraFov;
+    camera.updateProjectionMatrix();
+  };
+
   const updateMovement = (delta) => {
     const forwardInput = clamp((keys.has('KeyW') || keys.has('ArrowUp') || held.has('forward') ? 1 : 0)
       - (keys.has('KeyS') || keys.has('ArrowDown') || held.has('backward') ? 1 : 0)
@@ -902,17 +1144,20 @@ export function initWalkableGallery3D(options = {}) {
       - (keys.has('KeyA') || held.has('left') ? 1 : 0)
       + analogMove.x, -1, 1);
     const turnInput = (keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0);
+    const hasUserInput = Boolean(forwardInput || sideInput || turnInput
+      || Math.abs(analogLook.x) > 0.01 || Math.abs(analogLook.y) > 0.01);
+    if (hasUserInput) cancelCameraRail();
     if (turnInput) yaw -= turnInput * delta * 1.32;
     if (Math.abs(analogLook.x) > 0.01 || Math.abs(analogLook.y) > 0.01) {
       yaw -= analogLook.x * delta * 1.75;
       pitch = clamp(pitch - analogLook.y * delta * 1.38, -1.05, 1.05);
-    } else if (motion.enabled && motion.listening) {
+    } else if (motion.enabled && motion.listening && !cameraRail) {
       const blend = 1 - Math.exp(-delta * 7.5);
       yaw += shortestAngle(yaw, motion.targetYaw) * blend;
       pitch += (motion.targetPitch - pitch) * blend;
     }
     if (!forwardInput && !sideInput) return;
-    setCameraFov(baseCameraFov);
+    if (currentViewIndex !== -1) setCameraFov(baseCameraFov, false);
     forward.set(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
     right.set(-forward.z, 0, forward.x);
     candidate.copy(camera.position)
@@ -923,7 +1168,8 @@ export function initWalkableGallery3D(options = {}) {
   };
 
   const nudgePlayer = (action, distance = compact ? 0.2 : 0.24) => {
-    setCameraFov(baseCameraFov);
+    cancelCameraRail();
+    if (currentViewIndex !== -1) setCameraFov(baseCameraFov, false);
     forward.set(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
     right.set(-forward.z, 0, forward.x);
     candidate.copy(camera.position);
@@ -949,7 +1195,9 @@ export function initWalkableGallery3D(options = {}) {
     frameRequest = 0;
     if (!active || destroyed || document.hidden || !ready) return;
     const delta = Math.min(clock.getDelta(), 0.05);
+    updateCameraRail();
     updateMovement(delta);
+    updateZoom(delta);
     updateTheme(delta);
     // The water wall belongs to the room, not only to the spatial-site mode.
     // Keep its lightweight authored clips alive in both Classic Private Room
@@ -996,7 +1244,14 @@ export function initWalkableGallery3D(options = {}) {
       zone.style.setProperty('--stick-y', '0px');
     });
     if (active) attachMotion();
-    else detachMotion();
+    else {
+      detachMotion();
+      cancelCameraRail({ preserveZoom: false });
+      setCameraFov(baseCameraFov, true);
+      focusCandidateKey = null;
+      focusCandidateSince = 0;
+      commitFocus(null, null);
+    }
     if (!active && frameRequest) {
       window.cancelAnimationFrame(frameRequest);
       frameRequest = 0;
@@ -1067,6 +1322,14 @@ export function initWalkableGallery3D(options = {}) {
       object.receiveShadow = renderer.shadowMap.enabled;
       object.castShadow = renderer.shadowMap.enabled && /frame|bench|vessel|plant/i.test(object.name);
       const owner = findMetadataOwner(object);
+      const focusMaterial = Array.isArray(object.material) ? object.material[0] : object.material;
+      const focusRole = readRole(object, focusMaterial);
+      if (!object.name.startsWith('COLLIDER_')
+        && object.userData?.kind !== 'aabb'
+        && object.userData?.kind !== 'view'
+        && (owner || !/water|botanical|glass/.test(focusRole))) {
+        focusRayMeshes.push(object);
+      }
       if (object.userData?.catalogue_label || object.userData?.site_panel_id || object.userData?.site_navigation) {
         labelEntries.push({ object, material: null });
         if (object.userData?.site_navigation) {
@@ -1186,6 +1449,7 @@ export function initWalkableGallery3D(options = {}) {
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
+    clearCameraRailTimer();
     detachMotion();
     if (frameRequest) window.cancelAnimationFrame(frameRequest);
     listeners.splice(0).forEach((remove) => remove());
@@ -1201,8 +1465,26 @@ export function initWalkableGallery3D(options = {}) {
     try { delete mount.__galleryController; } catch (error) { /* Non-critical debug handle cleanup. */ }
   };
 
+  const adjustZoom = (amount) => {
+    cancelCameraRail();
+    setCameraFov(targetCameraFov + amount, false);
+    ensureFrame();
+  };
+
+  const onWheel = (event) => {
+    if (!active || !ready || destroyed || event.ctrlKey) return;
+    event.preventDefault();
+    const delta = event.deltaMode === 1
+      ? event.deltaY * 16
+      : event.deltaMode === 2
+        ? event.deltaY * mount.clientHeight
+        : event.deltaY;
+    adjustZoom(clamp(delta * 0.018, -5.5, 5.5));
+  };
+
   const onPointerDown = (event) => {
     if (!ready || event.button > 0 || !event.isPrimary) return;
+    cancelCameraRail();
     pointer.id = event.pointerId;
     pointer.x = event.clientX;
     pointer.y = event.clientY;
@@ -1265,6 +1547,16 @@ export function initWalkableGallery3D(options = {}) {
       }
       keys.add(event.code);
     }
+    if (['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'Digit0', 'Numpad0'].includes(event.code)) {
+      event.preventDefault();
+      if (event.code === 'Equal' || event.code === 'NumpadAdd') adjustZoom(-4);
+      else if (event.code === 'Minus' || event.code === 'NumpadSubtract') adjustZoom(4);
+      else {
+        cancelCameraRail({ preserveZoom: false });
+        setCameraFov(baseCameraFov, false);
+        ensureFrame();
+      }
+    }
     if (event.code === 'Home') {
       event.preventDefault();
       resetView();
@@ -1278,9 +1570,16 @@ export function initWalkableGallery3D(options = {}) {
   listen(mount, 'pointermove', onPointerMove);
   listen(mount, 'pointerup', releasePointer);
   listen(mount, 'pointercancel', releasePointer);
+  listen(mount, 'wheel', onWheel, { passive: false });
   listen(window, 'keydown', onKeyDown);
   listen(window, 'keyup', onKeyUp);
   listen(document, 'visibilitychange', ensureFrame);
+  if (sidebarToggle) {
+    listen(sidebarToggle, 'click', () => {
+      setSidebarCollapsed(!sidebarCollapsed);
+      triggerHaptic(5);
+    });
+  }
   listen(renderer.domElement, 'webglcontextlost', (event) => {
     event.preventDefault();
     setActive(false);
@@ -1410,7 +1709,15 @@ export function initWalkableGallery3D(options = {}) {
       motionSupported: motion.supported,
       pitch,
       ready,
+      sidebarCollapsed,
       theme: currentTheme,
+      zoom: {
+        baseFov: baseCameraFov,
+        fov: camera.fov,
+        maximumFov: maximumCameraFov,
+        minimumFov: minimumCameraFov,
+        targetFov: targetCameraFov
+      },
       views: views.map((view) => view.label),
       yaw
     }),

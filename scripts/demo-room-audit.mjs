@@ -1,7 +1,10 @@
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const port = process.env.CDP_PORT || '9223';
 const base = process.env.AUDIT_URL || 'http://127.0.0.1:8123/';
+const outputDirectory = process.env.AUDIT_OUTPUT_DIR || '/tmp';
+await mkdir(outputDirectory, { recursive: true });
 const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json());
 const target = targets.find((entry) => entry.type === 'page');
 if (!target) throw new Error('No browser page target');
@@ -67,6 +70,10 @@ const state = () => evaluate(`(() => {
   const dialog = document.querySelector('[data-room-experience]');
   const controller = document.querySelector('[data-gallery-webgl]')?.__galleryController;
   const sidebar = document.querySelector('[data-gallery-demo-nav]');
+  const artCard = document.querySelector('[data-gallery-art-card]');
+  const artCardRect = artCard?.getBoundingClientRect();
+  const artCardStyle = artCard ? getComputedStyle(artCard) : null;
+  const ambientButton = document.querySelector('[data-gallery-ambient]');
   const sidebarRect = sidebar?.getBoundingClientRect();
   const sidebarScroll = sidebar?.querySelector('.room-experience__sidebar-scroll');
   const sidebarVisible = Boolean(sidebar && !sidebar.hidden && sidebarRect?.width && sidebarRect?.height);
@@ -79,6 +86,19 @@ const state = () => evaluate(`(() => {
     controller: controller?.getState?.(),
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     panelHidden: document.querySelector('[data-gallery-site-panel]')?.hidden,
+    ambientPressed: ambientButton?.getAttribute('aria-pressed'),
+    artCard: {
+      proximity: artCard?.dataset.proximity || null,
+      visible: Boolean(artCardRect?.width && artCardRect?.height
+        && artCardStyle?.visibility !== 'hidden'
+        && Number(artCardStyle?.opacity || 0) > 0.01),
+      inViewport: Boolean(artCardRect
+        && artCardRect.left >= -1
+        && artCardRect.top >= -1
+        && artCardRect.right <= innerWidth + 1
+        && artCardRect.bottom <= innerHeight + 1),
+      rect: artCardRect ? [artCardRect.left, artCardRect.top, artCardRect.width, artCardRect.height] : null
+    },
     sidebar: {
       hidden: sidebar?.hidden,
       visible: sidebarVisible,
@@ -117,27 +137,57 @@ report.directSpatialEntry = await waitFor("document.querySelector('[data-room-ex
 report.loaded = await waitFor("document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready')");
 await pause(700);
 
+report.desktopBeforeZoom = await state();
+await evaluate(`(() => {
+  const mount = document.querySelector('[data-gallery-webgl]');
+  mount.dispatchEvent(new WheelEvent('wheel', { deltaY: -320, bubbles: true, cancelable: true }));
+  return true;
+})()`);
+await pause(420);
+report.desktopAfterZoom = await state();
+
+await evaluate("document.querySelector('[data-gallery-ambient]')?.click(); true");
+await pause(180);
+report.roomSoundOn = await state();
+await evaluate("document.querySelector('[data-gallery-ambient]')?.click(); true");
+await pause(180);
+report.roomSoundOff = await state();
+
 for (const room of ['gallery-hall', 'private-room', 'contact-room']) {
   await evaluate(`document.querySelector('[data-gallery-webgl]').__galleryController.goToDemoRoom('${room}'); true`);
-  await pause(650);
+  await pause(1500);
   report[`desktop-${room}`] = await state();
-  await capture(`/tmp/dha-demo-${room}.png`);
+  await capture(join(outputDirectory, `dha-demo-${room}.png`));
 }
+
+await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToNextView(); true");
+await pause(1550);
+await waitFor("document.querySelector('[data-gallery-art-image]')?.complete && document.querySelector('[data-gallery-art-image]').naturalWidth > 0", 3000);
+report.desktopArtworkFocus = await state();
+await capture(join(outputDirectory, 'dha-demo-artwork-focus.png'));
 
 await evaluate("document.querySelector('[data-room-theme]').click(); true");
 await pause(700);
 await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToDemoRoom('private-room'); true");
-await pause(450);
+await pause(1500);
 report.desktopLightPrivate = await state();
-await capture('/tmp/dha-demo-private-room-light.png');
+await capture(join(outputDirectory, 'dha-demo-private-room-light.png'));
 
 await viewport(390, 844, true);
-await evaluate("document.querySelector('[data-room-theme]').click(); true");
-await pause(500);
+await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+await send('Page.navigate', { url: new URL(`?view=3d&audit=demo-mobile-${Date.now()}`, base).href });
+await pause(950);
+await evaluate("Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); true");
+if (await evaluate("document.body.classList.contains('opening-active')")) {
+  await evaluate("document.querySelector('.opening-skip').click(); true");
+}
+await waitFor("document.querySelector('[data-room-experience]').open && document.querySelector('[data-room-experience]').classList.contains('is-demo-mode')");
+await waitFor("document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready')");
+await pause(850);
 await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToDemoRoom('contact-room'); true");
-await pause(500);
+await waitFor("Math.abs(document.querySelector('[data-gallery-webgl]').__galleryController.getState().camera[0] - 2.65) < 0.05", 7000);
 report.mobileContact = await state();
-await capture('/tmp/dha-demo-contact-room-mobile.png');
+await capture(join(outputDirectory, 'dha-demo-contact-room-mobile.png'));
 
 report.browserIssues = browserIssues;
 console.log(JSON.stringify(report, null, 2));
