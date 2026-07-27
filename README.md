@@ -9,6 +9,7 @@ Premium static artist homepage for Danny Hirsch Arts. The site is built with pla
 - `DannyHirschArtsHomepage.css` - base visual system, responsive layouts, and theme styles
 - `DannyHirschArtsCinematic.css` - cinematic editorial layer, collision-safe type, and responsive refinements
 - `DannyHirschArtsHomepage.js` - navigation, theme, sound, intro, scroll effects, lightbox, and progressive 3D loading
+- `DannyHirschArtsLoungeAudio.js` - original procedural lounge score; opt-in Web Audio with no samples or external music
 - `DannyHirschArts3D.js` - lightweight Three.js renderer for the inline room teaser
 - `DannyHirschArtsGallery3D.js` - lazy-loaded bounded 360° gallery controller with desktop and touch movement
 - `blender/create_material_threshold.py` - reproducible Blender scene, GLB, poster, and film generator
@@ -67,9 +68,9 @@ Blender 5.2 LTS was used to create the room from genuine local wARTrobe photogra
 /Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python blender/create_walkable_gallery.py
 ```
 
-Add `-- --render-video` to the threshold command to also rebuild both browser film formats. After the opening, visitors can choose the Classic site or enter the full Interactive Gallery. The 360° gallery is lazy-loaded and supports drag-look, W A S D / arrow-key movement, mouse-wheel and + / − zoom, bounded collision, curated camera rails, artwork dossiers, an opt-in room tone, and equal dark/light interaction. Mobile receives two virtual joysticks, a collapsible spatial map, optional device-orientation look and light haptic feedback. Reduced-motion, data-saver, and unsupported devices retain the matching three-view Blender still sequence.
+Add `-- --render-video` to the threshold command to also rebuild both browser film formats. After the opening, visitors can choose the Classic site or enter the full Interactive Gallery. The 360° gallery is lazy-loaded behind an accessible, byte-accurate loading screen and supports drag-look, W A S D / arrow-key movement, mouse-wheel and + / − zoom, bounded collision, curated camera rails, artwork dossiers, an opt-in lounge ambience, and equal dark/light interaction. Mobile receives two virtual joysticks, a collapsible spatial map, optional device-orientation look and light haptic feedback. Reduced-motion, data-saver, and unsupported devices retain the matching three-view Blender still sequence.
 
-The exported scene includes subtle looping foliage and waterfall motion plus a floor-level bronze route toward the inquiry area. The canonical runtime model is `assets/cinematic/danny-gallery-360.glb`; do not publish a duplicate copy under another asset path.
+The exported scene includes subtle looping foliage and waterfall motion plus a floor-level bronze route toward the inquiry area. Its material board is authored in `MATERIAL_BOARD_PRESETS`: rough plaster `#3A3631`, dark walnut `#4A3222`, dark leather `#1E1B19`, clear-coated black marble `#0F0F10`, brushed bronze `#B08A4E`, matte black metal, clear glass, and concrete planters. The canonical runtime model is `assets/cinematic/danny-gallery-360.glb`; do not publish a duplicate copy under another asset path.
 
 The six side-room surfaces use genuine local macro/detail photographs and are labelled as details, not simulated full paintings. Replace them with straight-on complete-work photography later if realistic framed scale is required. The wARTrobe focal object uses its genuine complete front photograph.
 
@@ -83,6 +84,6 @@ The live Instagram feed uses Elfsight:
 
 The Elfsight script is loaded only after the visitor enables Instagram in the consent prompt.
 
-## Ambient Sound
+## Lounge Sound
 
-The sound control uses browser-generated Web Audio. It is opt-in, low volume, and does not require audio files.
+The sound control combines very quiet architectural room tone with an original 64-second procedural lounge cycle. It is opt-in, low volume, contains no samples or third-party music, and never autoplays.

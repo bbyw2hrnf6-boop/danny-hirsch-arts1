@@ -4,63 +4,72 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
 const TAU = Math.PI * 2;
 
+const finiteMaterialValue = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const DARK_PALETTE = {
-  wall: '#1a1c1a',
+  wall: '#3a3631',
   fabric: '#24231f',
   architecture: '#151715',
-  ceiling: '#070807',
-  floor: '#171611',
-  floor_tile_a: '#191914',
-  floor_tile_b: '#11130f',
-  floor_alt: '#201e18',
-  stone: '#111311',
+  ceiling: '#1c1c1c',
+  floor: '#0f0f10',
+  floor_tile_a: '#0f0f10',
+  floor_tile_b: '#0f0f10',
+  floor_alt: '#0f0f10',
+  stone: '#0f0f10',
   shadow: '#050606',
-  bronze: '#6a4e2c',
-  frame: '#5c4327',
-  bench: '#17140f',
-  wood: '#24160d',
-  leather: '#19130e',
-  leather_seam: '#090806',
+  bronze: '#b08a4e',
+  frame: '#b08a4e',
+  bench: '#1e1b19',
+  wood: '#4a3222',
+  leather: '#1e1b19',
+  leather_seam: '#12100f',
   plaque: '#b5aa97',
   plaque_text: '#2c241a',
-  planter: '#151715',
+  planter: '#1c1c1c',
+  concrete_planter: '#5c5c55',
   botanical: '#29452a',
   botanical_leaf: '#294d2b',
   botanical_stem: '#283821',
   water: '#405451',
   water_highlight: '#91a7a2',
   ceramic: '#181a18',
-  glass: '#675237',
+  glass: '#ffffff',
   vessel: '#27231d'
 };
 
 const LIGHT_PALETTE = {
-  wall: '#c1b8aa',
+  // Light mode changes the gallery illumination, not the physical finishes.
+  // Keeping the board palette stable avoids a synthetic beige recolour.
+  wall: '#3a3631',
   fabric: '#aaa195',
   architecture: '#989086',
-  ceiling: '#36332e',
+  ceiling: '#1c1c1c',
   floor: '#7d7569',
-  floor_tile_a: '#a2998b',
-  floor_tile_b: '#8c8376',
-  floor_alt: '#998f80',
-  stone: '#91897e',
+  floor_tile_a: '#0f0f10',
+  floor_tile_b: '#0f0f10',
+  floor_alt: '#0f0f10',
+  stone: '#0f0f10',
   shadow: '#504b43',
-  bronze: '#9c7641',
-  frame: '#806038',
-  bench: '#7d7263',
-  wood: '#6c4b31',
-  leather: '#75675a',
+  bronze: '#b08a4e',
+  frame: '#b08a4e',
+  bench: '#1e1b19',
+  wood: '#4a3222',
+  leather: '#1e1b19',
   leather_seam: '#403931',
   plaque: '#ded5c6',
   plaque_text: '#3b3023',
-  planter: '#4d4b46',
+  planter: '#1c1c1c',
+  concrete_planter: '#5c5c55',
   botanical: '#52684a',
   botanical_leaf: '#607a55',
   botanical_stem: '#4d5d43',
   water: '#879995',
   water_highlight: '#c4d0cd',
   ceramic: '#77736b',
-  glass: '#a68c66',
+  glass: '#ffffff',
   vessel: '#5f584e'
 };
 
@@ -288,7 +297,10 @@ const createNavigationTexture = (items, lightTheme, activeId) => {
 };
 
 const createMicroNormalTexture = (kind = 'stone') => {
-  const size = 128;
+  // Plaster benefits from a denser, lower-amplitude field than stone. The
+  // higher source resolution prevents the wall normal from reading as large
+  // rocky facets when visitors stand close to it.
+  const size = kind === 'plaster' ? 256 : 128;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const context = canvas.getContext('2d');
@@ -296,6 +308,14 @@ const createMicroNormalTexture = (kind = 'stone') => {
   const heights = new Float32Array(size * size);
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
+      if (kind === 'plaster') {
+        const broad = Math.sin(x * 0.071 + Math.sin(y * 0.043) * 1.25) * 0.052;
+        const fine = Math.sin(x * 0.39 + y * 0.17) * 0.025
+          + Math.sin(x * 0.16 - y * 0.31) * 0.018;
+        const fleck = Math.sin((x * 12.9898 + y * 78.233) % Math.PI) * 0.014;
+        heights[y * size + x] = broad + fine + fleck;
+        continue;
+      }
       const grain = Math.sin(x * (kind === 'wood' ? 0.22 : 0.67) + Math.sin(y * 0.11) * 1.8);
       const pore = Math.sin((x * 12.9898 + y * 78.233) % Math.PI) * 0.32;
       heights[y * size + x] = grain * (kind === 'wood' ? 0.7 : 0.22) + pore;
@@ -308,8 +328,9 @@ const createMicroNormalTexture = (kind = 'stone') => {
       const down = heights[((y + size - 1) % size) * size + x];
       const up = heights[((y + 1) % size) * size + x];
       const offset = (y * size + x) * 4;
-      image.data[offset] = 128 + clamp((left - right) * 42, -90, 90);
-      image.data[offset + 1] = 128 + clamp((down - up) * 42, -90, 90);
+      const slope = kind === 'plaster' ? 20 : 42;
+      image.data[offset] = 128 + clamp((left - right) * slope, -90, 90);
+      image.data[offset + 1] = 128 + clamp((down - up) * slope, -90, 90);
       image.data[offset + 2] = 245;
       image.data[offset + 3] = 255;
     }
@@ -317,7 +338,8 @@ const createMicroNormalTexture = (kind = 'stone') => {
   context.putImageData(image, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(kind === 'wood' ? 2 : 7, kind === 'wood' ? 5 : 7);
+  if (kind === 'plaster') texture.repeat.set(11, 11);
+  else texture.repeat.set(kind === 'wood' ? 2 : 7, kind === 'wood' ? 5 : 7);
   texture.colorSpace = THREE.NoColorSpace;
   return texture;
 };
@@ -450,6 +472,7 @@ export function initWalkableGallery3D(options = {}) {
   const listeners = [];
   const playerRadius = 0.34;
   const detailTextures = {
+    plaster: createMicroNormalTexture('plaster'),
     stone: createMicroNormalTexture('stone'),
     wood: createMicroNormalTexture('wood'),
     leather: createMicroNormalTexture('leather'),
@@ -650,7 +673,7 @@ export function initWalkableGallery3D(options = {}) {
   };
 
   const setSidebarCollapsed = (collapsed) => {
-    sidebarCollapsed = compact ? Boolean(collapsed) : false;
+    sidebarCollapsed = Boolean(collapsed);
     sidebar?.classList.toggle('is-collapsed', sidebarCollapsed);
     root.classList.toggle('is-sidebar-collapsed', sidebarCollapsed);
     sidebarToggle?.setAttribute('aria-expanded', String(!sidebarCollapsed));
@@ -859,14 +882,27 @@ export function initWalkableGallery3D(options = {}) {
     const isLight = currentTheme === 'light';
     const palette = isLight ? LIGHT_PALETTE : DARK_PALETTE;
     themedMaterials.forEach((entry) => {
-      let color = palette[entry.role] || palette.architecture;
+      const authoredThemeColor = entry.material.userData?.[isLight ? 'theme_light' : 'theme_dark'];
+      let color = entry.boardColor || authoredThemeColor || palette[entry.role] || palette.architecture;
       if (entry.hasGeneratedMap) {
-        if (entry.role === 'wood') color = isLight ? '#e0c9b2' : '#b69b83';
-        else if (/leather/.test(entry.role)) color = isLight ? '#d4c4b6' : '#a58f7e';
-        else color = isLight ? '#ddd7cd' : '#aaa69d';
+        // Packed scans already contain the approved plaster, walnut, leather
+        // and marble albedo. Keep object finishes neutral, but give rough
+        // plaster a restrained multiplier: the brighter consultation-room
+        // fills must not turn the #3A3631 material board into pale concrete.
+        color = entry.role === 'wall'
+          ? (isLight ? '#d3ccc3' : '#8b837a')
+          : '#ffffff';
       }
       entry.target.set(color);
-      if (instant && entry.material.color) entry.material.color.copy(entry.target);
+      entry.targetRoughness = clamp(
+        isLight ? entry.lightRoughness : entry.darkRoughness,
+        0.02,
+        1
+      );
+      if (instant) {
+        if (entry.material.color) entry.material.color.copy(entry.target);
+        if ('roughness' in entry.material) entry.material.roughness = entry.targetRoughness;
+      }
     });
     scene.background = new THREE.Color(isLight ? '#746c61' : '#060706');
     if ('environmentIntensity' in scene) scene.environmentIntensity = isLight ? 0.78 : 0.68;
@@ -1016,8 +1052,10 @@ export function initWalkableGallery3D(options = {}) {
   };
 
   const setDemoMode = (nextDemoMode) => {
+    const enteringDemo = !demoMode && Boolean(nextDemoMode);
     demoMode = Boolean(nextDemoMode);
     if (compact) setSidebarCollapsed(true);
+    else if (enteringDemo) setSidebarCollapsed(false);
     demoObjects.forEach((object) => { object.visible = demoMode; });
     standardObjects.forEach((object) => { object.visible = !demoMode; });
     if (!demoMode) mount.classList.remove('has-interactive-target');
@@ -1072,6 +1110,7 @@ export function initWalkableGallery3D(options = {}) {
     if (item.id === 'artworks') goToWork(1);
     else if (item.id.startsWith('room-')) goToDemoRoom(item.id.replace(/^room-/, ''));
     else goToSitePanel(item.id);
+    setSidebarCollapsed(true);
   };
 
   const navigationHitAt = (clientX, clientY) => {
@@ -1187,8 +1226,21 @@ export function initWalkableGallery3D(options = {}) {
   const updateTheme = (delta) => {
     if (themeTransition >= 1) return;
     const amount = 1 - Math.exp(-delta * 6);
-    themedMaterials.forEach(({ material, target }) => material.color?.lerp(target, amount));
+    themedMaterials.forEach(({ material, target, targetRoughness }) => {
+      material.color?.lerp(target, amount);
+      if ('roughness' in material && Number.isFinite(targetRoughness)) {
+        material.roughness += (targetRoughness - material.roughness) * amount;
+      }
+    });
     themeTransition = Math.min(1, themeTransition + delta * 2.5);
+    if (themeTransition >= 1) {
+      themedMaterials.forEach(({ material, target, targetRoughness }) => {
+        material.color?.copy(target);
+        if ('roughness' in material && Number.isFinite(targetRoughness)) {
+          material.roughness = targetRoughness;
+        }
+      });
+    }
   };
 
   const render = () => {
@@ -1362,14 +1414,42 @@ export function initWalkableGallery3D(options = {}) {
           }
           const reflective = /floor_tile|floor_alt|bronze|plaque|planter|wood|leather/.test(role);
           material.envMapIntensity = reflective ? (/bronze|plaque_text/.test(role) ? 1.15 : 0.72) : 0.22;
+          const darkRoughness = finiteMaterialValue(
+            material.userData?.dark_roughness,
+            finiteMaterialValue(material.roughness, 0.6)
+          );
+          const lightRoughness = finiteMaterialValue(
+            material.userData?.light_roughness,
+            Math.min(1, darkRoughness + 0.06)
+          );
+          const authoredSpecular = clamp(
+            finiteMaterialValue(material.userData?.web_specular, material.specularIntensity ?? 0.5),
+            0,
+            1
+          );
+          const authoredAnisotropy = clamp(
+            finiteMaterialValue(material.userData?.web_anisotropic, material.anisotropy ?? 0),
+            0,
+            1
+          );
           if ('clearcoat' in material) {
-            material.clearcoat = Number(material.userData?.web_clearcoat ?? material.clearcoat ?? 0);
-            material.clearcoatRoughness = Number(material.userData?.web_clearcoat_roughness ?? material.clearcoatRoughness ?? 0.2);
+            material.clearcoat = clamp(
+              finiteMaterialValue(material.userData?.web_clearcoat, material.clearcoat ?? 0),
+              0,
+              1
+            );
+            material.clearcoatRoughness = clamp(
+              finiteMaterialValue(material.userData?.web_clearcoat_roughness, material.clearcoatRoughness ?? 0.2),
+              0,
+              1
+            );
           }
+          if ('specularIntensity' in material) material.specularIntensity = authoredSpecular;
+          if ('anisotropy' in material) material.anisotropy = authoredAnisotropy;
           if (/floor_tile|floor_alt|stone|wall/.test(role)) {
-            material.normalMap = detailTextures.stone;
+            material.normalMap = role === 'wall' ? detailTextures.plaster : detailTextures.stone;
             const normalStrength = role === 'wall'
-              ? 0.045
+              ? 0.02
               : (/floor_tile|floor_alt/.test(role) ? 0.085 : 0.10);
             material.normalScale?.set(normalStrength, normalStrength);
           } else if (role === 'wood') {
@@ -1390,13 +1470,37 @@ export function initWalkableGallery3D(options = {}) {
             material.envMapIntensity = 0.12;
             material.roughness = Math.max(0.48, material.roughness || 0);
           }
+          if (role === 'glass') {
+            // Clear museum glass and glassware stay optically neutral. Warmth
+            // comes from the 3000K room rig, never from an amber base colour.
+            material.color?.set('#ffffff');
+            material.transparent = true;
+            material.opacity = clamp(finiteMaterialValue(material.userData?.web_alpha, 0.34), 0.18, 0.58);
+            material.depthWrite = false;
+            material.side = THREE.DoubleSide;
+            material.envMapIntensity = 1.05;
+            if ('transmission' in material) material.transmission = Math.max(0.9, material.transmission || 0);
+            if ('ior' in material) material.ior = finiteMaterialValue(material.ior, 1.45);
+          }
           material.needsUpdate = true;
           const target = new THREE.Color();
           const hasGeneratedMap = Boolean(material.map) && (
             Boolean(material.userData?.generated_architectural_texture)
             || /marble|mineral_fabric|stained_oak|walnut|saddle_leather/i.test(material.name)
           );
-          materialEntries.set(material, { material, role, target, hasGeneratedMap });
+          const boardColor = typeof material.userData?.material_board_hex === 'string'
+            ? material.userData.material_board_hex
+            : null;
+          materialEntries.set(material, {
+            material,
+            role,
+            target,
+            hasGeneratedMap,
+            boardColor,
+            darkRoughness,
+            lightRoughness,
+            targetRoughness: darkRoughness
+          });
         }
       });
     });
@@ -1580,6 +1684,15 @@ export function initWalkableGallery3D(options = {}) {
       triggerHaptic(5);
     });
   }
+  if (sidebarScroll) {
+    listen(sidebarScroll, 'click', (event) => {
+      if (!(event.target instanceof Element) || !event.target.closest('button')) return;
+      setSidebarCollapsed(true);
+      // A keyboard-generated click would otherwise leave focus inside the
+      // newly hidden scroll region. Return focus to the persistent rail.
+      if (event.detail === 0) requestAnimationFrame(() => sidebarToggle?.focus());
+    });
+  }
   listen(renderer.domElement, 'webglcontextlost', (event) => {
     event.preventDefault();
     setActive(false);
@@ -1666,7 +1779,15 @@ export function initWalkableGallery3D(options = {}) {
     analogLook
   );
 
-  call(options.onLoading, { progress: null });
+  let loadedBytes = 0;
+  let totalBytes = null;
+  call(options.onLoading, {
+    phase: 'model',
+    progress: 0,
+    percent: 0,
+    loaded: 0,
+    total: null
+  });
   const loader = new GLTFLoader();
   loader.load(
     options.modelUrl || 'assets/cinematic/danny-gallery-360.glb',
@@ -1675,6 +1796,13 @@ export function initWalkableGallery3D(options = {}) {
         disposeObject(gltf.scene);
         return;
       }
+      call(options.onLoading, {
+        phase: 'assembling',
+        progress: 1,
+        percent: 100,
+        loaded: loadedBytes,
+        total: totalBytes
+      });
       prepareModel(gltf);
       ready = true;
       resize();
@@ -1686,9 +1814,18 @@ export function initWalkableGallery3D(options = {}) {
         animations: animationClipCount
       });
     },
-    (event) => call(options.onLoading, {
-      progress: event.total > 0 ? event.loaded / event.total : null
-    }),
+    (event) => {
+      loadedBytes = Number(event.loaded) || 0;
+      totalBytes = Number(event.total) > 0 ? Number(event.total) : null;
+      const progress = totalBytes ? clamp(loadedBytes / totalBytes, 0, 1) : null;
+      call(options.onLoading, {
+        phase: 'model',
+        progress,
+        percent: progress === null ? null : Math.round(progress * 100),
+        loaded: loadedBytes,
+        total: totalBytes
+      });
+    },
     (error) => {
       call(options.onError, { reason: 'model-load-error', error });
       destroy();

@@ -44,6 +44,31 @@ MATERIAL_TEXTURES = {
     "leather": ROOT / "assets" / "materials" / "saddle-leather.webp",
 }
 
+# Approved material board, July 2026. These values are deliberately kept in
+# one authoring source so Blender, the exported glTF extras and future visual
+# audits describe the same physical palette.
+MATERIAL_BOARD_PRESETS = {
+    "rough_plaster": {"hex": "#3A3631", "roughness": 0.85, "specular": 0.30},
+    "dark_walnut": {"hex": "#4A3222", "roughness": 0.45, "specular": 0.20},
+    "dark_leather": {"hex": "#1E1B19", "roughness": 0.70, "specular": 0.25},
+    "black_marble": {
+        "hex": "#0F0F10",
+        "roughness": 0.15,
+        "specular": 0.50,
+        "clearcoat": 0.30,
+    },
+    "brushed_bronze": {
+        "hex": "#B08A4E",
+        "roughness": 0.25,
+        "specular": 0.50,
+        "metallic": 1.0,
+        "anisotropic": 0.60,
+    },
+    "matte_black": {"hex": "#1C1C1C", "roughness": 0.60, "specular": 0.20},
+    "clear_glass": {"hex": "#FFFFFF", "roughness": 0.05, "specular": 0.50},
+    "concrete_planter": {"hex": "#5C5C55", "roughness": 0.82, "specular": 0.22},
+}
+
 ARTWORK_CATALOG = [
     {
         "title": "Yellow Field, Veined",
@@ -206,6 +231,8 @@ def create_material(
     emission_strength: float = 0.0,
     clearcoat: float = 0.0,
     clearcoat_roughness: float = 0.2,
+    specular: float = 0.5,
+    anisotropic: float = 0.0,
 ) -> bpy.types.Material:
     material = bpy.data.materials.new(name)
     material.use_nodes = True
@@ -213,6 +240,10 @@ def create_material(
     set_socket(principled, "Base Color", rgba(dark_color))
     set_socket(principled, "Roughness", roughness)
     set_socket(principled, "Metallic", metallic)
+    set_socket(principled, "Specular IOR Level", specular)
+    set_socket(principled, "Specular", specular)
+    set_socket(principled, "Anisotropic IOR Level", anisotropic)
+    set_socket(principled, "Anisotropic", anisotropic)
     set_socket(principled, "Coat Weight", clearcoat)
     set_socket(principled, "Clearcoat", clearcoat)
     set_socket(principled, "Coat Roughness", clearcoat_roughness)
@@ -225,6 +256,8 @@ def create_material(
     material["light_roughness"] = min(1.0, roughness + 0.06)
     material["web_clearcoat"] = clearcoat
     material["web_clearcoat_roughness"] = clearcoat_roughness
+    material["web_specular"] = specular
+    material["web_anisotropic"] = anisotropic
     return material
 
 
@@ -240,6 +273,8 @@ def create_textured_material(
     clearcoat: float = 0.0,
     clearcoat_roughness: float = 0.2,
     uv_repeat: float = 1.0,
+    specular: float = 0.5,
+    anisotropic: float = 0.0,
 ) -> bpy.types.Material:
     """Create PBR architecture material from a neutral generated scan.
 
@@ -255,6 +290,8 @@ def create_textured_material(
         metallic=metallic,
         clearcoat=clearcoat,
         clearcoat_roughness=clearcoat_roughness,
+        specular=specular,
+        anisotropic=anisotropic,
     )
     image = load_web_image(image_path, maximum_edge=1024)
     nodes = material.node_tree.nodes
@@ -355,7 +392,19 @@ def add_box(
     if bevel:
         modifier = obj.modifiers.new("Architectural edge", "BEVEL")
         modifier.width = bevel
-        modifier.segments = 2
+        modifier.segments = 3 if bevel >= 0.018 else 2
+        if hasattr(modifier, "harden_normals"):
+            modifier.harden_normals = True
+        # Smooth faces plus weighted corner normals remove the low-poly box
+        # look while retaining crisp architectural planes after batching.
+        for polygon in obj.data.polygons:
+            polygon.use_smooth = True
+        try:
+            weighted = obj.modifiers.new("Weighted corner normals", "WEIGHTED_NORMAL")
+            weighted.keep_sharp = True
+            weighted.weight = 50
+        except (RuntimeError, TypeError, AttributeError):
+            obj["weighted_normals_fallback"] = "bevel_harden_normals"
     if theme_role:
         obj["theme_role"] = theme_role
     if web:
@@ -538,8 +587,9 @@ def add_tilted_lectern_panel(
     material: bpy.types.Material,
     *,
     pitch_degrees: float = 30.0,
+    facing: str = "east",
 ) -> bpy.types.Object:
-    """Create an east-facing museum reading surface with clean UVs.
+    """Create an east- or west-facing museum reading surface with clean UVs.
 
     Width runs north/south.  Depth rises toward the partition so a visitor in
     the contact room sees both the physical label and the accessible DOM card.
@@ -550,11 +600,12 @@ def add_tilted_lectern_panel(
     half_depth = depth / 2
     run = math.cos(pitch) * half_depth
     rise = math.sin(pitch) * half_depth
+    facing_sign = 1.0 if facing == "east" else -1.0
     vertices = [
-        (run, -half_width, -rise),
-        (run, half_width, -rise),
-        (-run, half_width, rise),
-        (-run, -half_width, rise),
+        (facing_sign * run, -half_width, -rise),
+        (facing_sign * run, half_width, -rise),
+        (-facing_sign * run, half_width, rise),
+        (-facing_sign * run, -half_width, rise),
     ]
     mesh = bpy.data.meshes.new(f"{name}_Mesh")
     mesh.from_pydata(vertices, [], [(0, 1, 2, 3)])
@@ -737,16 +788,17 @@ def add_surface_portal(
     wall_x = -6.79 if side == "west" else 6.79
     center = (wall_x, along_wall, center_z)
 
-    # Each work sits on its own quiet acoustic-fabric bay. The surrounding
-    # shell stays mineral stone, as in the approved material specification.
-    fabric_x = -6.832 if side == "west" else 6.832
-    groups["fabric"].append(add_box(
-        f"Surface_{index:02d}_Fabric_Display_Bay",
-        (fabric_x, along_wall, 2.82),
+    # Each work sits on its own rough-plaster bay from the current gallery-room
+    # board. Walnut pilasters and bronze rails supply the softer material
+    # rhythm; no unrelated fabric panel competes with the painting surface.
+    wall_bay_x = -6.832 if side == "west" else 6.832
+    groups["wall"].append(add_box(
+        f"Surface_{index:02d}_Rough_Plaster_Display_Bay",
+        (wall_bay_x, along_wall, 2.82),
         (0.032, 3.64, 4.92),
-        materials["fabric"],
+        materials["wall"],
         bevel=0.018,
-        theme_role="fabric",
+        theme_role="wall",
     ))
 
     back_x = -6.87 if side == "west" else 6.87
@@ -872,8 +924,8 @@ def add_surface_portal(
         "SPOT",
         (light_x, along_wall, 5.20),
         center,
-        (1.0, 0.73, 0.43) if index % 2 else (0.72, 0.83, 1.0),
-        520 if index % 2 else 440,
+        (1.0, 0.76, 0.58) if index % 2 else (0.78, 0.86, 1.0),
+        425 if index % 2 else 360,
         web=True,
         theme_role="surface_spot",
         spot_size=math.radians(33),
@@ -1005,18 +1057,19 @@ def add_site_information_panels(
             view_target=(x, -15.64, rail_z),
         )
 
-    # Privacy and imprint are deliberately separated at opposite ends of the
-    # solid centre partition.  The open doorway between y=-10.96 and -13.04
-    # remains completely free, as does the 1.20 m authored contact-room route.
+    # Privacy and imprint are deliberately separated onto their corresponding
+    # sides of the solid centre partition. Privacy becomes the requested
+    # consultation lectern; imprint belongs to the quieter contact lounge.
+    # The open doorway between y=-10.96 and -13.04 remains completely free.
     lectern_layout = (
-        (4, "privacy", -9.58),
-        (5, "imprint", -14.24),
+        (4, "privacy", -9.58, -1.0, "west", -2.15),
+        (5, "imprint", -14.24, 1.0, "east", 2.15),
     )
-    for index, panel_id, y in lectern_layout:
+    for index, panel_id, y, side_sign, facing, view_x in lectern_layout:
         panel_data = panels_by_id[panel_id]
         base = add_box(
             f"SITE_LECTERN_{panel_id.upper()}_Base",
-            (0.47, y, 0.075),
+            (side_sign * 0.47, y, 0.075),
             (0.68, 0.92, 0.15),
             materials["stone"],
             bevel=0.035,
@@ -1024,7 +1077,7 @@ def add_site_information_panels(
         )
         column = add_box(
             f"SITE_LECTERN_{panel_id.upper()}_Column",
-            (0.39, y, 0.61),
+            (side_sign * 0.39, y, 0.61),
             (0.17, 0.20, 1.05),
             materials["bronze"],
             bevel=0.025,
@@ -1032,30 +1085,32 @@ def add_site_information_panels(
         )
         support = add_box(
             f"SITE_LECTERN_{panel_id.upper()}_Support",
-            (0.72, y, 1.27),
+            (side_sign * 0.72, y, 1.27),
             (0.88, 1.12, 0.065),
             materials["shadow"],
             bevel=0.025,
             theme_role="shadow",
         )
-        support.rotation_euler.y = math.radians(30)
+        support.rotation_euler.y = math.radians(30) * side_sign
         frame = add_tilted_lectern_panel(
             f"SITE_LECTERN_{panel_id.upper()}_Bronze_Frame",
-            (0.72, y, 1.29),
+            (side_sign * 0.72, y, 1.29),
             1.08,
             0.84,
             materials["bronze"],
+            facing=facing,
         )
         panel = add_tilted_lectern_panel(
             f"SITE_PANEL_{panel_id.upper()}",
-            (0.742, y, 1.312),
+            (side_sign * 0.742, y, 1.312),
             0.94,
             0.69,
             materials["plaque"],
+            facing=facing,
         )
         lip = add_box(
             f"SITE_LECTERN_{panel_id.upper()}_Reading_Lip",
-            (1.095, y, 1.065),
+            (side_sign * 1.095, y, 1.065),
             (0.055, 1.10, 0.07),
             materials["bronze"],
             bevel=0.012,
@@ -1068,14 +1123,15 @@ def add_site_information_panels(
         panel["lectern_pitch_degrees"] = 30.0
         panel["clear_of_portals"] = True
         panel["route_clearance_metres"] = 1.25
+        panel["lectern_facing"] = facing
         annotate_panel(
             panel,
             panel_data,
             index=index,
-            presentation="angled contact-room reading lectern",
+            presentation=f"angled {panel_id} reading lectern",
             alignment="demo-legal-reading-stations",
-            view_location=(2.15, y, WALK_EYE_HEIGHT),
-            view_target=(0.72, y, 1.29),
+            view_location=(view_x, y, WALK_EYE_HEIGHT),
+            view_target=(side_sign * 0.72, y, 1.29),
         )
 
 
@@ -1249,6 +1305,8 @@ def add_lush_leaf(
     width: float,
     material: bpy.types.Material,
     group: list[bpy.types.Object],
+    *,
+    subdivision_levels: int = 1,
 ) -> bpy.types.Object:
     """Create a curved, paddle-shaped tropical leaf with a real silhouette."""
     segments = 14
@@ -1288,9 +1346,10 @@ def add_lush_leaf(
     bevel = leaf.modifiers.new("Rounded leaf edge", "BEVEL")
     bevel.width = 0.006
     bevel.segments = 2
-    subdivision = leaf.modifiers.new("Organic leaf surface", "SUBSURF")
-    subdivision.levels = 1
-    subdivision.render_levels = 1
+    if subdivision_levels > 0:
+        subdivision = leaf.modifiers.new("Organic leaf surface", "SUBSURF")
+        subdivision.levels = subdivision_levels
+        subdivision.render_levels = subdivision_levels
     for polygon in leaf.data.polygons:
         polygon.use_smooth = True
     leaf["asset_role"] = "modeled_gallery_plant_leaf"
@@ -1335,8 +1394,16 @@ def add_lush_botanical(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
     seed: int,
+    *,
+    planter_role: str = "planter",
+    animate: bool = True,
+    demo_only: bool = False,
+    scale_factor: float = 1.0,
+    leaf_count: int = 17,
+    leaf_subdivision_levels: int = 1,
 ) -> None:
     """High-quality broad-leaf plant inspired by the approved room boards."""
+    existing_objects = {obj.name for obj in bpy.context.scene.objects}
     random.seed(seed)
     x, y, _ = origin
     bpy.ops.mesh.primitive_cone_add(
@@ -1348,16 +1415,16 @@ def add_lush_botanical(
     )
     planter = bpy.context.object
     planter.name = f"{prefix}_Tapered_Planter"
-    assign_material(planter, materials["planter"])
+    assign_material(planter, materials[planter_role])
     planter_bevel = planter.modifiers.new("Planter soft edge", "BEVEL")
     planter_bevel.width = 0.055
     planter_bevel.segments = 4
     for polygon in planter.data.polygons:
         polygon.use_smooth = True
-    planter["theme_role"] = "planter"
+    planter["theme_role"] = planter_role
     planter["asset_role"] = "modeled_premium_gallery_planter"
     mark_web(planter)
-    groups["planter"].append(planter)
+    groups[planter_role].append(planter)
 
     foot = add_cylinder(f"{prefix}_Shadow_Foot", (x, y, 0.055), 0.34, 0.08, materials["shadow"], vertices=36)
     foot["theme_role"] = "shadow"
@@ -1370,8 +1437,8 @@ def add_lush_botanical(
     groups["shadow"].append(soil)
 
     stem_base = Vector((x, y, 1.13))
-    for index in range(17):
-        angle = (index / 17) * math.tau
+    for index in range(leaf_count):
+        angle = (index / leaf_count) * math.tau
         angle += random.uniform(-0.20, 0.20)
         radius = random.uniform(0.18, 0.54)
         leaf_base = Vector((
@@ -1397,7 +1464,7 @@ def add_lush_botanical(
         leaf_material = materials["leaf_a"] if index % 3 else materials["leaf_b"]
         # These two silhouette leaves remain individual so their subtle
         # actions are not destroyed by the static leaf batching pass.
-        animated_leaf = index in (4, 12)
+        animated_leaf = animate and index in (4, 12)
         export_group: list[bpy.types.Object] = [] if animated_leaf else leaf_group
         leaf = add_lush_leaf(
             f"{prefix}_Broad_Leaf_{index:02d}",
@@ -1407,6 +1474,7 @@ def add_lush_botanical(
             random.uniform(0.19, 0.32),
             leaf_material,
             export_group,
+            subdivision_levels=leaf_subdivision_levels,
         )
         if animated_leaf:
             clip_offset = 0 if prefix.endswith("West") else 2
@@ -1415,6 +1483,9 @@ def add_lush_botanical(
                 clip_offset + (1 if index == 4 else 2),
                 phase=seed * 0.013 + index * 0.71,
             )
+            if demo_only:
+                leaf["demo_only"] = True
+                leaf["asset_role"] = "optional_3d_site_botanical"
         vein_end = leaf_base + outward * leaf_length * 0.92
         add_stem_between(
             f"{prefix}_Leaf_Vein_{index:02d}",
@@ -1424,6 +1495,15 @@ def add_lush_botanical(
             materials["stem"],
             groups["stem"],
         )
+
+    if not math.isclose(scale_factor, 1.0):
+        pivot = Vector(origin)
+        for obj in bpy.context.scene.objects:
+            if obj.name in existing_objects:
+                continue
+            obj.location = pivot + (obj.location - pivot) * scale_factor
+            obj.scale = tuple(component * scale_factor for component in obj.scale)
+            obj["botanical_scale_factor"] = scale_factor
 
 
 def build_gallery_shell(
@@ -1597,7 +1677,7 @@ def build_gallery_shell(
             "POINT",
             location,
             (0, 0, 2.2),
-            (1.0, 0.65, 0.34),
+            (1.0, 0.76, 0.58),
             52 if index <= 6 else 40,
             web=True,
             theme_role="cove_fill",
@@ -1634,7 +1714,7 @@ def build_gallery_shell(
         "SPOT",
         (0, -4.92, 5.18),
         (0, -7.70, 2.54),
-        (1.0, 0.73, 0.45),
+        (1.0, 0.76, 0.58),
         330,
         web=True,
         theme_role="threshold_spot",
@@ -1730,8 +1810,8 @@ def add_wartrobe(
             "SPOT",
             (x, 4.75, 5.28),
             (x * 0.32, 7.40, 2.38),
-            (1.0, 0.70, 0.38),
-            710,
+            (1.0, 0.76, 0.58),
+            580,
             web=True,
             theme_role="wartrobe_spot",
             spot_size=math.radians(31),
@@ -1752,10 +1832,11 @@ def add_bench(materials: dict[str, bpy.types.Material], groups: dict[str, list[b
     # Long tailored leather bench from the approved room concept: softened
     # cushion, dark-oak apron, stitched bays and patinated-bronze sled feet.
     bench_y = -1.72
+    footprint_scale = 0.76
     groups["leather"].append(add_box(
         "Bench_Leather_Cushion",
         (0, bench_y, 0.62),
-        (3.92, 1.02, 0.23),
+        (3.92 * footprint_scale, 1.02 * footprint_scale, 0.23),
         materials["leather"],
         bevel=0.105,
         theme_role="leather",
@@ -1763,34 +1844,34 @@ def add_bench(materials: dict[str, bpy.types.Material], groups: dict[str, list[b
     groups["wood"].append(add_box(
         "Bench_Dark_Oak_Apron",
         (0, bench_y, 0.455),
-        (3.66, 0.80, 0.19),
+        (3.66 * footprint_scale, 0.80 * footprint_scale, 0.19),
         materials["wood"],
         bevel=0.045,
         theme_role="wood",
     ))
-    for y in (bench_y - 0.47, bench_y + 0.47):
+    for y in (bench_y - 0.47 * footprint_scale, bench_y + 0.47 * footprint_scale):
         groups["leather_seam"].append(add_box(
             f"Bench_Leather_Piping_{y:+.2f}",
             (0, y, 0.685),
-            (3.76, 0.018, 0.018),
+            (3.76 * footprint_scale, 0.018, 0.018),
             materials["leather_seam"],
             bevel=0.007,
             theme_role="leather_seam",
         ))
-    for seam_index, x in enumerate((-1.18, 0.0, 1.18), start=1):
+    for seam_index, x in enumerate((-1.18 * footprint_scale, 0.0, 1.18 * footprint_scale), start=1):
         groups["leather_seam"].append(add_box(
             f"Bench_Top_Seam_{seam_index:02d}",
             (x, bench_y, 0.738),
-            (0.014, 0.88, 0.012),
+            (0.014, 0.88 * footprint_scale, 0.012),
             materials["leather_seam"],
             bevel=0.004,
             theme_role="leather_seam",
         ))
-    for x in (-1.48, 1.48):
+    for x in (-1.48 * footprint_scale, 1.48 * footprint_scale):
         groups["bronze"].append(add_box(
             f"Bench_Leg_{x:+.2f}",
             (x, bench_y, 0.245),
-            (0.12, 0.72, 0.43),
+            (0.12, 0.72 * footprint_scale, 0.43),
             materials["bronze"],
             bevel=0.032,
             theme_role="bronze",
@@ -1798,7 +1879,7 @@ def add_bench(materials: dict[str, bpy.types.Material], groups: dict[str, list[b
         groups["bronze"].append(add_box(
             f"Bench_Leg_Foot_{x:+.2f}",
             (x, bench_y, 0.065),
-            (0.38, 0.84, 0.065),
+            (0.38 * footprint_scale, 0.84 * footprint_scale, 0.065),
             materials["bronze"],
             bevel=0.018,
             theme_role="bronze",
@@ -1970,13 +2051,15 @@ def add_demo_coffee_table(
     center: tuple[float, float],
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
+    *,
+    scale_factor: float = 1.0,
 ) -> None:
     # A narrow side-table scale preserves the lounge composition without
     # plugging the 1.2 m circulation lane from the entrance to the south wall.
-    add_rotated_box(prefix + "_Top", center, (0, 0), 0.45, (1.34, 0.68, 0.11), 0, materials["stone"], groups["stone"], "stone", bevel=0.030)
-    add_rotated_box(prefix + "_Shadow", center, (0, 0), 0.29, (0.94, 0.42, 0.19), 0, materials["shadow"], groups["shadow"], "shadow", bevel=0.024)
+    add_rotated_box(prefix + "_Top", center, (0, 0), 0.45 * scale_factor, (1.34 * scale_factor, 0.68 * scale_factor, 0.11 * scale_factor), 0, materials["stone"], groups["stone"], "stone", bevel=0.030 * scale_factor)
+    add_rotated_box(prefix + "_Shadow", center, (0, 0), 0.29 * scale_factor, (0.94 * scale_factor, 0.42 * scale_factor, 0.19 * scale_factor), 0, materials["shadow"], groups["shadow"], "shadow", bevel=0.024 * scale_factor)
     for x in (-0.46, 0.46):
-        add_rotated_box(prefix + f"_Bronze_Leg_{x:+.2f}", center, (x, 0), 0.21, (0.07, 0.44, 0.36), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.012)
+        add_rotated_box(prefix + f"_Bronze_Leg_{x:+.2f}", center, (x * scale_factor, 0), 0.21 * scale_factor, (0.07 * scale_factor, 0.44 * scale_factor, 0.36 * scale_factor), 0, materials["bronze"], groups["bronze"], "bronze", bevel=0.012 * scale_factor)
 
 
 def add_demo_chair(
@@ -1986,14 +2069,17 @@ def add_demo_chair(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    add_rotated_box(prefix + "_Seat", center, (0, 0), 0.49, (0.56, 0.56, 0.17), angle, materials["leather"], groups["leather"], "leather", bevel=0.058)
-    add_rotated_box(prefix + "_Back", center, (0, 0.245), 0.94, (0.56, 0.14, 0.79), angle, materials["leather"], groups["leather"], "leather", bevel=0.050)
+    # Fuller cushions and rounded edges give the small consultation chairs the
+    # tailored softness of the board without increasing their walk footprint.
+    add_rotated_box(prefix + "_Seat", center, (0, 0), 0.51, (0.58, 0.58, 0.22), angle, materials["leather"], groups["leather"], "leather", bevel=0.085)
+    add_rotated_box(prefix + "_Back", center, (0, 0.245), 0.95, (0.58, 0.19, 0.82), angle, materials["leather"], groups["leather"], "leather", bevel=0.075)
     for dx in (-0.18, 0.18):
         for dy in (-0.18, 0.18):
-            add_rotated_box(prefix + f"_Leg_{dx:+.2f}_{dy:+.2f}", center, (dx, dy), 0.23, (0.050, 0.050, 0.46), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.010)
+            add_rotated_box(prefix + f"_Walnut_Leg_{dx:+.2f}_{dy:+.2f}", center, (dx, dy), 0.23, (0.055, 0.055, 0.46), angle, materials["wood"], groups["wood"], "wood", bevel=0.012)
 
 
 def add_demo_meeting_table(
+    prefix: str,
     center: tuple[float, float],
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
@@ -2005,35 +2091,81 @@ def add_demo_meeting_table(
     # a wall of chair backs to the visitor's entrance camera.
     table_length = 1.96
     table_depth = 0.78
-    add_rotated_box("Contact_Table_Top", center, (0, 0), 0.79, (table_length, table_depth, 0.15), angle, materials["wood"], groups["wood"], "wood", bevel=0.050)
-    add_rotated_box("Contact_Table_Inlay", center, (0, 0), 0.88, (1.62, 0.10, 0.030), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.010)
+    add_rotated_box(prefix + "_Table_Top", center, (0, 0), 0.79, (table_length, table_depth, 0.15), angle, materials["wood"], groups["wood"], "wood", bevel=0.050)
+    add_rotated_box(prefix + "_Table_Inlay", center, (0, 0), 0.88, (1.62, 0.10, 0.030), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.010)
     for along in (-0.58, 0.58):
-        add_rotated_box(f"Contact_Table_Leg_{along:+.2f}", center, (along, 0), 0.39, (0.11, 0.64, 0.74), angle, materials["bronze"], groups["bronze"], "bronze", bevel=0.020)
+        add_rotated_box(prefix + f"_Table_Walnut_Leg_{along:+.2f}", center, (along, 0), 0.39, (0.13, 0.64, 0.74), angle, materials["wood"], groups["wood"], "wood", bevel=0.026)
 
-    for side, side_label, along in ((1, "West", -0.48), (-1, "East", 0.48)):
+    for side, side_label in ((1, "West"), (-1, "East")):
         chair_angle = angle if side > 0 else angle + math.pi
-        chair_center = local_xy(center, (along, side * 0.72), angle)
-        add_demo_chair(f"Contact_Chair_{side_label}", chair_center, chair_angle, materials, groups)
+        chair_center = local_xy(center, (0.0, side * 0.72), angle)
+        add_demo_chair(f"{prefix}_Chair_{side_label}", chair_center, chair_angle, materials, groups)
 
 
 def add_demo_shelving(
+    prefix: str,
+    wall_x: float,
+    center_y: float,
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    # Illuminated display library on the east wall of Meet & Contact.
-    for y in (-14.55, -12.95, -11.35, -9.75):
-        groups["wood"].append(add_box(f"Contact_Shelf_Vertical_{y:+.2f}", (6.70, y, 2.62), (0.28, 0.10, 4.30), materials["wood"], bevel=0.018, theme_role="wood"))
+    """Illuminated walnut display library mounted flush to either side wall."""
+    inward = -1.0 if wall_x > 0 else 1.0
+    for offset_y in (-2.35, -0.78, 0.78, 2.35):
+        y = center_y + offset_y
+        groups["wood"].append(add_box(f"{prefix}_Shelf_Vertical_{y:+.2f}", (wall_x, y, 2.62), (0.28, 0.10, 4.30), materials["wood"], bevel=0.018, theme_role="wood"))
     for z in (0.65, 1.55, 2.45, 3.35, 4.25):
-        groups["wood"].append(add_box(f"Contact_Shelf_Horizontal_{z:.2f}", (6.65, -12.15, z), (0.36, 5.85, 0.10), materials["wood"], bevel=0.015, theme_role="wood"))
-        groups["emissive"].append(add_box(f"Contact_Shelf_Light_{z:.2f}", (6.43, -12.15, z - 0.07), (0.025, 5.55, 0.025), materials["emissive"], bevel=0.006, theme_role="emissive"))
-    for index, (y, z, radius) in enumerate((
-        (-14.05, 1.02, 0.16), (-13.25, 1.95, 0.12), (-12.40, 2.85, 0.18),
-        (-11.55, 1.02, 0.14), (-10.72, 3.72, 0.16), (-9.95, 2.00, 0.13),
+        groups["wood"].append(add_box(f"{prefix}_Shelf_Horizontal_{z:.2f}", (wall_x + inward * 0.05, center_y, z), (0.36, 5.25, 0.10), materials["wood"], bevel=0.015, theme_role="wood"))
+        groups["emissive"].append(add_box(f"{prefix}_Shelf_Light_{z:.2f}", (wall_x + inward * 0.27, center_y, z - 0.07), (0.025, 5.00, 0.025), materials["emissive"], bevel=0.006, theme_role="emissive"))
+    for index, (offset_y, shelf_z, radius) in enumerate((
+        (-1.95, 0.65, 0.16), (-1.20, 1.55, 0.12), (-0.42, 2.45, 0.18),
+        (0.42, 0.65, 0.14), (1.20, 3.35, 0.16), (1.95, 1.55, 0.13),
     ), start=1):
-        vessel = add_cylinder(f"Contact_Shelf_Vessel_{index:02d}", (6.38, y, z), radius, radius * 1.85, materials["ceramic"], vertices=20)
-        vessel.rotation_euler.y = math.pi / 2
+        y = center_y + offset_y
+        vessel_z = shelf_z + radius * 0.96
+        vessel = add_cylinder(f"{prefix}_Shelf_Vessel_{index:02d}", (wall_x + inward * 0.32, y, vessel_z), radius, radius * 1.85, materials["ceramic"], vertices=20)
         vessel["theme_role"] = "ceramic"
         groups["ceramic"].append(vessel)
+
+    # Restrained book stacks and bronze keepsakes stop the library reading as
+    # an empty grid while preserving large areas of visual quiet.
+    for index, (offset_y, shelf_z) in enumerate(((-1.55, 1.55), (0.78, 2.45), (1.48, 0.65)), start=1):
+        for book_index in range(3):
+            groups["wood"].append(add_box(
+                f"{prefix}_Book_{index:02d}_{book_index + 1:02d}",
+                (wall_x + inward * (0.34 + book_index * 0.025), center_y + offset_y, shelf_z + 0.038 + book_index * 0.075),
+                (0.11, 0.42 - book_index * 0.035, 0.065),
+                materials["wood"],
+                bevel=0.008,
+                theme_role="wood",
+            ))
+
+
+def add_demo_decanter_set(
+    prefix: str,
+    center: tuple[float, float],
+    angle: float,
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> None:
+    """Small clear-glass ritual object for the consultation table."""
+    tray_center = local_xy(center, (0.0, 0.0), angle)
+    add_rotated_box(prefix + "_Tray", center, (0, 0), 0.895, (0.52, 0.30, 0.025), angle, materials["stone"], groups["stone"], "stone", bevel=0.018)
+    decanter_xy = local_xy(tray_center, (-0.11, 0.0), angle)
+    decanter = add_cylinder(prefix + "_Decanter", (decanter_xy[0], decanter_xy[1], 1.035), 0.075, 0.25, materials["glass"], vertices=24)
+    decanter["theme_role"] = "glass"
+    groups["glass"].append(decanter)
+    neck = add_cylinder(prefix + "_Decanter_Neck", (decanter_xy[0], decanter_xy[1], 1.205), 0.030, 0.12, materials["glass"], vertices=20)
+    neck["theme_role"] = "glass"
+    groups["glass"].append(neck)
+    stopper = add_sphere(prefix + "_Decanter_Stopper", (decanter_xy[0], decanter_xy[1], 1.292), (0.045, 0.045, 0.050), materials["glass"], segments=16, ring_count=8)
+    stopper["theme_role"] = "glass"
+    groups["glass"].append(stopper)
+    for index, along in enumerate((0.08, 0.20), start=1):
+        glass_xy = local_xy(tray_center, (along, 0.0), angle)
+        glass = add_cylinder(prefix + f"_Glass_{index:02d}", (glass_xy[0], glass_xy[1], 0.985), 0.047, 0.16, materials["glass"], vertices=20)
+        glass["theme_role"] = "glass"
+        groups["glass"].append(glass)
 
 
 def add_demo_desk_lamp(
@@ -2075,22 +2207,23 @@ def add_demo_bonsai(
 
 
 def add_demo_pendant(
+    prefix: str,
     center: tuple[float, float],
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
     x, y = center
-    cord = add_cylinder("Contact_Pendant_Cord", (x, y, 4.55), 0.018, 2.25, materials["bronze"], vertices=14)
+    cord = add_cylinder(prefix + "_Pendant_Cord", (x, y, 4.55), 0.018, 2.25, materials["bronze"], vertices=14)
     cord["theme_role"] = "bronze"
     groups["bronze"].append(cord)
-    ring = add_torus("Contact_Pendant_Bronze_Ring", (x, y, 3.40), 0.36, 0.045, materials["bronze"], major_segments=32, minor_segments=10)
+    ring = add_torus(prefix + "_Pendant_Bronze_Ring", (x, y, 3.40), 0.36, 0.045, materials["bronze"], major_segments=32, minor_segments=10)
     ring["theme_role"] = "bronze"
     ring.rotation_euler.x = math.pi / 2
     groups["bronze"].append(ring)
-    globe = add_sphere("Contact_Pendant_Glass", (x, y, 3.40), (0.28, 0.28, 0.32), materials["glass"], segments=20, ring_count=12)
+    globe = add_sphere(prefix + "_Pendant_Glass", (x, y, 3.40), (0.28, 0.28, 0.32), materials["glass"], segments=20, ring_count=12)
     globe["theme_role"] = "glass"
     groups["glass"].append(globe)
-    glow = add_sphere("Contact_Pendant_Glow", (x, y, 3.40), (0.09, 0.09, 0.11), materials["emissive"], segments=14, ring_count=8)
+    glow = add_sphere(prefix + "_Pendant_Glow", (x, y, 3.40), (0.09, 0.09, 0.11), materials["emissive"], segments=14, ring_count=8)
     glow["theme_role"] = "emissive"
     groups["emissive"].append(glow)
 
@@ -2103,8 +2236,8 @@ def add_demo_water_ribbon(
     phase: float,
     material: bpy.types.Material,
 ) -> bpy.types.Object:
-    """Low-poly organic water trace with an irregular, tapered silhouette."""
-    segments = 26
+    """Smooth organic water trace with an irregular, tapered silhouette."""
+    segments = 42
     vertices: list[tuple[float, float, float]] = []
     faces: list[tuple[int, int, int, int]] = []
     for segment in range(segments + 1):
@@ -2144,7 +2277,9 @@ def add_demo_water_ribbon(
     solidify.offset = 0.0
     bevel = ribbon.modifiers.new("Water softened edge", "BEVEL")
     bevel.width = 0.004
-    bevel.segments = 1
+    bevel.segments = 3
+    if hasattr(bevel, "harden_normals"):
+        bevel.harden_normals = True
     for polygon in ribbon.data.polygons:
         polygon.use_smooth = True
     mark_web(ribbon)
@@ -2174,8 +2309,8 @@ def add_demo_water_droplet_chain(
             (x, y, z),
             (radius * 0.48, radius, radius * randomizer.uniform(1.35, 2.05)),
             material,
-            segments=12,
-            ring_count=8,
+            segments=16,
+            ring_count=10,
         )
         droplets.append(droplet)
     chain = join_meshes(name, droplets, theme_role="water_highlight")
@@ -2214,21 +2349,39 @@ def animate_demo_water_flow(
 
 
 def add_demo_waterfall(
+    prefix: str,
+    wall_x: float,
+    center_y: float,
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
+    *,
+    feature_scale: float = 1.0,
 ) -> None:
     # Architectural water wall: sculpted dark stone, layered reflective water,
     # and a deep black-marble catch basin rather than a flat decorative plane.
-    groups["stone"].append(add_box("Private_Waterfall_Stone", (-6.78, -11.18, 2.74), (0.18, 3.10, 4.62), materials["stone"], bevel=0.035, theme_role="stone"))
+    inward = -1.0 if wall_x > 0 else 1.0
+    floor_reference = 0.54
+
+    def scaled_z(value: float) -> float:
+        return floor_reference + (value - floor_reference) * feature_scale
+
+    groups["stone"].append(add_box(
+        prefix + "_Stone",
+        (wall_x, center_y, scaled_z(2.74)),
+        (0.18, 3.10 * feature_scale, 4.62 * feature_scale),
+        materials["stone"],
+        bevel=0.035,
+        theme_role="stone",
+    ))
 
     # The background membrane is a single organic silhouette, not a rectangular
     # glass sheet.  Six overlapping flow veils plus two droplet chains create
     # depth while keeping exactly eight lightweight looped clips.
     membrane = add_demo_water_ribbon(
-        "Private_Waterfall_Water_Membrane",
-        (-6.655, -11.18, 2.72),
-        2.90,
-        4.24,
+        prefix + "_Water_Membrane",
+        (wall_x + inward * 0.125, center_y, scaled_z(2.72)),
+        2.90 * feature_scale,
+        4.24 * feature_scale,
         0.37,
         materials["water"],
     )
@@ -2247,39 +2400,41 @@ def add_demo_waterfall(
     for index, (offset_y, width, height, center_z, phase) in enumerate(flow_specs, start=1):
         depth = 0.018 + (index % 3) * 0.009
         ribbon = add_demo_water_ribbon(
-            f"Private_Waterfall_Flow_{index:02d}",
-            (-6.625 - depth * 0.5, -11.18 + offset_y, center_z),
-            width,
-            height,
+            f"{prefix}_Flow_{index:02d}",
+            (wall_x + inward * (0.155 - depth * 0.5), center_y + offset_y * feature_scale, scaled_z(center_z)),
+            width * feature_scale,
+            height * feature_scale,
             phase,
             materials["water_highlight" if index in (2, 4) else "water"],
         )
         ribbon.rotation_euler.y = math.radians((index % 3 - 1) * 0.55)
         ribbon["theme_role"] = "water_highlight" if index in (2, 4) else "water"
         ribbon["asset_role"] = "water_flow"
+        ribbon["demo_only"] = True
         animate_demo_water_flow(ribbon, index, phase)
         groups["water_highlight"].append(ribbon)
 
     for index, (offset_y, phase) in enumerate(((-0.48, 1.48), (0.58, 4.66)), start=7):
         droplets = add_demo_water_droplet_chain(
-            f"Private_Waterfall_Droplet_Stream_{index - 6:02d}",
-            (-6.605, -11.18 + offset_y, 2.46),
-            0.50,
-            3.58,
+            f"{prefix}_Droplet_Stream_{index - 6:02d}",
+            (wall_x + inward * 0.175, center_y + offset_y * feature_scale, scaled_z(2.46)),
+            0.50 * feature_scale,
+            3.58 * feature_scale,
             phase,
             materials["water_highlight"],
         )
         animate_demo_water_flow(droplets, index, phase)
+        droplets["demo_only"] = True
         groups["water_highlight"].append(droplets)
 
     # Low splash beads break the final horizontal pool edge and sell impact.
     splash_random = random.Random(2407)
     for index in range(12):
         splash = add_sphere(
-            f"Private_Waterfall_Splash_{index + 1:02d}",
+            f"{prefix}_Splash_{index + 1:02d}",
             (
-                -6.05 + splash_random.uniform(-0.16, 0.16),
-                -11.18 + splash_random.uniform(-1.22, 1.22),
+                wall_x + inward * (0.73 + splash_random.uniform(-0.16, 0.16)),
+                center_y + splash_random.uniform(-1.22, 1.22) * feature_scale,
                 0.57 + splash_random.uniform(0.01, 0.17),
             ),
             (
@@ -2293,9 +2448,9 @@ def add_demo_waterfall(
         )
         splash["asset_role"] = "water_splash"
         groups["water"].append(splash)
-    groups["stone"].append(add_box("Private_Waterfall_Basin", (-6.28, -11.18, 0.25), (1.12, 3.35, 0.50), materials["stone"], bevel=0.055, theme_role="stone"))
-    groups["water"].append(add_box("Private_Waterfall_Pool", (-6.14, -11.18, 0.52), (0.76, 3.02, 0.045), materials["water"], bevel=0.025, theme_role="water"))
-    groups["emissive"].append(add_box("Private_Waterfall_Top_Light", (-6.61, -11.18, 5.10), (0.035, 2.82, 0.045), materials["emissive"], bevel=0.008, theme_role="emissive"))
+    groups["stone"].append(add_box(prefix + "_Basin", (wall_x + inward * 0.50, center_y, 0.25), (1.12, 3.35 * feature_scale, 0.50), materials["stone"], bevel=0.055, theme_role="stone"))
+    groups["water"].append(add_box(prefix + "_Pool", (wall_x + inward * 0.64, center_y, 0.52), (0.76, 3.02 * feature_scale, 0.045), materials["water"], bevel=0.025, theme_role="water"))
+    groups["emissive"].append(add_box(prefix + "_Top_Light", (wall_x + inward * 0.17, center_y, scaled_z(5.10)), (0.035, 2.82 * feature_scale, 0.045), materials["emissive"], bevel=0.008, theme_role="emissive"))
 
 
 def add_demo_artwork(
@@ -2414,21 +2569,51 @@ def build_demo_site_rooms(
     for x in (-3.5, 3.5):
         groups["shadow"].append(add_box(f"Demo_Ceiling_Track_{x:+.1f}", (x, -12.0, 5.56), (0.06, 6.9, 0.06), materials["shadow"], bevel=0.010, theme_role="shadow"))
 
-    add_demo_waterfall(materials, groups)
-    # One smaller sofa replaces the former two-sofa choke point.  Rotating it
-    # 180 degrees puts its back against the south wall and faces the artwork /
-    # water wall, rather than facing into the wall.
-    add_demo_sofa("Private_Sofa_South", (-4.85, -14.72), math.pi, materials, groups, width=1.85)
-    add_demo_coffee_table("Private_Coffee_Table", (-4.85, -13.10), materials, groups)
-    add_demo_meeting_table((5.15, -12.85), materials, groups, angle=math.pi / 2)
-    add_demo_shelving(materials, groups)
+    # 02 · Private consultation: the approved walnut library, two-chair table,
+    # clear-glass ritual set, pendant and one broad-leaf plant. Everything hugs
+    # the outer / partition walls so the 1.2 m circulation spine stays open.
+    private_table_center = (-4.50, -12.75)
+    add_demo_shelving("Private_Consultation", -6.70, -12.05, materials, groups)
+    add_demo_meeting_table("Private_Consultation", private_table_center, materials, groups, angle=math.pi / 2)
+    add_demo_decanter_set("Private_Consultation", private_table_center, math.pi / 2, materials, groups)
+    add_demo_pendant("Private_Consultation", private_table_center, materials, groups)
+    add_lush_botanical(
+        "Demo_Private_Botanical",
+        (-1.60, -9.05, 0),
+        materials,
+        groups,
+        seed=731,
+        planter_role="planter",
+        animate=False,
+        demo_only=True,
+        scale_factor=0.72,
+        leaf_count=11,
+        leaf_subdivision_levels=0,
+    )
 
-    # The entrance-blocking console, second sofa, and two oversized plants were
-    # intentionally removed.  The water wall and illuminated library already
-    # provide strong room identities; fewer objects make both spaces breathe.
-    add_demo_pendant((5.15, -12.85), materials, groups)
+    # 03 · Imprint / contact lounge: one armchair and low marble table face an
+    # animated water wall. A mineral concrete planter distinguishes this room
+    # without adding clutter or narrowing the doorway.
+    add_demo_waterfall("Contact_Water_Feature", 6.78, -11.18, materials, groups, feature_scale=0.82)
+    add_demo_sofa("Contact_Lounge_Armchair", (4.05, -14.50), math.pi, materials, groups, width=1.12)
+    add_demo_coffee_table("Contact_Lounge_Coffee_Table", (4.05, -13.08), materials, groups, scale_factor=0.82)
+    add_lush_botanical(
+        "Demo_Contact_Botanical",
+        (5.62, -14.58, 0),
+        materials,
+        groups,
+        seed=947,
+        planter_role="concrete_planter",
+        animate=False,
+        demo_only=True,
+        scale_factor=0.64,
+        leaf_count=11,
+        leaf_subdivision_levels=0,
+    )
 
-    add_demo_artwork("DEMO_ART_PRIVATE_WEST", "west", (-6.68, -14.15, 2.82), 3, 2.15 * STANDARD_ARTWORK_SCALE, materials, groups)
+    # The former west-wall artwork is intentionally omitted because the
+    # walnut consultation library now owns that wall. Real work remains on the
+    # north and south walls, clear of the portal and furniture silhouettes.
     # North-wall works sit in the solid outer bays.  Their inner frame edges are
     # beyond x=-4.65 / x=+4.65, safely clear of the 2.12 m entrance portals.
     add_demo_artwork("DEMO_ART_PRIVATE_NORTH", "north", (-5.70, -8.18, 2.84), 6, 1.46 * STANDARD_ARTWORK_SCALE, materials, groups)
@@ -2440,28 +2625,28 @@ def build_demo_site_rooms(
     add_demo_artwork("DEMO_ART_CONTACT_SOUTH", "south", (3.48, -15.59, 3.18), 5, 2.05 * STANDARD_ARTWORK_SCALE, materials, groups)
 
     for index, (location, target) in enumerate((
-        ((-4.80, -12.25, 5.05), (-6.68, -14.15, 2.82)),
+        ((-5.05, -10.15, 5.05), (-5.70, -8.18, 2.84)),
         ((-2.15, -14.45, 5.05), (-3.48, -15.59, 3.28)),
         ((2.55, -12.10, 5.05), (3.48, -15.59, 3.18)),
         ((5.25, -10.05, 5.05), (5.70, -8.18, 2.84)),
     ), start=1):
         light = add_light(
             f"Demo_Room_Spot_{index:02d}", "SPOT", location, target,
-            (1.0, 0.67, 0.36), 210, web=True, theme_role="demo_room_spot",
+            (1.0, 0.76, 0.56), 205, web=True, theme_role="demo_room_spot",
             spot_size=math.radians(38), spot_blend=0.78,
         )
         light["demo_only"] = True
         add_spot_fixture(light, f"Demo_Room_Spot_{index:02d}", materials, groups)
 
     pendant_light = add_light(
-        "Demo_Contact_Pendant_Light", "POINT", (5.15, -12.85, 3.32), (5.15, -12.85, 0.8),
-        (1.0, 0.63, 0.30), 115, web=True, theme_role="demo_pendant",
+        "Demo_Private_Pendant_Light", "POINT", (-4.50, -12.75, 3.32), (-4.50, -12.75, 0.8),
+        (1.0, 0.74, 0.52), 150, web=True, theme_role="demo_pendant",
     )
     pendant_light["demo_only"] = True
 
     waterfall_light = add_light(
-        "Demo_Waterfall_Wash", "SPOT", (-5.92, -11.18, 4.72), (-6.70, -11.18, 2.45),
-        (0.72, 0.83, 0.80), 175, web=True, theme_role="demo_waterfall",
+        "Demo_Waterfall_Wash", "SPOT", (5.92, -11.18, 4.72), (6.70, -11.18, 2.45),
+        (0.72, 0.83, 0.80), 205, web=True, theme_role="demo_waterfall",
         spot_size=math.radians(52), spot_blend=0.88,
     )
     waterfall_light["demo_only"] = True
@@ -2471,15 +2656,15 @@ def build_demo_site_rooms(
     # mobile; the room keeps its dark cinematic contrast instead of becoming a
     # uniformly lit showroom.
     for name, location, target, energy in (
-        ("Demo_Private_Ambient_Fill", (-3.20, -11.65, 4.05), (-4.10, -13.35, 1.65), 420),
-        ("Demo_Contact_Ambient_Fill", (3.35, -11.65, 4.05), (4.65, -13.20, 1.55), 380),
+        ("Demo_Private_Ambient_Fill", (-3.20, -11.65, 4.05), (-4.45, -12.80, 1.45), 165),
+        ("Demo_Contact_Ambient_Fill", (3.35, -11.65, 4.05), (4.20, -13.35, 1.45), 155),
     ):
         ambient = add_light(
             name,
             "POINT",
             location,
             target,
-            (1.0, 0.69, 0.42),
+            (1.0, 0.76, 0.58),
             energy,
             web=True,
             theme_role="demo_ambient_fill",
@@ -2489,8 +2674,8 @@ def build_demo_site_rooms(
     # Curated room anchors double as keyboard/mobile shortcuts.
     for order, (name, location, target, label, room_id) in enumerate((
         ("VIEW_Demo_Gallery_Hall", (0, -5.90, CURATED_EYE_HEIGHT), (0, 6.70, 2.72), "01 · Gallery Hall", "gallery-hall"),
-        ("VIEW_Demo_Private_Room", (-3.50, -8.45, CURATED_EYE_HEIGHT), (-3.48, -15.59, 3.28), "02 · Private Room", "private-room"),
-        ("VIEW_Demo_Contact_Room", (2.65, -8.65, CURATED_EYE_HEIGHT), (3.48, -15.59, 3.18), "03 · Meet & Contact", "contact-room"),
+        ("VIEW_Demo_Private_Room", (-3.50, -8.45, CURATED_EYE_HEIGHT), (-4.40, -12.90, 2.00), "02 · Private Room", "private-room"),
+        ("VIEW_Demo_Contact_Room", (2.35, -9.05, CURATED_EYE_HEIGHT), (4.28, -13.15, 1.76), "03 · Imprint & Contact", "contact-room"),
     ), start=40):
         view = add_view_anchor(name, location, target, label=label, kind="demo_room", order=order)
         target_object = add_empty(
@@ -2544,7 +2729,7 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
     add_collider("COLLIDER_Wall_South_Right", (5.78, -7.82, ROOM_HEIGHT / 2), (2.44, 0.36, ROOM_HEIGHT))
     add_collider("COLLIDER_Wall_West", (-6.82, 0, ROOM_HEIGHT / 2), (0.36, 16.0, ROOM_HEIGHT))
     add_collider("COLLIDER_Wall_East", (6.82, 0, ROOM_HEIGHT / 2), (0.36, 16.0, ROOM_HEIGHT))
-    add_collider("COLLIDER_Bench", (0, -1.72, 0.45), (4.18, 1.24, 0.90))
+    add_collider("COLLIDER_Bench", (0, -1.72, 0.45), (3.18, 0.96, 0.90))
     add_collider("COLLIDER_wARTrobe", (0, 7.35, 2.52), (2.75, 0.74, 3.50))
     add_collider("COLLIDER_Plant_West", (-4.62, 6.18, 0.64), (1.15, 1.15, 1.28))
     add_collider("COLLIDER_Plant_East", (4.62, 6.18, 0.64), (1.15, 1.15, 1.28))
@@ -2559,14 +2744,16 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
         add_collider("COLLIDER_Demo_Wall_South", (0, -15.82, ROOM_HEIGHT / 2), (14.0, 0.36, ROOM_HEIGHT)),
         add_collider("COLLIDER_Demo_Partition_North", (0, -9.48, ROOM_HEIGHT / 2), (0.32, 2.96, ROOM_HEIGHT)),
         add_collider("COLLIDER_Demo_Partition_South", (0, -14.52, ROOM_HEIGHT / 2), (0.32, 2.96, ROOM_HEIGHT)),
-        add_collider("COLLIDER_Demo_Waterfall", (-6.18, -11.18, 0.55), (1.35, 3.55, 1.10)),
-        add_collider("COLLIDER_Demo_Private_Sofa", (-4.85, -14.72, 0.60), (2.05, 1.08, 1.20)),
-        add_collider("COLLIDER_Demo_Private_Coffee", (-4.85, -13.10, 0.42), (1.50, 0.82, 0.84)),
-        add_collider("COLLIDER_Demo_Contact_Table", (5.15, -12.85, 0.64), (0.96, 2.15, 1.28)),
-        add_collider("COLLIDER_Demo_Contact_Chair_West", (4.43, -13.33, 0.55), (0.68, 0.68, 1.10)),
-        add_collider("COLLIDER_Demo_Contact_Chair_East", (5.87, -12.37, 0.55), (0.68, 0.68, 1.10)),
-        add_collider("COLLIDER_Demo_Contact_Shelving", (6.62, -12.15, 2.40), (0.46, 6.05, 4.80)),
-        add_collider("COLLIDER_Demo_Privacy_Lectern", (0.61, -9.58, 0.70), (1.14, 1.12, 1.40)),
+        add_collider("COLLIDER_Demo_Private_Table", (-4.50, -12.75, 0.64), (0.96, 2.15, 1.28)),
+        add_collider("COLLIDER_Demo_Private_Chair_West", (-5.22, -12.75, 0.55), (0.68, 0.68, 1.10)),
+        add_collider("COLLIDER_Demo_Private_Chair_East", (-3.78, -12.75, 0.55), (0.68, 0.68, 1.10)),
+        add_collider("COLLIDER_Demo_Private_Shelving", (-6.62, -12.05, 2.40), (0.46, 5.45, 4.80)),
+        add_collider("COLLIDER_Demo_Private_Plant", (-1.60, -9.05, 0.46), (0.84, 0.84, 0.92)),
+        add_collider("COLLIDER_Demo_Contact_Water", (6.18, -11.18, 0.55), (1.35, 2.92, 1.10)),
+        add_collider("COLLIDER_Demo_Contact_Armchair", (4.05, -14.50, 0.60), (1.32, 1.08, 1.20)),
+        add_collider("COLLIDER_Demo_Contact_Coffee", (4.05, -13.08, 0.35), (1.23, 0.67, 0.69)),
+        add_collider("COLLIDER_Demo_Contact_Plant", (5.62, -14.58, 0.38), (0.70, 0.70, 0.76)),
+        add_collider("COLLIDER_Demo_Privacy_Lectern", (-0.61, -9.58, 0.70), (1.14, 1.12, 1.40)),
         add_collider("COLLIDER_Demo_Imprint_Lectern", (0.61, -14.24, 0.70), (1.14, 1.12, 1.40)),
     ]
     for collider in demo_colliders:
@@ -2579,8 +2766,8 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
         "private-room": [
             [-3.50, -8.45],
             [-3.05, -10.35],
-            [-2.75, -13.30],
-            [-2.75, -14.65],
+            [-2.68, -13.30],
+            [-2.68, -14.65],
         ],
         "contact-room": [
             [3.50, -8.45],
@@ -2660,6 +2847,7 @@ def optimize_groups(
         "leather": "leather",
         "leather_seam": "leather_seam",
         "planter": "planter",
+        "concrete_planter": "concrete_planter",
         "plaque": "plaque",
         "plaque_text": "plaque_text",
         "stem": "botanical_stem",
@@ -2707,16 +2895,54 @@ def build_scene() -> bpy.types.Scene:
     scene.world = world
 
     materials = {
-        "wall": create_textured_material("Gallery_Dark_Limestone_Wall", MATERIAL_TEXTURES["limestone"], "#85827b", "#c7c0b5", "wall", roughness=0.78, uv_repeat=1.5),
+        "wall": create_textured_material(
+            "Gallery_Rough_Plaster_Wall",
+            MATERIAL_TEXTURES["limestone"],
+            MATERIAL_BOARD_PRESETS["rough_plaster"]["hex"],
+            "#B9B1A7",
+            "wall",
+            roughness=MATERIAL_BOARD_PRESETS["rough_plaster"]["roughness"],
+            specular=MATERIAL_BOARD_PRESETS["rough_plaster"]["specular"],
+            uv_repeat=3.0,
+        ),
         "fabric": create_textured_material("Gallery_Mineral_Fabric_Display", MATERIAL_TEXTURES["mineral_fabric"], "#8c8780", "#c6bdb2", "fabric", roughness=0.88, uv_repeat=2.0),
-        "stone": create_textured_material("Gallery_Black_Marble_Stone", MATERIAL_TEXTURES["black_marble"], "#aaa69d", "#d8d2c8", "stone", roughness=0.24, metallic=0.02, clearcoat=0.38, clearcoat_roughness=0.13, uv_repeat=1.2),
-        "ceiling": create_material("Gallery_Matte_Black_Ceiling", "#070807", "#2d2a26", "ceiling", roughness=0.91),
+        "stone": create_textured_material(
+            "Gallery_Polished_Black_Marble_Stone",
+            MATERIAL_TEXTURES["black_marble"],
+            MATERIAL_BOARD_PRESETS["black_marble"]["hex"],
+            "#6C6861",
+            "stone",
+            roughness=MATERIAL_BOARD_PRESETS["black_marble"]["roughness"],
+            specular=MATERIAL_BOARD_PRESETS["black_marble"]["specular"],
+            clearcoat=MATERIAL_BOARD_PRESETS["black_marble"]["clearcoat"],
+            clearcoat_roughness=0.10,
+            uv_repeat=1.0,
+        ),
+        "ceiling": create_material(
+            "Gallery_Matte_Black_Ceiling",
+            MATERIAL_BOARD_PRESETS["matte_black"]["hex"],
+            "#4B4843",
+            "ceiling",
+            roughness=MATERIAL_BOARD_PRESETS["matte_black"]["roughness"],
+            specular=MATERIAL_BOARD_PRESETS["matte_black"]["specular"],
+        ),
         "floor": create_material("Gallery_Black_Grout", "#030403", "#151513", "floor", roughness=0.80, metallic=0.0),
-        "floor_tile_a": create_textured_material("Gallery_Polished_Black_Marble_A", MATERIAL_TEXTURES["black_marble"], "#aaa69d", "#d8d2c8", "floor_tile_a", roughness=0.16, metallic=0.02, clearcoat=0.66, clearcoat_roughness=0.09),
-        "floor_tile_b": create_textured_material("Gallery_Polished_Black_Marble_B", MATERIAL_TEXTURES["black_marble"], "#96938d", "#c6c1b8", "floor_tile_b", roughness=0.20, metallic=0.02, clearcoat=0.54, clearcoat_roughness=0.12),
-        "floor_alt": create_textured_material("Gallery_Backlit_Black_Marble", MATERIAL_TEXTURES["black_marble"], "#aaa69d", "#d8d2c8", "floor_alt", roughness=0.17, metallic=0.02, clearcoat=0.62, clearcoat_roughness=0.10),
+        "floor_tile_a": create_textured_material("Gallery_Polished_Black_Marble_A", MATERIAL_TEXTURES["black_marble"], "#0F0F10", "#68645E", "floor_tile_a", roughness=0.15, metallic=0.0, specular=0.50, clearcoat=0.30, clearcoat_roughness=0.10, uv_repeat=1.0),
+        "floor_tile_b": create_textured_material("Gallery_Polished_Black_Marble_B", MATERIAL_TEXTURES["black_marble"], "#0F0F10", "#625F59", "floor_tile_b", roughness=0.15, metallic=0.0, specular=0.50, clearcoat=0.30, clearcoat_roughness=0.10, uv_repeat=1.0),
+        "floor_alt": create_textured_material("Gallery_Backlit_Black_Marble", MATERIAL_TEXTURES["black_marble"], "#0F0F10", "#6C6861", "floor_alt", roughness=0.15, metallic=0.0, specular=0.50, clearcoat=0.30, clearcoat_roughness=0.10, uv_repeat=1.0),
         "shadow": create_material("Gallery_Shadow", "#030504", "#4c4943", "shadow", roughness=0.76),
-        "bronze": create_material("Gallery_Patinated_Bronze", "#634922", "#866331", "bronze", roughness=0.21, metallic=0.90, clearcoat=0.16, clearcoat_roughness=0.18),
+        "bronze": create_material(
+            "Gallery_Brushed_Bronze",
+            MATERIAL_BOARD_PRESETS["brushed_bronze"]["hex"],
+            "#A07C48",
+            "bronze",
+            roughness=MATERIAL_BOARD_PRESETS["brushed_bronze"]["roughness"],
+            metallic=MATERIAL_BOARD_PRESETS["brushed_bronze"]["metallic"],
+            specular=MATERIAL_BOARD_PRESETS["brushed_bronze"]["specular"],
+            anisotropic=MATERIAL_BOARD_PRESETS["brushed_bronze"]["anisotropic"],
+            clearcoat=0.06,
+            clearcoat_roughness=0.25,
+        ),
         "wayfinding": create_material(
             "Gallery_Bronze_Wayfinding",
             "#6b4d24",
@@ -2729,11 +2955,12 @@ def build_scene() -> bpy.types.Scene:
             emission="#5e3b18",
             emission_strength=0.16,
         ),
-        "bench": create_material("Gallery_Bench", "#17140f", "#7c7162", "bench", roughness=0.42),
-        "wood": create_textured_material("Gallery_Dark_Stained_Oak", MATERIAL_TEXTURES["walnut"], "#5e4433", "#8c705a", "wood", roughness=0.33, clearcoat=0.22, clearcoat_roughness=0.20, uv_repeat=2.0),
-        "leather": create_textured_material("Gallery_Saddle_Leather", MATERIAL_TEXTURES["leather"], "#6a5a4d", "#9b8b7c", "leather", roughness=0.40, clearcoat=0.10, clearcoat_roughness=0.30, uv_repeat=3.0),
-        "leather_seam": create_material("Gallery_Leather_Piping", "#090806", "#403931", "leather_seam", roughness=0.46),
-        "planter": create_material("Gallery_Matte_Black_Planter", "#111311", "#494844", "planter", roughness=0.36, metallic=0.04, clearcoat=0.24, clearcoat_roughness=0.22),
+        "bench": create_material("Gallery_Bench", "#1E1B19", "#6B6258", "bench", roughness=0.70, specular=0.25),
+        "wood": create_textured_material("Gallery_Dark_Walnut", MATERIAL_TEXTURES["walnut"], "#4A3222", "#856A52", "wood", roughness=0.45, specular=0.20, clearcoat=0.04, clearcoat_roughness=0.34, uv_repeat=1.4),
+        "leather": create_textured_material("Gallery_Dark_Brown_Leather", MATERIAL_TEXTURES["leather"], "#1E1B19", "#696159", "leather", roughness=0.70, specular=0.25, clearcoat=0.03, clearcoat_roughness=0.52, uv_repeat=1.35),
+        "leather_seam": create_material("Gallery_Leather_Piping", "#12100F", "#413A34", "leather_seam", roughness=0.72, specular=0.22),
+        "planter": create_material("Gallery_Matte_Black_Planter", "#1C1C1C", "#55524D", "planter", roughness=0.60, specular=0.20, metallic=0.02),
+        "concrete_planter": create_material("Gallery_Concrete_Planter", "#5C5C55", "#9B978E", "concrete_planter", roughness=0.82, specular=0.22),
         "plaque": create_material("Gallery_Catalogue_Plaque", "#b5aa97", "#ded5c6", "plaque", roughness=0.30, metallic=0.02, clearcoat=0.20, clearcoat_roughness=0.18),
         "plaque_text": create_material("Gallery_Plaque_Engraving", "#2c241a", "#3b3023", "plaque_text", roughness=0.38, metallic=0.58),
         "stem": create_material("Botanical_Stem", "#26351f", "#526044", "botanical_stem", roughness=0.62, clearcoat=0.08),
@@ -2742,18 +2969,69 @@ def build_scene() -> bpy.types.Scene:
         "water": create_material("Gallery_Reflective_Water", "#405451", "#879995", "water", roughness=0.08, metallic=0.12, clearcoat=0.96, clearcoat_roughness=0.05, emission="#1c302e", emission_strength=0.14),
         "water_highlight": create_material("Gallery_Water_Highlight", "#91a7a2", "#c4d0cd", "water_highlight", roughness=0.12, metallic=0.06, clearcoat=0.92, clearcoat_roughness=0.05, emission="#55706b", emission_strength=0.18),
         "ceramic": create_material("Gallery_Dark_Ceramic", "#171916", "#74716a", "ceramic", roughness=0.32, clearcoat=0.44, clearcoat_roughness=0.18),
-        "glass": create_material("Gallery_Smoked_Glass", "#5d4930", "#a58d68", "glass", roughness=0.12, metallic=0.32, clearcoat=0.88, clearcoat_roughness=0.07),
+        "glass": create_material("Gallery_Clear_Glass", "#FFFFFF", "#FFFFFF", "glass", roughness=0.05, metallic=0.0, specular=0.50, clearcoat=0.20, clearcoat_roughness=0.05),
         "emissive": create_material(
             "Gallery_Warm_Aperture",
-            "#8b6128",
-            "#9d6f35",
+            "#806548",
+            "#94785B",
             "emissive",
             roughness=0.24,
             metallic=0.12,
-            emission="#b86f2b",
-            emission_strength=0.78,
+            emission="#B88658",
+            emission_strength=0.62,
         ),
     }
+    # The material board specifies optically clear display glass. Keep it
+    # separate from the blue-green water so the pendant and decanter read as
+    # glass rather than metal in both Blender and the exported web scene.
+    glass_material = materials["glass"]
+    glass_material.surface_render_method = "BLENDED"
+    glass_material["web_alpha"] = 0.34
+    glass_principled = glass_material.node_tree.nodes.get("Principled BSDF")
+    set_socket(glass_principled, "Alpha", 0.34)
+    set_socket(glass_principled, "Transmission Weight", 0.94)
+    set_socket(glass_principled, "Transmission", 0.94)
+    set_socket(glass_principled, "IOR", 1.45)
+
+    board_bindings = {
+        "wall": "rough_plaster",
+        "wood": "dark_walnut",
+        "leather": "dark_leather",
+        "bench": "dark_leather",
+        "floor_tile_a": "black_marble",
+        "floor_tile_b": "black_marble",
+        "floor_alt": "black_marble",
+        "stone": "black_marble",
+        "bronze": "brushed_bronze",
+        "ceiling": "matte_black",
+        "planter": "matte_black",
+        "glass": "clear_glass",
+        "concrete_planter": "concrete_planter",
+    }
+    for material_key, preset_key in board_bindings.items():
+        material = materials[material_key]
+        preset = MATERIAL_BOARD_PRESETS[preset_key]
+        material["material_board_preset"] = preset_key
+        material["material_board_hex"] = preset["hex"]
+        material["material_board_values_json"] = json.dumps(preset, separators=(",", ":"))
+
+    # The board's large-scale albedo should read as a continuous architectural
+    # finish rather than a repeated sample swatch.  A future dedicated normal
+    # texture may retain the denser micro-detail scales without re-tiling color.
+    micro_normal_repeats = {
+        "wall": 5.0,
+        "stone": 4.0,
+        "floor_tile_a": 4.0,
+        "floor_tile_b": 4.0,
+        "floor_alt": 4.0,
+        "wood": 10.0,
+        "leather": 8.0,
+    }
+    for material_key, repeat in micro_normal_repeats.items():
+        materials[material_key]["micro_normal_repeat"] = repeat
+        materials[material_key]["albedo_repeat"] = materials[material_key].get("uv_repeat", 1.0)
+    materials["wall"]["micro_normal_strength"] = 0.08
+
     # glTF alpha blending lets the layered veils merge into one water volume
     # instead of reading as opaque decorative strips.  The runtime adds moving
     # normals and reflections on top of this physically authored transparency.
@@ -2770,7 +3048,7 @@ def build_scene() -> bpy.types.Scene:
         set_socket(principled, "Transmission", transmission)
     groups = {name: [] for name in (
         "wall", "fabric", "stone", "ceiling", "floor", "floor_tile_a", "floor_tile_b", "floor_alt", "shadow", "bronze", "wayfinding",
-        "emissive", "bench", "wood", "leather", "leather_seam", "planter", "plaque", "plaque_text", "stem", "leaf_a", "leaf_b", "water", "water_highlight", "ceramic", "glass",
+        "emissive", "bench", "wood", "leather", "leather_seam", "planter", "concrete_planter", "plaque", "plaque_text", "stem", "leaf_a", "leaf_b", "water", "water_highlight", "ceramic", "glass",
         "wartrobe_shadow", "wartrobe_bronze",
     )}
     demo_groups = {name: [] for name in groups}
@@ -2805,7 +3083,7 @@ def build_scene() -> bpy.types.Scene:
             "SPOT",
             (x * 0.82, 4.25, 5.15),
             (x, 6.18, 2.10),
-            (1.0, 0.67, 0.36),
+            (1.0, 0.76, 0.56),
             66,
             web=True,
             theme_role="botanical_spot",
@@ -2823,7 +3101,7 @@ def build_scene() -> bpy.types.Scene:
         "AREA",
         (-2.8, -1.8, 5.15),
         (0, 3.8, 2.4),
-        (1.0, 0.72, 0.48),
+        (1.0, 0.76, 0.58),
         980,
         web=False,
         theme_role="render_only",
@@ -2867,10 +3145,20 @@ def build_scene() -> bpy.types.Scene:
     scene["waterfall_animation_duration_seconds"] = 2.0
     scene["waterfall_animation_frame_range"] = [1, 49]
     scene["waterfall_animation_strategy"] = "six overlapping organic flow veils and two droplet streams over one tapered membrane; eight seamless transform clips"
+    scene["waterfall_room"] = "03 · Imprint / Contact Lounge"
     scene["botanical_animation_clip_count"] = 4
     scene["botanical_animation_strategy"] = "four isolated hero leaves with sub-two-degree seamless breeze; static foliage remains batched"
     scene["demo_ambient_fill_count"] = 2
     scene["demo_ambient_fill_strategy"] = "one warm punctual fill per secondary room for mobile-safe material readability"
+    scene["material_board_revision"] = "2026-07-27-four-board-room-refinement"
+    scene["approved_material_presets_json"] = json.dumps(MATERIAL_BOARD_PRESETS, separators=(",", ":"))
+    scene["room_material_plan_json"] = json.dumps({
+        "gallery-hall": ["rough_plaster", "dark_walnut", "black_marble", "brushed_bronze", "dark_leather", "matte_black"],
+        "private-room": ["rough_plaster", "dark_walnut", "dark_leather", "black_marble", "brushed_bronze", "clear_glass", "matte_black"],
+        "contact-room": ["rough_plaster", "black_marble", "dark_leather", "brushed_bronze", "clear_glass", "concrete_planter", "matte_black"],
+    }, separators=(",", ":"))
+    scene["material_texture_strategy"] = "low-repeat architectural albedo; original board scale retained as micro-normal metadata"
+    scene["demo_room_lighting_kelvin"] = 3000
     scene["wayfinding_piece_count"] = wayfinding_piece_count
     scene["wayfinding_strategy"] = "low-emission patinated-bronze floor line and three chevrons; visual only, no collision geometry"
     scene["generated_room_materials_json"] = json.dumps({

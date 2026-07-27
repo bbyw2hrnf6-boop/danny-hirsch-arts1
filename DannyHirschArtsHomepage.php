@@ -114,8 +114,8 @@ function imageSizeAttributes(string $path): string
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260726-gallery-34">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260726-gallery-34">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260727-gallery-37">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260727-gallery-37">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -142,7 +142,7 @@ function imageSizeAttributes(string $path): string
           <span class="control-glyph theme-glyph" aria-hidden="true"></span>
           <span class="control-label">Light</span>
         </button>
-        <button class="ambient-toggle" type="button" aria-label="Start ambient gallery sound" aria-pressed="false">
+        <button class="ambient-toggle" type="button" aria-label="Start gallery lounge ambience" aria-pressed="false">
           <span class="control-glyph sound-glyph" aria-hidden="true"><i></i></span>
           <span class="control-label">Sound</span>
         </button>
@@ -482,13 +482,32 @@ function imageSizeAttributes(string $path): string
         <span class="room-experience__light" aria-hidden="true"></span>
         <span class="room-experience__grain" aria-hidden="true"></span>
         <span class="room-experience__reticle" aria-hidden="true"></span>
-        <div class="room-experience__loading" data-gallery-loading role="status" aria-live="polite"><span></span><small>Preparing the 360° gallery</small></div>
+        <div class="room-experience__loading" data-gallery-loading data-state="idle" role="region" aria-label="Interactive 3D gallery loading" hidden>
+          <div class="room-experience__loading-atmosphere" aria-hidden="true"><span></span><i></i><b></b></div>
+          <div class="room-experience__loading-panel">
+            <p data-gallery-loading-eyebrow>Interactive 3D gallery</p>
+            <div class="room-experience__loading-heading">
+              <strong data-gallery-loading-title>Opening the spatial exhibition</strong>
+              <output data-gallery-loading-percent aria-label="Gallery loading percentage">0%</output>
+            </div>
+            <div class="room-experience__loading-track" data-gallery-progress role="progressbar" aria-label="Loading interactive 3D gallery" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <i data-gallery-progress-fill></i>
+            </div>
+            <div class="room-experience__loading-meta">
+              <small data-gallery-loading-status>Preparing the entrance</small>
+              <span data-gallery-loading-phase>01 / 03</span>
+            </div>
+            <p class="room-experience__loading-detail" data-gallery-loading-detail>The gallery is loading its architecture, genuine artwork photography, and light.</p>
+            <button class="room-experience__loading-continue" type="button" data-gallery-loading-continue hidden>Continue with the still gallery <span aria-hidden="true">→</span></button>
+            <span class="sr-only" data-gallery-loading-live role="status" aria-live="polite" aria-atomic="true">Preparing the interactive 3D gallery.</span>
+          </div>
+        </div>
         <header class="room-experience__header">
           <div><p>Private Room · 360° gallery</p><h2 id="room-experience-title">Walk into the work.</h2></div>
           <div class="room-experience__header-actions">
-            <button class="room-experience__ambient" type="button" data-gallery-ambient aria-label="Start ambient room sound" aria-pressed="false">
+            <button class="room-experience__ambient" type="button" data-gallery-ambient aria-label="Start lounge ambience" aria-pressed="false">
               <span class="room-experience__ambient-icon" aria-hidden="true"><i></i><i></i><i></i></span>
-              <b data-gallery-ambient-label>Room tone</b>
+              <b data-gallery-ambient-label>Lounge</b>
             </button>
             <button class="room-experience__theme" type="button" data-room-theme aria-label="Switch room to light theme"><span aria-hidden="true"></span><b>Light</b></button>
             <button class="room-experience__close" type="button" data-room-close aria-label="Leave private room"><span aria-hidden="true"></span></button>
@@ -610,6 +629,7 @@ function imageSizeAttributes(string $path): string
       </div>
     </div>
 
-    <script src="DannyHirschArtsHomepage.js?v=20260726-gallery-34" defer></script>
+    <script src="DannyHirschArtsLoungeAudio.js?v=20260727-gallery-37" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260727-gallery-37" defer></script>
   </body>
 </html>

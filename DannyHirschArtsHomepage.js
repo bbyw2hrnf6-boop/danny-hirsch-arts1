@@ -51,6 +51,14 @@ const roomExperienceHeading = document.querySelector("#room-experience-title");
 const roomExperienceFallbackControls = document.querySelector("[data-room-fallback-controls]");
 const galleryMount = document.querySelector("[data-gallery-webgl]");
 const galleryLoading = document.querySelector("[data-gallery-loading]");
+const galleryLoadingTitle = document.querySelector("[data-gallery-loading-title]");
+const galleryLoadingPercent = document.querySelector("[data-gallery-loading-percent]");
+const galleryLoadingStatus = document.querySelector("[data-gallery-loading-status]");
+const galleryLoadingPhase = document.querySelector("[data-gallery-loading-phase]");
+const galleryLoadingDetail = document.querySelector("[data-gallery-loading-detail]");
+const galleryLoadingLive = document.querySelector("[data-gallery-loading-live]");
+const galleryLoadingProgress = document.querySelector("[data-gallery-progress]");
+const galleryLoadingContinue = document.querySelector("[data-gallery-loading-continue]");
 const galleryControls = document.querySelector("[data-gallery-controls]");
 const galleryViewPrev = document.querySelector("[data-gallery-view-prev]");
 const galleryViewNext = document.querySelector("[data-gallery-view-next]");
@@ -105,10 +113,13 @@ let ambientStartedFromRoom = false;
 let ambientDisposeTimer = null;
 let ambientSources = [];
 let ambientNodes = [];
+let ambientLounge = null;
 let privateRoomController = null;
 let privateRoomImportObserver = null;
 let galleryRoomController = null;
 let galleryRoomLoadingPromise = null;
+let galleryLoadingHideTimer = null;
+let galleryLoadingAnnouncementBand = -1;
 let galleryFocusedArtwork = null;
 let galleryDemoActive = false;
 let roomInteractionUntil = 0;
@@ -643,16 +654,137 @@ const setGalleryDemo = (active) => {
   if (galleryDemoActive) galleryRoomController?.goToDemoRoom?.("gallery-hall");
 };
 
+const updateGalleryLoading = ({
+  state = "loading",
+  percent = null,
+  title = "Opening the spatial exhibition",
+  status = "Preparing the entrance",
+  phase = "01 / 03",
+  detail = "The gallery is loading its architecture, genuine artwork photography, and light.",
+  announce = false,
+} = {}) => {
+  if (!galleryLoading) return;
+  const hasPercent = Number.isFinite(percent);
+  const safePercent = hasPercent ? Math.round(clamp(Number(percent), 0, 100)) : null;
+
+  galleryLoading.hidden = false;
+  galleryLoading.dataset.state = state;
+  galleryLoading.style.setProperty("--gallery-load-progress", `${safePercent ?? 0}%`);
+  if (galleryLoadingTitle) galleryLoadingTitle.textContent = title;
+  if (galleryLoadingStatus) galleryLoadingStatus.textContent = status;
+  if (galleryLoadingPhase) galleryLoadingPhase.textContent = phase;
+  if (galleryLoadingDetail) galleryLoadingDetail.textContent = detail;
+  if (galleryLoadingPercent) {
+    galleryLoadingPercent.textContent = hasPercent ? `${safePercent}%` : "—";
+  }
+  if (galleryLoadingProgress) {
+    if (hasPercent) {
+      galleryLoadingProgress.setAttribute("aria-valuenow", String(safePercent));
+      galleryLoadingProgress.setAttribute("aria-valuetext", `${safePercent} percent. ${status}`);
+    } else {
+      galleryLoadingProgress.removeAttribute("aria-valuenow");
+      galleryLoadingProgress.setAttribute("aria-valuetext", status);
+    }
+    galleryLoadingProgress.toggleAttribute("data-indeterminate", !hasPercent);
+  }
+  if (galleryLoadingContinue) galleryLoadingContinue.hidden = state !== "fallback";
+
+  const announcementBand = hasPercent ? Math.floor(safePercent / 25) : -1;
+  const crossedMilestone = state === "loading"
+    && announcementBand > galleryLoadingAnnouncementBand
+    && safePercent > 0;
+  if (crossedMilestone) galleryLoadingAnnouncementBand = announcementBand;
+  if (galleryLoadingLive && (announce || crossedMilestone)) {
+    galleryLoadingLive.textContent = announce
+      ? `${title}. ${status}.`
+      : `Interactive gallery ${Math.min(announcementBand * 25, 100)} percent loaded.`;
+  }
+};
+
+const beginGalleryLoading = () => {
+  if (!roomExperience || !galleryLoading) return;
+  window.clearTimeout(galleryLoadingHideTimer);
+  galleryLoadingAnnouncementBand = -1;
+  roomExperience.classList.remove("is-gallery-fallback", "is-gallery-load-error", "is-webgl-ready");
+  roomExperience.classList.add("is-gallery-loading");
+  roomExperience.setAttribute("aria-busy", "true");
+  updateGalleryLoading({
+    state: "loading",
+    percent: 0,
+    title: "Opening the spatial exhibition",
+    status: "Loading the gallery engine",
+    phase: "01 / 03",
+    detail: "A detailed spatial scene is being prepared for this device.",
+    announce: true,
+  });
+};
+
+const completeGalleryLoading = () => {
+  if (!roomExperience || !galleryLoading) return;
+  roomExperience.setAttribute("aria-busy", "false");
+  updateGalleryLoading({
+    state: "ready",
+    percent: 100,
+    title: "The gallery is ready",
+    status: "Entering the exhibition",
+    phase: "03 / 03",
+    detail: "Architecture, artwork, light, and movement are now live.",
+    announce: true,
+  });
+  window.clearTimeout(galleryLoadingHideTimer);
+  galleryLoadingHideTimer = window.setTimeout(() => {
+    roomExperience.classList.remove("is-gallery-loading");
+    galleryLoading.hidden = true;
+  }, reducedMotion.matches ? 80 : 620);
+};
+
+const dismissGalleryFallbackNotice = () => {
+  if (!galleryLoading || !roomExperience) return;
+  roomExperience.classList.remove("is-gallery-load-error");
+  roomExperience.setAttribute("aria-busy", "false");
+  galleryLoading.hidden = true;
+  roomExperienceClose?.focus({ preventScroll: true });
+};
+
 const setGalleryFallback = (reason = "fallback") => {
   if (!roomExperience) return;
   const requestedSpatialExperience = galleryDemoActive;
   if (requestedSpatialExperience) setGalleryDemo(false);
   roomExperience.classList.remove("is-gallery-loading", "is-webgl-ready");
-  roomExperience.classList.add("is-gallery-fallback");
+  roomExperience.classList.add("is-gallery-fallback", "is-gallery-load-error");
+  roomExperience.setAttribute("aria-busy", "false");
   if (galleryControls) galleryControls.hidden = true;
   if (roomExperienceFallbackControls) roomExperienceFallbackControls.hidden = false;
-  const status = galleryLoading?.querySelector("small");
-  if (status) status.textContent = reason === "reduced-motion" ? "Curated still room" : "360° fallback ready";
+  const fallbackCopy = reason === "reduced-motion"
+    ? {
+        title: "A calmer room is ready",
+        status: "Reduced-motion preference respected",
+        detail: "The cinematic still gallery is available without live camera movement.",
+      }
+    : reason === "save-data"
+      ? {
+          title: "A lighter room is ready",
+          status: "Data-saving preference respected",
+          detail: "The high-resolution 3D scene stayed unloaded; the curated still gallery remains available.",
+        }
+      : reason === "webgl2-unavailable"
+        ? {
+            title: "The still gallery is ready",
+            status: "Live 3D is unavailable in this browser",
+            detail: "You can continue through the complete curated room without WebGL.",
+          }
+        : {
+            title: "The still gallery is ready",
+            status: "The live room could not finish loading",
+            detail: "Nothing is lost—the curated room and the complete classic exhibition remain available.",
+          };
+  updateGalleryLoading({
+    state: "fallback",
+    percent: null,
+    phase: "Alternative view",
+    announce: true,
+    ...fallbackCopy,
+  });
   if (requestedSpatialExperience) {
     setGalleryArtwork(null);
     if (galleryArtKicker) galleryArtKicker.textContent = "Classic fallback";
@@ -670,25 +802,37 @@ const ensureGalleryRoom = () => {
     return Promise.resolve(null);
   }
 
-  roomExperience.classList.remove("is-gallery-fallback");
-  roomExperience.classList.add("is-gallery-loading");
+  if (!roomExperience.classList.contains("is-gallery-loading")) beginGalleryLoading();
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260726-gallery-34")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260727-gallery-37")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
         mount: galleryMount,
-        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260726-gallery-34",
+        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260727-gallery-37",
         theme: body.dataset.theme,
-        onLoading: ({ progress }) => {
-          const status = galleryLoading?.querySelector("small");
-          if (!status) return;
-          status.textContent = progress === null
-            ? "Preparing the 360° gallery"
-            : `Preparing the 360° gallery · ${Math.round(progress * 100)}%`;
+        onLoading: ({ progress, percent, loaded, total, phase: loadingPhase }) => {
+          const actualPercent = Number.isFinite(percent)
+            ? percent
+            : Number.isFinite(progress)
+              ? progress * 100
+              : null;
+          const transferred = Number.isFinite(loaded) && Number.isFinite(total) && total > 0
+            ? `${(loaded / 1048576).toFixed(1)} of ${(total / 1048576).toFixed(1)} MB received`
+            : "The room is travelling securely to this device.";
+          const assembling = loadingPhase === "assembling";
+          updateGalleryLoading({
+            state: "loading",
+            percent: actualPercent,
+            title: assembling ? "Composing the room" : "Loading architecture and artwork",
+            status: assembling ? "Applying materials, light, and movement" : "Receiving the Blender-built gallery",
+            phase: assembling ? "03 / 03" : "02 / 03",
+            detail: assembling ? "The scene is downloaded. Its spatial layers are now being prepared by the graphics processor." : transferred,
+            announce: assembling,
+          });
         },
         onReady: () => {
-          roomExperience.classList.remove("is-gallery-loading", "is-gallery-fallback");
+          roomExperience.classList.remove("is-gallery-fallback", "is-gallery-load-error");
           roomExperience.classList.add("is-webgl-ready");
           if (galleryControls) galleryControls.hidden = false;
           if (roomExperienceFallbackControls) roomExperienceFallbackControls.hidden = true;
@@ -696,9 +840,14 @@ const ensureGalleryRoom = () => {
           galleryRoomController?.setDemoMode?.(galleryDemoActive);
           if (galleryDemoActive) galleryRoomController?.goToDemoRoom?.("gallery-hall");
           galleryRoomController?.setActive?.(roomExperience.open);
+          completeGalleryLoading();
         },
         onSkip: ({ reason }) => setGalleryFallback(reason),
-        onError: () => setGalleryFallback("load-error"),
+        onError: () => {
+          galleryRoomController = null;
+          galleryRoomLoadingPromise = null;
+          setGalleryFallback("load-error");
+        },
         onArtworkFocus: setGalleryArtwork,
         onSitePanelFocus: setGallerySitePanel,
         onDemoModeChange: ({ active }) => {
@@ -730,6 +879,8 @@ const ensureGalleryRoom = () => {
       return galleryRoomController;
     })
     .catch(() => {
+      galleryRoomController = null;
+      galleryRoomLoadingPromise = null;
       setGalleryFallback("module-error");
       return null;
     });
@@ -739,6 +890,7 @@ const ensureGalleryRoom = () => {
 const openRoomExperience = ({ trigger = null, spatial = false } = {}) => {
   if (!roomExperience) return;
   roomExperienceTrigger = trigger || document.activeElement || roomEnter;
+  if (!galleryRoomController && !galleryRoomLoadingPromise) beginGalleryLoading();
   setGalleryDemo(spatial);
   setRoomExperienceView(1);
   body.classList.add("room-experience-open");
@@ -780,6 +932,7 @@ experienceSpatial?.addEventListener("click", () => {
 experienceChoice?.addEventListener("keydown", (event) => {
   if (event.key === "Tab") trapFocus(event, experienceChoice);
 });
+galleryLoadingContinue?.addEventListener("click", dismissGalleryFallbackNotice);
 roomExperienceClose?.addEventListener("click", closeRoomExperience);
 roomExperiencePrev?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex - 1));
 roomExperienceNext?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex + 1));
@@ -953,15 +1106,15 @@ window.addEventListener("keydown", (event) => {
 const updateAmbientButton = () => {
   if (ambientToggle) {
     ambientToggle.setAttribute("aria-pressed", String(ambientIsOn));
-    ambientToggle.setAttribute("aria-label", ambientIsOn ? "Stop ambient gallery sound" : "Start ambient gallery sound");
+    ambientToggle.setAttribute("aria-label", ambientIsOn ? "Stop gallery lounge ambience" : "Start gallery lounge ambience");
     const label = ambientToggle.querySelector(".control-label");
     if (label) label.textContent = ambientIsOn ? "Sound on" : "Sound";
   }
   if (galleryAmbientToggle) {
     galleryAmbientToggle.setAttribute("aria-pressed", String(ambientIsOn));
-    galleryAmbientToggle.setAttribute("aria-label", ambientIsOn ? "Stop ambient room sound" : "Start ambient room sound");
+    galleryAmbientToggle.setAttribute("aria-label", ambientIsOn ? "Stop lounge ambience" : "Start lounge ambience");
   }
-  if (galleryAmbientLabel) galleryAmbientLabel.textContent = ambientIsOn ? "Room tone on" : "Room tone";
+  if (galleryAmbientLabel) galleryAmbientLabel.textContent = ambientIsOn ? "Lounge on" : "Lounge";
 };
 
 const createNoiseSource = (context, seconds, brown = false) => {
@@ -1010,6 +1163,13 @@ const createAmbientSound = () => {
   air.start();
   texture.start();
   pulse.start();
+  if (window.DHAGalleryLounge?.create) {
+    ambientLounge = window.DHAGalleryLounge.create(ambientContext, master, {
+      level: 0.72,
+      cutoff: 1420
+    });
+    ambientLounge.start({ fade: 3.2 }).catch(() => {});
+  }
   ambientSources = [air, texture, pulse];
   ambientNodes = [airFilter, airGain, textureFilter, textureGain, pulseGain, master];
   return master;
@@ -1018,6 +1178,8 @@ const createAmbientSound = () => {
 const disposeAmbientSound = () => {
   window.clearTimeout(ambientDisposeTimer);
   ambientDisposeTimer = null;
+  ambientLounge?.dispose?.();
+  ambientLounge = null;
   ambientSources.forEach((source) => {
     try { source.stop(); } catch (error) { /* Source may already be stopped. */ }
     try { source.disconnect(); } catch (error) { /* A disconnected node is harmless. */ }
