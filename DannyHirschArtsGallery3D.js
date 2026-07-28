@@ -1,8 +1,63 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
 const TAU = Math.PI * 2;
+
+const ARTWORK_MEMORY_COLOURS = {
+  'artwork-01': '#b9a53b',
+  'artwork-02': '#9e6875',
+  'artwork-03': '#b77d50',
+  'artwork-04': '#527d86',
+  'artwork-05': '#3f82a1',
+  'artwork-06': '#8c745f',
+  'gallery-04': '#4e8b8c'
+};
+
+const artworkStem = (source = '') => String(source).split('/').pop()?.replace(/\.[^.]+$/, '').toLowerCase() || '';
+
+const createTraceTexture = (leaf = false) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const context = canvas.getContext('2d');
+  context.translate(64, 64);
+  context.fillStyle = '#ffffff';
+  if (leaf) {
+    context.beginPath();
+    context.moveTo(-39, 4);
+    context.bezierCurveTo(-18, -42, 36, -35, 43, -2);
+    context.bezierCurveTo(24, 34, -21, 40, -39, 4);
+    context.fill();
+    context.strokeStyle = 'rgba(0,0,0,.42)';
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(-34, 7);
+    context.lineTo(37, -5);
+    context.stroke();
+  } else {
+    for (let index = 0; index < 18; index += 1) {
+      const angle = (index / 18) * TAU;
+      const radius = 14 + (index % 4) * 7;
+      context.beginPath();
+      context.ellipse(Math.cos(angle) * radius, Math.sin(angle) * radius, 16 + index % 6, 8 + index % 4, angle, 0, TAU);
+      context.fill();
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+};
+
+const createMemoryTexture = () => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 720;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return { canvas, context: canvas.getContext('2d'), texture };
+};
 
 const finiteMaterialValue = (value, fallback) => {
   const parsed = Number(value);
@@ -300,7 +355,7 @@ const createMicroNormalTexture = (kind = 'stone') => {
   // Plaster benefits from a denser, lower-amplitude field than stone. The
   // higher source resolution prevents the wall normal from reading as large
   // rocky facets when visitors stand close to it.
-  const size = kind === 'plaster' ? 256 : 128;
+  const size = kind === 'plaster' || kind === 'leaf' ? 256 : 128;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const context = canvas.getContext('2d');
@@ -316,6 +371,14 @@ const createMicroNormalTexture = (kind = 'stone') => {
         heights[y * size + x] = broad + fine + fleck;
         continue;
       }
+      if (kind === 'leaf') {
+        const centre = Math.abs(x - size * 0.5) / size;
+        const vein = Math.exp(-centre * 58) * 0.72;
+        const sideVeins = Math.pow(Math.max(0, Math.sin(y * 0.13 + centre * 32)), 8) * (0.26 - centre * 0.18);
+        const skin = Math.sin(x * 0.31 + y * 0.17) * 0.025;
+        heights[y * size + x] = vein + sideVeins + skin;
+        continue;
+      }
       const grain = Math.sin(x * (kind === 'wood' ? 0.22 : 0.67) + Math.sin(y * 0.11) * 1.8);
       const pore = Math.sin((x * 12.9898 + y * 78.233) % Math.PI) * 0.32;
       heights[y * size + x] = grain * (kind === 'wood' ? 0.7 : 0.22) + pore;
@@ -328,7 +391,7 @@ const createMicroNormalTexture = (kind = 'stone') => {
       const down = heights[((y + size - 1) % size) * size + x];
       const up = heights[((y + 1) % size) * size + x];
       const offset = (y * size + x) * 4;
-      const slope = kind === 'plaster' ? 20 : 42;
+      const slope = kind === 'plaster' ? 20 : kind === 'leaf' ? 28 : 42;
       image.data[offset] = 128 + clamp((left - right) * slope, -90, 90);
       image.data[offset + 1] = 128 + clamp((down - up) * slope, -90, 90);
       image.data[offset + 2] = 245;
@@ -339,6 +402,7 @@ const createMicroNormalTexture = (kind = 'stone') => {
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   if (kind === 'plaster') texture.repeat.set(11, 11);
+  else if (kind === 'leaf') texture.repeat.set(1, 1);
   else texture.repeat.set(kind === 'wood' ? 2 : 7, kind === 'wood' ? 5 : 7);
   texture.colorSpace = THREE.NoColorSpace;
   return texture;
@@ -396,7 +460,8 @@ export function initWalkableGallery3D(options = {}) {
       resetView() {},
       setActive() {},
       setDemoMode() {},
-      setTheme() {}
+      setTheme() {},
+      toggleGuidedTour() {}
     };
   };
 
@@ -436,6 +501,7 @@ export function initWalkableGallery3D(options = {}) {
   const scene = new THREE.Scene();
   const environmentTexture = createGalleryEnvironment(renderer);
   scene.environment = environmentTexture;
+  let reflectionTarget = null;
   const baseCameraFov = compact ? 68 : 62;
   const minimumCameraFov = compact ? 46 : 38;
   const maximumCameraFov = compact ? 82 : 78;
@@ -463,6 +529,7 @@ export function initWalkableGallery3D(options = {}) {
   const sitePanelMeshes = [];
   const siteNavigationMeshes = [];
   const focusRayMeshes = [];
+  const floorMeshes = [];
   const demoObjects = [];
   const standardObjects = [];
   const labelEntries = [];
@@ -476,7 +543,33 @@ export function initWalkableGallery3D(options = {}) {
     stone: createMicroNormalTexture('stone'),
     wood: createMicroNormalTexture('wood'),
     leather: createMicroNormalTexture('leather'),
+    leaf: createMicroNormalTexture('leaf'),
     water: createWaterFlowTexture()
+  };
+  const textureLoader = new THREE.TextureLoader();
+  const pbrTextureCache = new Map();
+  const pbrMaterialTasks = [];
+  const pbrPresetFor = (role, material) => {
+    const name = `${material?.name || ''} ${role}`.toLowerCase();
+    if (/marble|floor_tile|floor_alt|stone/.test(name)) return 'black-marble';
+    if (/walnut|smoked|wood/.test(name)) return 'smoked-walnut';
+    if (/saddle|leather/.test(name)) return 'saddle-leather';
+    if (/fabric/.test(name)) return 'mineral-fabric';
+    if (/wall|limestone|plaster/.test(name)) return 'rough-plaster';
+    return null;
+  };
+  const loadPbrTexture = (preset, type) => {
+    const key = `${preset}-${type}`;
+    if (!pbrTextureCache.has(key)) {
+      pbrTextureCache.set(key, textureLoader.loadAsync(`assets/materials/pbr/${key}.webp`).then((texture) => {
+        texture.flipY = false;
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+        texture.colorSpace = THREE.NoColorSpace;
+        return texture;
+      }));
+    }
+    return pbrTextureCache.get(key);
   };
   const analogMove = { x: 0, y: 0 };
   const analogLook = { x: 0, y: 0 };
@@ -487,6 +580,69 @@ export function initWalkableGallery3D(options = {}) {
   const sidebarToggle = root.querySelector('[data-gallery-sidebar-toggle]');
   const sidebarScroll = root.querySelector('.room-experience__sidebar-scroll');
   const waterMaterials = new Set();
+  const visitedWorks = new Map();
+  const traceEntries = [];
+  const maxTraceCount = compact || lowPower ? 20 : 42;
+  const traceGeometry = new THREE.PlaneGeometry(0.34, 0.56);
+  traceGeometry.rotateX(-Math.PI / 2);
+  const pigmentMaterial = new THREE.MeshBasicMaterial({
+    map: createTraceTexture(false),
+    color: '#c6a36b',
+    transparent: true,
+    opacity: 0.25,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2
+  });
+  const leafMaterial = new THREE.MeshBasicMaterial({
+    map: createTraceTexture(true),
+    color: '#17150e',
+    transparent: true,
+    opacity: 0.22,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -3
+  });
+  const traceGroup = new THREE.Group();
+  traceGroup.name = 'RoomMemoryTraces';
+  scene.add(traceGroup);
+  const memorySurface = createMemoryTexture();
+  const memoryWall = new THREE.Group();
+  memoryWall.name = 'RoomMemoryWall';
+  const memoryFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(4.25, 2.65, 0.11),
+    new THREE.MeshPhysicalMaterial({ color: '#6f522e', metalness: 0.78, roughness: 0.27, envMapIntensity: 1.1 })
+  );
+  const memoryPanel = new THREE.Mesh(
+    new THREE.PlaneGeometry(4.02, 2.42),
+    new THREE.MeshBasicMaterial({ map: memorySurface.texture, toneMapped: false })
+  );
+  memoryPanel.position.z = 0.065;
+  memoryWall.add(memoryFrame, memoryPanel);
+  memoryWall.position.set(5.45, 2.62, 15.63);
+  memoryWall.rotation.y = Math.PI;
+  memoryWall.visible = false;
+  scene.add(memoryWall);
+  const airCount = compact || lowPower ? 18 : 48;
+  const airPositions = new Float32Array(airCount * 3);
+  for (let index = 0; index < airCount; index += 1) {
+    airPositions[index * 3] = (Math.random() - 0.5) * 13;
+    airPositions[index * 3 + 1] = 0.4 + Math.random() * 4.1;
+    airPositions[index * 3 + 2] = -2 + Math.random() * 18;
+  }
+  const airGeometry = new THREE.BufferGeometry();
+  airGeometry.setAttribute('position', new THREE.BufferAttribute(airPositions, 3));
+  const airMaterial = new THREE.PointsMaterial({
+    color: '#d8bb82',
+    size: compact ? 0.024 : 0.034,
+    transparent: true,
+    opacity: 0.17,
+    depthWrite: false,
+    sizeAttenuation: true
+  });
+  const airMotes = new THREE.Points(airGeometry, airMaterial);
+  airMotes.name = 'ArchitecturalAir';
+  scene.add(airMotes);
   const motion = {
     supported: compact && typeof window.DeviceOrientationEvent !== 'undefined',
     enabled: false,
@@ -527,6 +683,45 @@ export function initWalkableGallery3D(options = {}) {
   let focusCandidateKey = null;
   let focusCandidateSince = 0;
   let sidebarCollapsed = compact;
+  let lastTracePosition = null;
+  let stepSide = 1;
+  let focusMode = false;
+  let focusTint = new THREE.Color('#c6a36b');
+  const focusTintTarget = focusTint.clone();
+  let focusWorldPosition = null;
+  let autoWalkTarget = null;
+  let guidedTourActive = false;
+  let guidedTourTimer = 0;
+  let transitionTimer = 0;
+  let lastSpatialAudioAt = 0;
+  let performanceWindow = [];
+  let adaptivePixelRatio = Math.min(window.devicePixelRatio || 1, compact ? 1.25 : lowPower ? 1 : 1.5);
+
+  const bakeReflectionProbe = () => {
+    if (lowPower || !model) return;
+    const cubeTarget = new THREE.WebGLCubeRenderTarget(compact ? 64 : 128, {
+      type: THREE.HalfFloatType,
+      generateMipmaps: true,
+      minFilter: THREE.LinearMipmapLinearFilter
+    });
+    const probe = new THREE.CubeCamera(0.2, 55, cubeTarget);
+    probe.position.set(0, 2.1, 0.4);
+    const wallWasVisible = memoryWall.visible;
+    memoryWall.visible = false;
+    traceGroup.visible = false;
+    airMotes.visible = false;
+    scene.add(probe);
+    probe.update(renderer, scene);
+    scene.remove(probe);
+    const generator = new THREE.PMREMGenerator(renderer);
+    reflectionTarget = generator.fromCubemap(cubeTarget.texture);
+    generator.dispose();
+    cubeTarget.dispose();
+    scene.environment = reflectionTarget.texture;
+    memoryWall.visible = wallWasVisible;
+    traceGroup.visible = demoMode;
+    airMotes.visible = true;
+  };
 
   const triggerHaptic = (duration = 8) => {
     if (!compact || typeof navigator.vibrate !== 'function') return;
@@ -534,6 +729,115 @@ export function initWalkableGallery3D(options = {}) {
     if (now - lastHapticAt < 360) return;
     lastHapticAt = now;
     navigator.vibrate(duration);
+  };
+
+  const drawMemoryWall = () => {
+    const { canvas, context, texture } = memorySurface;
+    const colours = [...visitedWorks.values()];
+    context.fillStyle = '#11110e';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const glow = context.createRadialGradient(600, 350, 40, 600, 350, 580);
+    glow.addColorStop(0, 'rgba(198,163,107,.14)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    context.fillStyle = glow;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.globalCompositeOperation = 'screen';
+    colours.forEach((colour, index) => {
+      context.save();
+      context.translate(210 + index * 155, 365 + Math.sin(index * 2.1) * 58);
+      context.rotate(-0.42 + index * 0.19);
+      context.fillStyle = `${colour}99`;
+      for (let mark = 0; mark < 9; mark += 1) {
+        context.beginPath();
+        context.ellipse(mark * 24, Math.sin(mark * 1.7) * 36, 82 - mark * 3, 18 + mark % 4 * 5, mark * 0.2, 0, TAU);
+        context.fill();
+      }
+      context.restore();
+    });
+    context.globalCompositeOperation = 'source-over';
+    context.strokeStyle = 'rgba(198,163,107,.32)';
+    context.lineWidth = 2;
+    context.strokeRect(34, 34, canvas.width - 68, canvas.height - 68);
+    context.fillStyle = '#c6a36b';
+    context.font = '700 24px Manrope, sans-serif';
+    context.fillText('THE ROOM REMEMBERS', 74, 94);
+    context.fillStyle = '#eee8dd';
+    context.font = '400 70px "Instrument Serif", Georgia, serif';
+    context.fillText(colours.length >= 3 ? 'A material memory of your visit.' : 'Your material memory is forming.', 74, 184);
+    context.fillStyle = 'rgba(238,232,221,.66)';
+    context.font = '500 25px Manrope, sans-serif';
+    context.fillText(
+      colours.length >= 3
+        ? `${colours.length} surfaces held briefly in pigment, leaf, light and movement.`
+        : `Approach ${Math.max(0, 3 - colours.length)} more ${3 - colours.length === 1 ? 'surface' : 'surfaces'} to complete the wall.`,
+      76,
+      634
+    );
+    texture.needsUpdate = true;
+    call(options.onMemoryChange, { count: colours.length, ready: colours.length >= 3 });
+  };
+
+  const clearRoomMemory = () => {
+    traceEntries.splice(0).forEach(({ mesh }) => {
+      traceGroup.remove(mesh);
+      mesh.geometry?.dispose?.();
+      mesh.material?.dispose?.();
+    });
+    visitedWorks.clear();
+    lastTracePosition = null;
+    drawMemoryWall();
+  };
+
+  const addTrace = () => {
+    if (!active || !demoMode) return;
+    if (lastTracePosition && lastTracePosition.distanceToSquared(camera.position) < 0.18) return;
+    lastTracePosition = camera.position.clone();
+    stepSide *= -1;
+    const direction = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+    const lateral = new THREE.Vector3(-direction.z, 0, direction.x).multiplyScalar(stepSide * 0.12);
+    const colour = focusedArtwork
+      ? ARTWORK_MEMORY_COLOURS[artworkStem(focusedArtwork.source)] || '#c6a36b'
+      : '#786a4e';
+    const material = (stepSide > 0 ? pigmentMaterial : leafMaterial).clone();
+    material.color.set(colour);
+    material.opacity = stepSide > 0 ? 0.24 : 0.19;
+    const mesh = new THREE.Mesh(traceGeometry.clone(), material);
+    mesh.position.copy(camera.position).add(lateral);
+    mesh.position.y = 0.027;
+    mesh.rotation.y = yaw + (stepSide > 0 ? 0.16 : -0.22);
+    mesh.scale.setScalar(0.78 + Math.random() * 0.32);
+    traceGroup.add(mesh);
+    traceEntries.push({ mesh, bornAt: performance.now(), baseScale: mesh.scale.x });
+    if (traceEntries.length > maxTraceCount) {
+      const expired = traceEntries.shift();
+      traceGroup.remove(expired.mesh);
+      expired.mesh.geometry.dispose();
+      expired.mesh.material.dispose();
+    }
+  };
+
+  const rememberArtwork = (artwork) => {
+    if (!artwork?.source || !demoMode) return;
+    const key = artwork.id || artwork.focusKey || artwork.title;
+    if (visitedWorks.has(key)) return;
+    visitedWorks.set(key, ARTWORK_MEMORY_COLOURS[artworkStem(artwork.source)] || '#c6a36b');
+    drawMemoryWall();
+    triggerHaptic(12);
+  };
+
+  const setGuidedTour = (enabled) => {
+    guidedTourActive = Boolean(enabled);
+    if (guidedTourTimer) window.clearTimeout(guidedTourTimer);
+    guidedTourTimer = 0;
+    call(options.onGuidedTour, { active: guidedTourActive });
+    if (!guidedTourActive) return;
+    goToWork(1);
+    const advance = () => {
+      if (!guidedTourActive || destroyed || !active) return;
+      goToWork(1);
+      guidedTourTimer = window.setTimeout(advance, 7200);
+    };
+    guidedTourTimer = window.setTimeout(advance, 7200);
   };
 
   const resetMotionBaseline = () => {
@@ -704,6 +1008,8 @@ export function initWalkableGallery3D(options = {}) {
   });
 
   const movePlayer = (x, z) => {
+    const previousX = camera.position.x;
+    const previousZ = camera.position.z;
     const nextX = clamp(x, bounds.minX + playerRadius, bounds.maxX - playerRadius);
     const nextZ = clamp(z, bounds.minZ + playerRadius, bounds.maxZ - playerRadius);
     const xBlocked = nextX !== x || collides(nextX, camera.position.z);
@@ -711,6 +1017,7 @@ export function initWalkableGallery3D(options = {}) {
     if (!xBlocked) camera.position.x = nextX;
     if (!zBlocked) camera.position.z = nextZ;
     if (xBlocked || zBlocked) triggerHaptic(9);
+    if (Math.hypot(camera.position.x - previousX, camera.position.z - previousZ) > 0.002) addTrace();
     return { xBlocked, zBlocked };
   };
 
@@ -953,6 +1260,12 @@ export function initWalkableGallery3D(options = {}) {
         : distance <= 3.15
           ? 'focused'
           : 'distant';
+    const nextFocusMode = state === 'near';
+    if (focusMode !== nextFocusMode) {
+      focusMode = nextFocusMode;
+      root.classList.toggle('is-museum-focus', focusMode);
+      call(options.onFocusMode, { active: focusMode, artwork: focusMode ? focusedArtwork : null });
+    }
     if (artCard?.dataset.proximity === state && root.dataset.artProximity === state) return;
     if (artCard) artCard.dataset.proximity = state;
     root.dataset.artProximity = state;
@@ -1011,6 +1324,11 @@ export function initWalkableGallery3D(options = {}) {
       description: owner.userData.description || '',
       distance: hit?.distance || null
     } : null;
+    focusWorldPosition = owner ? owner.getWorldPosition(new THREE.Vector3()) : null;
+    if (focusedArtwork) {
+      focusTintTarget.set(ARTWORK_MEMORY_COLOURS[artworkStem(focusedArtwork.source)] || '#c6a36b');
+      rememberArtwork(focusedArtwork);
+    } else focusTintTarget.set('#c6a36b');
     call(options.onArtworkFocus, focusedArtwork);
   };
 
@@ -1058,6 +1376,9 @@ export function initWalkableGallery3D(options = {}) {
     else if (enteringDemo) setSidebarCollapsed(false);
     demoObjects.forEach((object) => { object.visible = demoMode; });
     standardObjects.forEach((object) => { object.visible = !demoMode; });
+    memoryWall.visible = demoMode;
+    traceGroup.visible = demoMode;
+    if (!demoMode) clearRoomMemory();
     if (!demoMode) mount.classList.remove('has-interactive-target');
     if (!demoMode && focusedSitePanel) {
       focusedSitePanel = null;
@@ -1076,6 +1397,12 @@ export function initWalkableGallery3D(options = {}) {
     }
   };
 
+  const beginMaterialTransition = (label) => {
+    call(options.onTransition, { active: true, label });
+    if (transitionTimer) window.clearTimeout(transitionTimer);
+    transitionTimer = window.setTimeout(() => call(options.onTransition, { active: false }), 980);
+  };
+
   const goToSitePanel = (panelId) => {
     const index = views.findIndex((view) => view.object.userData?.demo_only && (
       !panelId || view.target?.userData?.site_panel_id === panelId
@@ -1083,6 +1410,7 @@ export function initWalkableGallery3D(options = {}) {
     if (index < 0) return;
     if (!demoMode) setDemoMode(true);
     setNavigationId(panelId || 'about');
+    beginMaterialTransition('Passing through an archive layer');
     goToView(index);
   };
 
@@ -1092,6 +1420,7 @@ export function initWalkableGallery3D(options = {}) {
     if (index < 0) return;
     if (!demoMode) setDemoMode(true);
     setNavigationId('directory');
+    beginMaterialTransition('Returning to the spatial map');
     goToView(index);
   };
 
@@ -1100,6 +1429,7 @@ export function initWalkableGallery3D(options = {}) {
     if (index < 0) return;
     if (!demoMode) setDemoMode(true);
     setNavigationId(roomId);
+    beginMaterialTransition(`Passing into ${views[index].label || 'the next room'}`);
     goToView(index);
   };
 
@@ -1122,6 +1452,29 @@ export function initWalkableGallery3D(options = {}) {
       y: -((clientY - rect.top) / rect.height) * 2 + 1
     }, camera);
     return raycaster.intersectObjects(siteNavigationMeshes, false)[0] || null;
+  };
+
+  const floorHitAt = (clientX, clientY) => {
+    if (!floorMeshes.length) return null;
+    const rect = mount.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    raycaster.setFromCamera({
+      x: ((clientX - rect.left) / rect.width) * 2 - 1,
+      y: -((clientY - rect.top) / rect.height) * 2 + 1
+    }, camera);
+    return raycaster.intersectObjects(floorMeshes.filter(isVisibleForFocus), false)[0] || null;
+  };
+
+  const startAutoWalkAt = (clientX, clientY) => {
+    const hit = floorHitAt(clientX, clientY);
+    if (!hit || hit.distance > 15) return false;
+    autoWalkTarget = hit.point.clone();
+    autoWalkTarget.y = camera.position.y;
+    setGuidedTour(false);
+    call(options.onAutoWalk, { active: true, target: autoWalkTarget.toArray() });
+    triggerHaptic(6);
+    ensureFrame();
+    return true;
   };
 
   const activateNavigationAt = (clientX, clientY) => {
@@ -1185,7 +1538,11 @@ export function initWalkableGallery3D(options = {}) {
     const turnInput = (keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0);
     const hasUserInput = Boolean(forwardInput || sideInput || turnInput
       || Math.abs(analogLook.x) > 0.01 || Math.abs(analogLook.y) > 0.01);
-    if (hasUserInput) cancelCameraRail();
+    if (hasUserInput) {
+      cancelCameraRail();
+      autoWalkTarget = null;
+      if (guidedTourActive) setGuidedTour(false);
+    }
     if (turnInput) yaw -= turnInput * delta * 1.32;
     if (Math.abs(analogLook.x) > 0.01 || Math.abs(analogLook.y) > 0.01) {
       yaw -= analogLook.x * delta * 1.75;
@@ -1195,13 +1552,34 @@ export function initWalkableGallery3D(options = {}) {
       yaw += shortestAngle(yaw, motion.targetYaw) * blend;
       pitch += (motion.targetPitch - pitch) * blend;
     }
+    if (!forwardInput && !sideInput && autoWalkTarget) {
+      const distance = Math.hypot(autoWalkTarget.x - camera.position.x, autoWalkTarget.z - camera.position.z);
+      if (distance < 0.16) {
+        autoWalkTarget = null;
+        triggerHaptic(10);
+        call(options.onAutoWalk, { active: false, arrived: true });
+        return;
+      }
+      const speed = Math.min(distance, delta * (compact ? 1.05 : 1.28));
+      candidate.copy(camera.position);
+      candidate.x += ((autoWalkTarget.x - camera.position.x) / distance) * speed;
+      candidate.z += ((autoWalkTarget.z - camera.position.z) / distance) * speed;
+      const result = movePlayer(candidate.x, candidate.z);
+      if (result.xBlocked && result.zBlocked) {
+        autoWalkTarget = null;
+        call(options.onAutoWalk, { active: false, blocked: true });
+      }
+      currentViewIndex = -1;
+      return;
+    }
     if (!forwardInput && !sideInput) return;
     if (currentViewIndex !== -1) setCameraFov(baseCameraFov, false);
     forward.set(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
     right.set(-forward.z, 0, forward.x);
+    const focusSpeed = focusMode ? 0.48 : 1;
     candidate.copy(camera.position)
-      .addScaledVector(forward, forwardInput * delta * (compact ? 1.28 : 1.52))
-      .addScaledVector(right, sideInput * delta * (compact ? 1.12 : 1.34));
+      .addScaledVector(forward, forwardInput * delta * (compact ? 1.28 : 1.52) * focusSpeed)
+      .addScaledVector(right, sideInput * delta * (compact ? 1.12 : 1.34) * focusSpeed);
     movePlayer(candidate.x, candidate.z);
     currentViewIndex = -1;
   };
@@ -1243,6 +1621,54 @@ export function initWalkableGallery3D(options = {}) {
     }
   };
 
+  const updateLivingRoom = (delta, elapsed) => {
+    focusTint.lerp(focusTintTarget, 1 - Math.exp(-delta * 1.6));
+    importedLights.forEach((entry, index) => {
+      const influence = focusedArtwork ? 0.075 : 0;
+      entry.light.color.copy(entry.color).lerp(focusTint, influence);
+      entry.light.intensity = entry.targetIntensity * (1 + Math.sin(elapsed * 0.42 + index * 1.7) * 0.028);
+    });
+    airMotes.rotation.y = Math.sin(elapsed * 0.055) * 0.12;
+    airMotes.position.y = Math.sin(elapsed * 0.19) * 0.045;
+    for (let index = traceEntries.length - 1; index >= 0; index -= 1) {
+      const entry = traceEntries[index];
+      const age = (performance.now() - entry.bornAt) / 1000;
+      const fade = age < 12 ? 1 : clamp(1 - (age - 12) / 12, 0, 1);
+      entry.mesh.scale.setScalar(entry.baseScale * Math.max(0.001, fade));
+      if (age < 24) continue;
+      traceGroup.remove(entry.mesh);
+      entry.mesh.geometry.dispose();
+      entry.mesh.material.dispose();
+      traceEntries.splice(index, 1);
+    }
+    if (elapsed - lastSpatialAudioAt > 0.1) {
+      forward.set(-Math.sin(yaw), Math.sin(pitch), -Math.cos(yaw)).normalize();
+      call(options.onSpatialAudio, {
+        position: camera.position.toArray(),
+        forward: forward.toArray(),
+        focused: Boolean(focusedArtwork),
+        focusPosition: focusWorldPosition?.toArray?.() || null
+      });
+      lastSpatialAudioAt = elapsed;
+    }
+    performanceWindow.push(delta);
+    if (performanceWindow.length >= 120) {
+      const average = performanceWindow.reduce((sum, value) => sum + value, 0) / performanceWindow.length;
+      performanceWindow = [];
+      const maximum = Math.min(window.devicePixelRatio || 1, compact ? 1.25 : lowPower ? 1 : 1.5);
+      const next = average > 0.026
+        ? Math.max(0.72, adaptivePixelRatio - 0.12)
+        : average < 0.018
+          ? Math.min(maximum, adaptivePixelRatio + 0.06)
+          : adaptivePixelRatio;
+      if (Math.abs(next - adaptivePixelRatio) > 0.01) {
+        adaptivePixelRatio = next;
+        renderer.setPixelRatio(adaptivePixelRatio);
+        resize();
+      }
+    }
+  };
+
   const render = () => {
     frameRequest = 0;
     if (!active || destroyed || document.hidden || !ready) return;
@@ -1264,9 +1690,7 @@ export function initWalkableGallery3D(options = {}) {
         material.roughness = clamp(0.10 + Math.sin(elapsed * 1.35 + index) * 0.025, 0.06, 0.16);
       });
     }
-    importedLights.forEach((entry, index) => {
-      entry.light.intensity = entry.targetIntensity * (1 + Math.sin(elapsed * 0.42 + index * 1.7) * 0.028);
-    });
+    updateLivingRoom(delta, elapsed);
     if (elapsed - lastFocusCheck > 0.12) {
       updateArtworkFocus();
       lastFocusCheck = elapsed;
@@ -1297,12 +1721,15 @@ export function initWalkableGallery3D(options = {}) {
     });
     if (active) attachMotion();
     else {
+      setGuidedTour(false);
+      autoWalkTarget = null;
       detachMotion();
       cancelCameraRail({ preserveZoom: false });
       setCameraFov(baseCameraFov, true);
       focusCandidateKey = null;
       focusCandidateSince = 0;
       commitFocus(null, null);
+      clearRoomMemory();
     }
     if (!active && frameRequest) {
       window.cancelAnimationFrame(frameRequest);
@@ -1376,6 +1803,7 @@ export function initWalkableGallery3D(options = {}) {
       const owner = findMetadataOwner(object);
       const focusMaterial = Array.isArray(object.material) ? object.material[0] : object.material;
       const focusRole = readRole(object, focusMaterial);
+      if (/floor|stone/.test(focusRole) || /floor/i.test(object.name)) floorMeshes.push(object);
       if (!object.name.startsWith('COLLIDER_')
         && object.userData?.kind !== 'aabb'
         && object.userData?.kind !== 'view'
@@ -1465,10 +1893,38 @@ export function initWalkableGallery3D(options = {}) {
             material.clearcoat = Math.max(0.84, material.clearcoat || 0);
             waterMaterials.add(material);
           }
+          const pbrPreset = pbrPresetFor(role, material);
+          if (pbrPreset && !lowPower) {
+            pbrMaterialTasks.push(Promise.all([
+              loadPbrTexture(pbrPreset, 'normal'),
+              loadPbrTexture(pbrPreset, 'roughness'),
+              loadPbrTexture(pbrPreset, 'height')
+            ]).then(([normalMap, roughnessMap, heightMap]) => {
+              material.normalMap = normalMap;
+              material.roughnessMap = roughnessMap;
+              material.bumpMap = heightMap;
+              material.bumpScale = pbrPreset === 'rough-plaster'
+                ? 0.016
+                : pbrPreset === 'black-marble'
+                  ? 0.006
+                  : 0.01;
+              const normalStrength = pbrPreset === 'black-marble'
+                ? 0.16
+                : pbrPreset === 'rough-plaster'
+                  ? 0.12
+                  : pbrPreset === 'smoked-walnut'
+                    ? 0.28
+                    : 0.22;
+              material.normalScale?.set(normalStrength, normalStrength);
+              material.needsUpdate = true;
+            }).catch(() => {}));
+          }
           if (/botanical_leaf|botanical/.test(role)) {
             material.side = THREE.DoubleSide;
             material.envMapIntensity = 0.12;
             material.roughness = Math.max(0.48, material.roughness || 0);
+            material.normalMap = detailTextures.leaf;
+            material.normalScale?.set(0.18, 0.24);
           }
           if (role === 'glass') {
             // Clear museum glass and glassware stay optically neutral. Warmth
@@ -1554,15 +2010,30 @@ export function initWalkableGallery3D(options = {}) {
     if (destroyed) return;
     destroyed = true;
     clearCameraRailTimer();
+    if (guidedTourTimer) window.clearTimeout(guidedTourTimer);
+    if (transitionTimer) window.clearTimeout(transitionTimer);
     detachMotion();
     if (frameRequest) window.cancelAnimationFrame(frameRequest);
     listeners.splice(0).forEach((remove) => remove());
     resizeObserver.disconnect();
     animationMixer?.stopAllAction();
     animationMixer = null;
+    clearRoomMemory();
     disposeObject(model);
+    disposeObject(memoryWall);
+    traceGeometry.dispose();
+    pigmentMaterial.map?.dispose?.();
+    pigmentMaterial.dispose();
+    leafMaterial.map?.dispose?.();
+    leafMaterial.dispose();
+    airGeometry.dispose();
+    airMaterial.dispose();
+    memorySurface.texture.dispose();
     environmentTexture.dispose();
+    reflectionTarget?.dispose?.();
+    pbrTextureCache.forEach((promise) => promise.then((texture) => texture.dispose()).catch(() => {}));
     Object.values(detailTextures).forEach((texture) => texture.dispose?.());
+    ktx2Loader?.dispose?.();
     renderer.dispose();
     renderer.forceContextLoss?.();
     renderer.domElement.remove();
@@ -1578,6 +2049,7 @@ export function initWalkableGallery3D(options = {}) {
   const onWheel = (event) => {
     if (!active || !ready || destroyed || event.ctrlKey) return;
     event.preventDefault();
+    if (guidedTourActive) setGuidedTour(false);
     const delta = event.deltaMode === 1
       ? event.deltaY * 16
       : event.deltaMode === 2
@@ -1589,6 +2061,8 @@ export function initWalkableGallery3D(options = {}) {
   const onPointerDown = (event) => {
     if (!ready || event.button > 0 || !event.isPrimary) return;
     cancelCameraRail();
+    if (guidedTourActive) setGuidedTour(false);
+    autoWalkTarget = null;
     pointer.id = event.pointerId;
     pointer.x = event.clientX;
     pointer.y = event.clientY;
@@ -1613,8 +2087,9 @@ export function initWalkableGallery3D(options = {}) {
     pointer.x = x;
     pointer.y = y;
     if (Math.hypot(x - pointer.startX, y - pointer.startY) > 7) pointer.dragged = true;
-    yaw = (yaw - dx * (compact ? 0.0052 : 0.0038)) % TAU;
-    pitch = clamp(pitch - dy * (compact ? 0.0046 : 0.0034), -1.05, 1.05);
+    const focusSensitivity = focusMode ? 0.52 : 1;
+    yaw = (yaw - dx * (compact ? 0.0052 : 0.0038) * focusSensitivity) % TAU;
+    pitch = clamp(pitch - dy * (compact ? 0.0046 : 0.0034) * focusSensitivity, -1.05, 1.05);
     currentViewIndex = -1;
     if (motion.enabled) resetMotionBaseline();
   };
@@ -1625,7 +2100,10 @@ export function initWalkableGallery3D(options = {}) {
     mount.releasePointerCapture?.(event.pointerId);
     pointer.id = null;
     mount.classList.remove('is-dragging');
-    if (!wasDragged && event.type !== 'pointercancel') activateNavigationAt(event.clientX, event.clientY);
+    if (!wasDragged && event.type !== 'pointercancel') {
+      const activated = activateNavigationAt(event.clientX, event.clientY);
+      if (!activated && (compact || event.pointerType === 'touch')) startAutoWalkAt(event.clientX, event.clientY);
+    }
     if (active && ready) {
       camera.updateMatrixWorld(true);
       updateArtworkFocus();
@@ -1789,6 +2267,11 @@ export function initWalkableGallery3D(options = {}) {
     total: null
   });
   const loader = new GLTFLoader();
+  const ktx2Loader = new KTX2Loader()
+    .setTranscoderPath('assets/vendor/three/addons/libs/basis/')
+    .detectSupport(renderer);
+  loader.setKTX2Loader(ktx2Loader);
+  loader.setMeshoptDecoder(MeshoptDecoder);
   loader.load(
     options.modelUrl || 'assets/cinematic/danny-gallery-360.glb',
     (gltf) => {
@@ -1804,15 +2287,38 @@ export function initWalkableGallery3D(options = {}) {
         total: totalBytes
       });
       prepareModel(gltf);
-      ready = true;
-      resize();
-      ensureFrame();
-      call(options.onReady, {
-        controller: api,
-        views: views.length,
-        artworks: new Set(artworkMeshes.map((mesh) => findMetadataOwner(mesh))).size,
-        animations: animationClipCount
-      });
+      drawMemoryWall();
+      Promise.all(pbrMaterialTasks)
+        .then(async () => {
+          if (destroyed) return;
+          call(options.onLoading, {
+            phase: 'compiling',
+            progress: 1,
+            percent: 100,
+            loaded: loadedBytes,
+            total: totalBytes
+          });
+          bakeReflectionProbe();
+          await renderer.compileAsync?.(scene, camera);
+          if (destroyed) return;
+          ready = true;
+          resize();
+          renderer.render(scene, camera);
+          if (renderer.shadowMap.enabled) renderer.shadowMap.autoUpdate = false;
+          ensureFrame();
+          call(options.onReady, {
+            controller: api,
+            views: views.length,
+            artworks: new Set(artworkMeshes.map((mesh) => findMetadataOwner(mesh))).size,
+            animations: animationClipCount,
+            compressedTextures: true,
+            renderer: renderer.info.render
+          });
+        })
+        .catch((error) => {
+          call(options.onError, { reason: 'scene-compile-error', error });
+          destroy();
+        });
     },
     (event) => {
       loadedBytes = Number(event.loaded) || 0;
@@ -1841,11 +2347,19 @@ export function initWalkableGallery3D(options = {}) {
       focusedSitePanel,
       activeNavigationId,
       animationClipCount,
+      autoWalking: Boolean(autoWalkTarget),
       demoMode,
+      guidedTourActive,
       motionEnabled: motion.enabled,
       motionSupported: motion.supported,
       pitch,
       ready,
+      memory: { count: visitedWorks.size, ready: visitedWorks.size >= 3, traces: traceEntries.length },
+      performance: {
+        calls: renderer.info.render.calls,
+        pixelRatio: adaptivePixelRatio,
+        triangles: renderer.info.render.triangles
+      },
       sidebarCollapsed,
       theme: currentTheme,
       zoom: {
@@ -1867,7 +2381,8 @@ export function initWalkableGallery3D(options = {}) {
     resetView,
     setActive,
     setDemoMode,
-    setTheme
+    setTheme,
+    toggleGuidedTour: () => setGuidedTour(!guidedTourActive)
   };
 
   Object.defineProperty(mount, '__galleryController', {

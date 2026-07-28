@@ -23,8 +23,8 @@
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260727-gallery-37">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260727-gallery-37">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260728-memory-02">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260728-memory-02">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -608,6 +608,11 @@
         <aside class="room-experience__art" data-gallery-art-card data-proximity="ambient" aria-live="polite">
           <figure class="room-experience__art-media">
             <img src="assets/cinematic/threshold-room-center.webp" alt="" data-gallery-art-image width="1800" height="1125" decoding="async">
+            <div class="room-experience__surface-lens" data-gallery-surface-lens-view hidden aria-hidden="true">
+              <img src="assets/cinematic/threshold-room-center.webp" alt="" data-gallery-lens-image decoding="async">
+              <span aria-hidden="true"></span>
+              <small>Genuine macro · relief interpretation</small>
+            </div>
             <figcaption>
               <span data-gallery-art-proximity>Free look</span>
               <output data-gallery-zoom aria-label="Gallery zoom level">100%</output>
@@ -626,8 +631,12 @@
               <div><dt>Dimensions</dt><dd data-gallery-art-dimensions></dd></div>
               <div><dt>Availability</dt><dd data-gallery-art-availability></dd></div>
             </dl>
+            <div class="room-experience__scale" data-gallery-scale hidden aria-label="Artwork scale reference">
+              <span aria-hidden="true"><i></i></span><small data-gallery-scale-copy>Catalogue scale</small>
+            </div>
             <div class="room-experience__art-action">
               <button type="button" data-gallery-art-inspect disabled><span>View artwork</span><i aria-hidden="true">↗</i></button>
+              <button type="button" data-gallery-surface-lens aria-pressed="false" disabled><span>Surface lens</span><i aria-hidden="true">◎</i></button>
               <small><kbd>Scroll</kbd> to move closer</small>
             </div>
           </div>
@@ -690,7 +699,15 @@
             <button type="button" data-gallery-view-prev aria-label="Previous curated artwork view">Previous work</button>
             <button type="button" data-gallery-reset aria-label="Return to gallery entrance">Entrance</button>
             <button type="button" data-gallery-view-next aria-label="Next curated artwork view">Next work</button>
+            <button type="button" data-gallery-guided aria-pressed="false" aria-label="Start guided exhibition">Guided exhibition</button>
           </div>
+        </div>
+
+        <div class="room-experience__memory-status" data-gallery-memory-status aria-live="polite" hidden>
+          <span aria-hidden="true"></span><p>The room remembers <b data-gallery-memory-count>0 / 3</b></p>
+        </div>
+        <div class="room-experience__transition" data-gallery-transition aria-hidden="true">
+          <i></i><i></i><span data-gallery-transition-label>Passing through material</span>
         </div>
 
         <div class="room-experience__controls" data-room-fallback-controls role="group" aria-label="Room camera controls">
@@ -719,7 +736,7 @@
       </div>
     </div>
 
-    <script src="DannyHirschArtsLoungeAudio.js?v=20260727-gallery-37" defer></script>
-    <script src="DannyHirschArtsHomepage.js?v=20260727-gallery-37" defer></script>
+    <script src="DannyHirschArtsLoungeAudio.js?v=20260728-memory-02" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260728-memory-02" defer></script>
   </body>
 </html>

@@ -75,6 +75,16 @@ const galleryArtMedium = document.querySelector("[data-gallery-art-medium]");
 const galleryArtDimensions = document.querySelector("[data-gallery-art-dimensions]");
 const galleryArtAvailability = document.querySelector("[data-gallery-art-availability]");
 const galleryArtInspect = document.querySelector("[data-gallery-art-inspect]");
+const gallerySurfaceLens = document.querySelector("[data-gallery-surface-lens]");
+const gallerySurfaceLensView = document.querySelector("[data-gallery-surface-lens-view]");
+const galleryLensImage = document.querySelector("[data-gallery-lens-image]");
+const galleryScale = document.querySelector("[data-gallery-scale]");
+const galleryScaleCopy = document.querySelector("[data-gallery-scale-copy]");
+const galleryGuided = document.querySelector("[data-gallery-guided]");
+const galleryMemoryStatus = document.querySelector("[data-gallery-memory-status]");
+const galleryMemoryCount = document.querySelector("[data-gallery-memory-count]");
+const galleryTransition = document.querySelector("[data-gallery-transition]");
+const galleryTransitionLabel = document.querySelector("[data-gallery-transition-label]");
 const gallerySitePanel = document.querySelector("[data-gallery-site-panel]");
 const gallerySiteKicker = document.querySelector("[data-gallery-site-kicker]");
 const gallerySiteTitle = document.querySelector("[data-gallery-site-title]");
@@ -122,6 +132,10 @@ let galleryLoadingHideTimer = null;
 let galleryLoadingAnnouncementBand = -1;
 let galleryFocusedArtwork = null;
 let galleryDemoActive = false;
+let galleryLensOpen = false;
+let galleryFocusMode = false;
+let spatialAudio = null;
+let lastSpatialAudioSnapshot = null;
 let roomInteractionUntil = 0;
 let roomExperienceIndex = 1;
 let roomExperienceTrigger = null;
@@ -540,6 +554,30 @@ const galleryOptimizedAsset = (path = "") => {
   return match ? `assets/optimized/${match[1].toLowerCase()}/${match[2]}.webp` : path;
 };
 
+const setGalleryLensOpen = (open) => {
+  galleryLensOpen = Boolean(open && galleryFocusedArtwork && !gallerySurfaceLens?.disabled);
+  if (gallerySurfaceLens) gallerySurfaceLens.setAttribute("aria-pressed", String(galleryLensOpen));
+  if (gallerySurfaceLensView) {
+    gallerySurfaceLensView.hidden = !galleryLensOpen;
+    gallerySurfaceLensView.setAttribute("aria-hidden", String(!galleryLensOpen));
+  }
+  galleryArtCard?.classList.toggle("has-surface-lens", galleryLensOpen);
+};
+
+const updateGalleryLensPosition = (event) => {
+  if (!galleryLensOpen || !gallerySurfaceLensView) return;
+  const rect = gallerySurfaceLensView.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+  gallerySurfaceLensView.style.setProperty("--lens-x", `${(x * 100).toFixed(1)}%`);
+  gallerySurfaceLensView.style.setProperty("--lens-y", `${(y * 100).toFixed(1)}%`);
+};
+
+gallerySurfaceLens?.addEventListener("click", () => setGalleryLensOpen(!galleryLensOpen));
+gallerySurfaceLensView?.addEventListener("pointermove", updateGalleryLensPosition, { passive: true });
+gallerySurfaceLensView?.addEventListener("pointerdown", updateGalleryLensPosition, { passive: true });
+
 const setGalleryArtworkVisual = (artwork, isDetail = false) => {
   const stem = galleryAssetStem(artwork?.source);
   if (galleryArtImage) {
@@ -574,6 +612,7 @@ const setGalleryArtwork = (artwork) => {
   if (!galleryArtTitle || !galleryArtDetail || !galleryArtInspect) return;
 
   if (!artwork) {
+    setGalleryLensOpen(false);
     setGalleryArtworkVisual(null);
     if (galleryArtKicker) galleryArtKicker.textContent = "Spatial gallery";
     if (galleryArtIndex) galleryArtIndex.textContent = "Room view";
@@ -582,11 +621,31 @@ const setGalleryArtwork = (artwork) => {
     if (galleryArtFacts) galleryArtFacts.hidden = true;
     galleryArtInspect.disabled = true;
     galleryArtInspect.dataset.galleryTrigger = "";
+    if (gallerySurfaceLens) gallerySurfaceLens.disabled = true;
+    if (galleryScale) galleryScale.hidden = true;
     return;
   }
 
   const isDetail = /detail|surface/i.test(artwork.representation || artwork.detail || "");
   setGalleryArtworkVisual(artwork, isDetail);
+  setGalleryLensOpen(false);
+  const sourceStem = galleryAssetStem(artwork.source);
+  if (galleryLensImage) {
+    galleryLensImage.src = galleryOptimizedAsset(artwork.source);
+    galleryLensImage.style.setProperty(
+      "--relief-map",
+      sourceStem.match(/^artwork-\d+$/)
+        ? `url("assets/materials/pbr/${sourceStem}-height.webp")`
+        : `url("${galleryOptimizedAsset(artwork.source)}")`
+    );
+  }
+  if (gallerySurfaceLens) gallerySurfaceLens.disabled = !artwork.source;
+  if (galleryScale && galleryScaleCopy) {
+    galleryScale.hidden = !artwork.dimensions;
+    galleryScaleCopy.textContent = artwork.dimensions
+      ? `${artwork.dimensions} · physical reference`
+      : "Catalogue scale";
+  }
   if (galleryArtKicker) galleryArtKicker.textContent = isDetail ? "Genuine surface detail" : "In view";
   galleryArtTitle.textContent = artwork.title || "Danny Hirsch artwork";
   galleryArtDetail.textContent = isDetail
@@ -804,12 +863,12 @@ const ensureGalleryRoom = () => {
 
   if (!roomExperience.classList.contains("is-gallery-loading")) beginGalleryLoading();
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260727-gallery-37")
+  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260728-memory-02")
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
         mount: galleryMount,
-        modelUrl: "assets/cinematic/danny-gallery-360.glb?v=20260727-gallery-37",
+        modelUrl: "assets/cinematic/danny-gallery-360-ktx2.glb?v=20260728-memory-02",
         theme: body.dataset.theme,
         onLoading: ({ progress, percent, loaded, total, phase: loadingPhase }) => {
           const actualPercent = Number.isFinite(percent)
@@ -820,14 +879,15 @@ const ensureGalleryRoom = () => {
           const transferred = Number.isFinite(loaded) && Number.isFinite(total) && total > 0
             ? `${(loaded / 1048576).toFixed(1)} of ${(total / 1048576).toFixed(1)} MB received`
             : "The room is travelling securely to this device.";
-          const assembling = loadingPhase === "assembling";
+          const compiling = loadingPhase === "compiling";
+          const assembling = loadingPhase === "assembling" || compiling;
           updateGalleryLoading({
             state: "loading",
             percent: actualPercent,
-            title: assembling ? "Composing the room" : "Loading architecture and artwork",
-            status: assembling ? "Applying materials, light, and movement" : "Receiving the Blender-built gallery",
+            title: compiling ? "Warming light and reflections" : assembling ? "Composing the room" : "Loading architecture and artwork",
+            status: compiling ? "Preparing compressed surfaces and the room memory" : assembling ? "Applying materials, light, and movement" : "Receiving the Blender-built gallery",
             phase: assembling ? "03 / 03" : "02 / 03",
-            detail: assembling ? "The scene is downloaded. Its spatial layers are now being prepared by the graphics processor." : transferred,
+            detail: compiling ? "The final shader and reflection pass prevents stutter on your first steps." : assembling ? "The scene is downloaded. Its spatial layers are now being prepared by the graphics processor." : transferred,
             announce: assembling,
           });
         },
@@ -849,6 +909,31 @@ const ensureGalleryRoom = () => {
           setGalleryFallback("load-error");
         },
         onArtworkFocus: setGalleryArtwork,
+        onFocusMode: ({ active }) => {
+          galleryFocusMode = Boolean(active);
+          roomExperience?.classList.toggle("is-museum-focus", galleryFocusMode);
+          if (ambientContext && ambientMaster && ambientIsOn) {
+            const now = ambientContext.currentTime;
+            ambientMaster.gain.setTargetAtTime(galleryFocusMode ? 0.034 : 0.05, now, 0.55);
+          }
+        },
+        onMemoryChange: ({ count, ready: memoryReady }) => {
+          if (galleryMemoryStatus) galleryMemoryStatus.hidden = !galleryDemoActive && count === 0;
+          if (galleryMemoryCount) galleryMemoryCount.textContent = memoryReady ? "Memory formed" : `${count} / 3`;
+          galleryMemoryStatus?.classList.toggle("is-complete", Boolean(memoryReady));
+        },
+        onSpatialAudio: (snapshot) => {
+          lastSpatialAudioSnapshot = snapshot;
+          spatialAudio?.update?.(snapshot);
+        },
+        onTransition: ({ active, label }) => {
+          galleryTransition?.classList.toggle("is-active", Boolean(active));
+          if (galleryTransitionLabel && label) galleryTransitionLabel.textContent = label;
+        },
+        onGuidedTour: ({ active }) => {
+          galleryGuided?.setAttribute("aria-pressed", String(Boolean(active)));
+          if (galleryGuided) galleryGuided.textContent = active ? "Pause tour" : "Guided exhibition";
+        },
         onSitePanelFocus: setGallerySitePanel,
         onDemoModeChange: ({ active }) => {
           galleryDemoActive = Boolean(active);
@@ -939,6 +1024,7 @@ roomExperienceNext?.addEventListener("click", () => setRoomExperienceView(roomEx
 galleryViewPrev?.addEventListener("click", () => galleryRoomController?.goToPreviousView?.());
 galleryViewNext?.addEventListener("click", () => galleryRoomController?.goToNextView?.());
 galleryReset?.addEventListener("click", () => galleryRoomController?.resetView?.());
+galleryGuided?.addEventListener("click", () => galleryRoomController?.toggleGuidedTour?.());
 galleryDemoArt?.addEventListener("click", () => galleryRoomController?.goToNextView?.());
 galleryDemoRooms.forEach((button) => {
   button.addEventListener("click", () => galleryRoomController?.goToDemoRoom?.(button.dataset.galleryDemoRoom));
@@ -1012,6 +1098,12 @@ roomExperience?.addEventListener("click", (event) => {
 
 window.addEventListener("keydown", (event) => {
   if (!roomExperience?.open) return;
+  if (event.key === "Escape" && galleryLensOpen) {
+    event.preventDefault();
+    setGalleryLensOpen(false);
+    gallerySurfaceLens?.focus();
+    return;
+  }
   if (event.key === "Tab") trapFocus(event, roomExperience);
   if (roomExperience.classList.contains("is-webgl-ready")) return;
   if (event.key === "ArrowLeft") {
@@ -1132,6 +1224,67 @@ const createNoiseSource = (context, seconds, brown = false) => {
   return source;
 };
 
+const setAudioPosition = (node, position, now) => {
+  if (!node || !position) return;
+  if (node.positionX) {
+    node.positionX.setTargetAtTime(position[0], now, 0.08);
+    node.positionY.setTargetAtTime(position[1], now, 0.08);
+    node.positionZ.setTargetAtTime(position[2], now, 0.08);
+  } else node.setPosition(...position);
+};
+
+const createSpatialGallerySound = (context, destination) => {
+  const makeZone = ({ position, frequency, level, brown = false }) => {
+    const source = createNoiseSource(context, 4, brown);
+    const filter = context.createBiquadFilter();
+    const gain = context.createGain();
+    const panner = context.createPanner();
+    filter.type = brown ? "lowpass" : "bandpass";
+    filter.frequency.value = frequency;
+    filter.Q.value = brown ? 0.45 : 1.2;
+    gain.gain.value = level;
+    panner.panningModel = "HRTF";
+    panner.distanceModel = "inverse";
+    panner.refDistance = 1.2;
+    panner.maxDistance = 22;
+    panner.rolloffFactor = 1.25;
+    setAudioPosition(panner, position, context.currentTime);
+    source.connect(filter).connect(panner).connect(gain).connect(destination);
+    source.start();
+    return { source, filter, gain, panner };
+  };
+  const water = makeZone({ position: [5.9, 1.25, 11.4], frequency: 1180, level: 0.055 });
+  const seating = makeZone({ position: [-4.1, 1.2, 12.0], frequency: 260, level: 0.025, brown: true });
+  const artwork = makeZone({ position: [0, 1.8, 0], frequency: 1780, level: 0.008 });
+  return {
+    update(snapshot) {
+      if (!snapshot) return;
+      const now = context.currentTime;
+      const listener = context.listener;
+      setAudioPosition(listener, snapshot.position, now);
+      const forward = snapshot.forward || [0, 0, -1];
+      if (listener.forwardX) {
+        listener.forwardX.setTargetAtTime(forward[0], now, 0.06);
+        listener.forwardY.setTargetAtTime(forward[1], now, 0.06);
+        listener.forwardZ.setTargetAtTime(forward[2], now, 0.06);
+        listener.upX.setValueAtTime(0, now);
+        listener.upY.setValueAtTime(1, now);
+        listener.upZ.setValueAtTime(0, now);
+      } else listener.setOrientation(...forward, 0, 1, 0);
+      if (snapshot.focusPosition) setAudioPosition(artwork.panner, snapshot.focusPosition, now);
+      artwork.gain.gain.setTargetAtTime(snapshot.focused ? 0.011 : 0.002, now, 0.28);
+    },
+    dispose() {
+      [water, seating, artwork].forEach((zone) => {
+        try { zone.source.stop(); } catch (error) { /* Already stopped. */ }
+        [zone.source, zone.filter, zone.panner, zone.gain].forEach((node) => {
+          try { node.disconnect(); } catch (error) { /* Already disconnected. */ }
+        });
+      });
+    }
+  };
+};
+
 const createAmbientSound = () => {
   const master = ambientContext.createGain();
   master.gain.value = 0;
@@ -1172,6 +1325,8 @@ const createAmbientSound = () => {
   }
   ambientSources = [air, texture, pulse];
   ambientNodes = [airFilter, airGain, textureFilter, textureGain, pulseGain, master];
+  spatialAudio = createSpatialGallerySound(ambientContext, master);
+  spatialAudio.update(lastSpatialAudioSnapshot);
   return master;
 };
 
@@ -1180,6 +1335,8 @@ const disposeAmbientSound = () => {
   ambientDisposeTimer = null;
   ambientLounge?.dispose?.();
   ambientLounge = null;
+  spatialAudio?.dispose?.();
+  spatialAudio = null;
   ambientSources.forEach((source) => {
     try { source.stop(); } catch (error) { /* Source may already be stopped. */ }
     try { source.disconnect(); } catch (error) { /* A disconnected node is harmless. */ }
