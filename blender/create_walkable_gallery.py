@@ -139,27 +139,19 @@ SITE_PANELS = [
     },
     {
         "id": "inquiry",
-        "title": "Private inquiry",
-        "kicker": "Viewings · Commissions · Acquisitions",
-        "body": "Begin a private conversation about available works, commissions, or a studio viewing.",
+        "title": "Write to the artist",
+        "kicker": "Contact · Viewings · Acquisitions",
+        "body": "Use the writing desk to begin a direct email about available works, commissions, or a studio viewing.",
         "link": "mailto:dannyhirscharts@protonmail.com",
-        "link_label": "Email the studio",
+        "link_label": "Email Danny Hirsch",
     },
     {
         "id": "privacy",
-        "title": "Privacy, without noise",
-        "kicker": "Legal · Privacy",
-        "body": "This website collects as little information as possible. Optional third-party content remains off until you choose to enable it.",
+        "title": "Privacy, clearly stated",
+        "kicker": "Privacy room · Site information",
+        "body": "No analytics or advertising trackers are installed. Preferences stay on your device, inquiries open in your email app, and optional Instagram content remains off until you enable it.",
         "link": "privacy.html",
-        "link_label": "Read privacy policy",
-    },
-    {
-        "id": "imprint",
-        "title": "The work. The studio.",
-        "kicker": "Legal · Imprint",
-        "body": "Publisher, contact, copyright, and external-link information for the Danny Hirsch Arts digital exhibition.",
-        "link": "imprint.html",
-        "link_label": "Read imprint",
+        "link_label": "Read complete privacy policy",
     },
 ]
 
@@ -608,7 +600,11 @@ def add_tilted_lectern_panel(
         (-facing_sign * run, -half_width, rise),
     ]
     mesh = bpy.data.meshes.new(f"{name}_Mesh")
-    mesh.from_pydata(vertices, [], [(0, 1, 2, 3)])
+    # The west-facing lectern used to expose its back face to the visitor.
+    # Double-sided rendering made the panel visible but mirrored all text.
+    # Reverse that face so both lecterns present a true, front-facing UV plane.
+    face = (0, 1, 2, 3) if facing == "east" else (3, 2, 1, 0)
+    mesh.from_pydata(vertices, [], [face])
     mesh.update()
     uv_layer = mesh.uv_layers.new(name="UVMap")
     for loop, uv in zip(mesh.polygons[0].loop_indices, ((0, 0), (1, 0), (1, 1), (0, 1))):
@@ -950,12 +946,11 @@ def add_site_information_panels(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    """Build a sparse raised reading rail and two legal lectern stations.
+    """Give each secondary room one clear purpose.
 
-    About, Process and Inquiry remain subtle museum labels, but sit above all
-    lounge furniture and outside the artwork footprints.  Privacy and Imprint
-    live on individual angled lecterns along the solid contact-room partition;
-    their DOM cards remain the authoritative readable presentation.
+    The west room is now a dedicated Privacy Room with one readable policy
+    lectern.  The east room contains only artist, process, and contact content.
+    Its laptop is a real focus target whose accessible HTML card opens email.
     """
 
     panels_by_id = {panel["id"]: panel for panel in SITE_PANELS}
@@ -992,14 +987,14 @@ def add_site_information_panels(
         view["target_node"] = panel.name
         view["demo_only"] = True
 
-    # Raised museum reading rail.  All three frames clear the sofa top by more
-    # than 0.30 m and avoid the south-wall artworks entirely.
+    # The Info & Contact Room carries just two editorial panels: who the artist
+    # is and how the work is made.  Contact belongs to the writing desk below,
+    # never to a third wall plaque competing with those two stories.
     rail_layout = (
-        (1, "about", -5.92, -5.78),
-        (2, "process", -1.42, -1.42),
-        (3, "inquiry", 1.42, 1.42),
+        (1, "about", 1.72, 1.72),
+        (2, "process", 3.34, 3.34),
     )
-    rail_z = 2.14
+    rail_z = 2.20
     for index, panel_id, x, view_x in rail_layout:
         panel_data = panels_by_id[panel_id]
         recess = add_box(
@@ -1052,87 +1047,95 @@ def add_site_information_panels(
             panel_data,
             index=index,
             presentation="raised museum reading rail",
-            alignment="demo-raised-information-rail",
+            alignment="info-contact-editorial-rail",
             view_location=(view_x, -12.60, WALK_EYE_HEIGHT),
             view_target=(x, -15.64, rail_z),
         )
 
-    # Privacy and imprint are deliberately separated onto their corresponding
-    # sides of the solid centre partition. Privacy becomes the requested
-    # consultation lectern; imprint belongs to the quieter contact lounge.
-    # The open doorway between y=-10.96 and -13.04 remains completely free.
-    lectern_layout = (
-        (4, "privacy", -9.58, -1.0, "west", -2.15),
-        (5, "imprint", -14.24, 1.0, "east", 2.15),
+    # One large, west-facing policy lectern is the sole information object in
+    # the Privacy Room.  Its corrected front-face winding prevents mirroring.
+    panel_data = panels_by_id["privacy"]
+    privacy_x = -0.72
+    privacy_y = -10.08
+    base = add_box(
+        "SITE_LECTERN_PRIVACY_Base",
+        (-0.47, privacy_y, 0.075),
+        (0.72, 1.18, 0.15),
+        materials["stone"],
+        bevel=0.035,
+        theme_role="stone",
     )
-    for index, panel_id, y, side_sign, facing, view_x in lectern_layout:
-        panel_data = panels_by_id[panel_id]
-        base = add_box(
-            f"SITE_LECTERN_{panel_id.upper()}_Base",
-            (side_sign * 0.47, y, 0.075),
-            (0.68, 0.92, 0.15),
-            materials["stone"],
-            bevel=0.035,
-            theme_role="stone",
-        )
-        column = add_box(
-            f"SITE_LECTERN_{panel_id.upper()}_Column",
-            (side_sign * 0.39, y, 0.61),
-            (0.17, 0.20, 1.05),
-            materials["bronze"],
-            bevel=0.025,
-            theme_role="bronze",
-        )
-        support = add_box(
-            f"SITE_LECTERN_{panel_id.upper()}_Support",
-            (side_sign * 0.72, y, 1.27),
-            (0.88, 1.12, 0.065),
-            materials["shadow"],
-            bevel=0.025,
-            theme_role="shadow",
-        )
-        support.rotation_euler.y = math.radians(30) * side_sign
-        frame = add_tilted_lectern_panel(
-            f"SITE_LECTERN_{panel_id.upper()}_Bronze_Frame",
-            (side_sign * 0.72, y, 1.29),
-            1.08,
-            0.84,
-            materials["bronze"],
-            facing=facing,
-        )
-        panel = add_tilted_lectern_panel(
-            f"SITE_PANEL_{panel_id.upper()}",
-            (side_sign * 0.742, y, 1.312),
-            0.94,
-            0.69,
-            materials["plaque"],
-            facing=facing,
-        )
-        lip = add_box(
-            f"SITE_LECTERN_{panel_id.upper()}_Reading_Lip",
-            (side_sign * 1.095, y, 1.065),
-            (0.055, 1.10, 0.07),
-            materials["bronze"],
-            bevel=0.012,
-            theme_role="bronze",
-        )
-        for structure in (base, column, support, frame, lip):
-            structure["demo_only"] = True
-            structure["asset_role"] = "optional_3d_site_reading_station"
-        panel["mounting_height_metres"] = 1.31
-        panel["lectern_pitch_degrees"] = 30.0
-        panel["clear_of_portals"] = True
-        panel["route_clearance_metres"] = 1.25
-        panel["lectern_facing"] = facing
-        annotate_panel(
-            panel,
-            panel_data,
-            index=index,
-            presentation=f"angled {panel_id} reading lectern",
-            alignment="demo-legal-reading-stations",
-            view_location=(view_x, y, WALK_EYE_HEIGHT),
-            view_target=(side_sign * 0.72, y, 1.29),
-        )
+    column = add_box(
+        "SITE_LECTERN_PRIVACY_Column",
+        (-0.39, privacy_y, 0.63),
+        (0.18, 0.22, 1.10),
+        materials["bronze"],
+        bevel=0.025,
+        theme_role="bronze",
+    )
+    support = add_box(
+        "SITE_LECTERN_PRIVACY_Support",
+        (privacy_x, privacy_y, 1.31),
+        (0.92, 1.36, 0.07),
+        materials["shadow"],
+        bevel=0.025,
+        theme_role="shadow",
+    )
+    support.rotation_euler.y = math.radians(-30)
+    frame = add_tilted_lectern_panel(
+        "SITE_LECTERN_PRIVACY_Bronze_Frame",
+        (privacy_x, privacy_y, 1.34),
+        1.30,
+        0.92,
+        materials["bronze"],
+        facing="west",
+    )
+    privacy_panel = add_tilted_lectern_panel(
+        "SITE_PANEL_PRIVACY",
+        (-0.744, privacy_y, 1.365),
+        1.16,
+        0.78,
+        materials["plaque"],
+        facing="west",
+    )
+    lip = add_box(
+        "SITE_LECTERN_PRIVACY_Reading_Lip",
+        (-1.115, privacy_y, 1.08),
+        (0.055, 1.34, 0.07),
+        materials["bronze"],
+        bevel=0.012,
+        theme_role="bronze",
+    )
+    for structure in (base, column, support, frame, lip):
+        structure["demo_only"] = True
+        structure["asset_role"] = "privacy_reading_station"
+    privacy_panel["mounting_height_metres"] = 1.365
+    privacy_panel["lectern_pitch_degrees"] = 30.0
+    privacy_panel["clear_of_portals"] = True
+    privacy_panel["lectern_facing"] = "west"
+    annotate_panel(
+        privacy_panel,
+        panel_data,
+        index=3,
+        presentation="dedicated privacy reading lectern",
+        alignment="privacy-room-reading-station",
+        view_location=(-2.35, privacy_y, WALK_EYE_HEIGHT),
+        view_target=(privacy_x, privacy_y, 1.34),
+    )
+
+    # A recognizable desk, paper, pen, and open laptop explain the interaction
+    # before any overlay appears. Looking at the laptop resolves the same
+    # accessible mail action as the classic inquiry section.
+    inquiry_panel = add_contact_writing_station(materials, groups)
+    annotate_panel(
+        inquiry_panel,
+        panels_by_id["inquiry"],
+        index=4,
+        presentation="interactive writing desk laptop",
+        alignment="info-contact-writing-station",
+        view_location=(3.25, -12.85, WALK_EYE_HEIGHT),
+        view_target=(5.08, -13.18, 1.20),
+    )
 
 
 def add_stem_between(
@@ -2102,6 +2105,113 @@ def add_demo_meeting_table(
         add_demo_chair(f"{prefix}_Chair_{side_label}", chair_center, chair_angle, materials, groups)
 
 
+def add_contact_writing_station(
+    materials: dict[str, bpy.types.Material],
+    groups: dict[str, list[bpy.types.Object]],
+) -> bpy.types.Object:
+    """Build an immediately recognizable email desk in the Info room."""
+    desk_x = 5.15
+    desk_y = -13.18
+    top_z = 0.84
+
+    groups["wood"].append(add_box(
+        "Contact_Writing_Desk_Top",
+        (desk_x, desk_y, top_z),
+        (1.42, 2.02, 0.14),
+        materials["wood"],
+        bevel=0.055,
+        theme_role="wood",
+    ))
+    groups["bronze"].append(add_box(
+        "Contact_Writing_Desk_Inlay",
+        (desk_x - 0.12, desk_y, top_z + 0.078),
+        (0.045, 1.70, 0.016),
+        materials["bronze"],
+        bevel=0.006,
+        theme_role="bronze",
+    ))
+    for offset_y in (-0.70, 0.70):
+        groups["wood"].append(add_box(
+            f"Contact_Writing_Desk_Leg_{offset_y:+.2f}",
+            (desk_x + 0.38, desk_y + offset_y, 0.42),
+            (0.18, 0.18, 0.78),
+            materials["wood"],
+            bevel=0.028,
+            theme_role="wood",
+        ))
+    groups["emissive"].append(add_box(
+        "Contact_Writing_Desk_Guide_Light",
+        (desk_x - 0.68, desk_y, 0.69),
+        (0.025, 1.72, 0.035),
+        materials["emissive"],
+        bevel=0.006,
+        theme_role="emissive",
+    ))
+
+    # Open laptop, facing the approach lane from the west.
+    groups["shadow"].append(add_box(
+        "Contact_Laptop_Base",
+        (4.82, desk_y, top_z + 0.105),
+        (0.54, 0.80, 0.055),
+        materials["shadow"],
+        bevel=0.025,
+        theme_role="shadow",
+    ))
+    groups["bronze"].append(add_box(
+        "Contact_Laptop_Screen_Frame",
+        (5.08, desk_y, 1.20),
+        (0.065, 0.88, 0.60),
+        materials["bronze"],
+        bevel=0.035,
+        theme_role="bronze",
+    ))
+    screen = add_vertical_panel(
+        "SITE_PANEL_INQUIRY",
+        "west",
+        (5.043, desk_y, 1.20),
+        0.78,
+        0.50,
+        materials["plaque"],
+    )
+    screen["contact_object"] = "laptop"
+    screen["interaction_hint"] = "Look here to email the artist"
+
+    # Paper and pen are separate silhouettes, not a texture baked into the
+    # table, so the contact action reads even before the laptop is centered.
+    paper = add_box(
+        "Contact_Writing_Paper",
+        (4.63, desk_y - 0.57, top_z + 0.105),
+        (0.47, 0.42, 0.018),
+        materials["plaque"],
+        bevel=0.010,
+        theme_role="plaque",
+    )
+    paper["asset_role"] = "contact_writing_paper"
+    groups["plaque"].append(paper)
+    pen = add_cylinder(
+        "Contact_Writing_Pen",
+        (4.58, desk_y - 0.30, top_z + 0.125),
+        0.018,
+        0.34,
+        materials["bronze"],
+        vertices=18,
+    )
+    pen.rotation_euler.x = math.pi / 2
+    pen["theme_role"] = "bronze"
+    pen["asset_role"] = "contact_writing_pen"
+    groups["bronze"].append(pen)
+
+    # One visitor chair sits behind the desk and cannot block the entrance.
+    add_demo_chair(
+        "Contact_Writing_Chair",
+        (5.92, desk_y),
+        math.pi / 2,
+        materials,
+        groups,
+    )
+    return screen
+
+
 def add_demo_shelving(
     prefix: str,
     wall_x: float,
@@ -2523,7 +2633,7 @@ def build_demo_site_rooms(
     materials: dict[str, bpy.types.Material],
     groups: dict[str, list[bpy.types.Object]],
 ) -> None:
-    """Screenshot-led private lounge and Meet & Contact extension."""
+    """Screenshot-led Privacy Room and Info & Contact extension."""
     groups["floor"].append(add_box("Demo_Wing_Grout", (0, -12.0, -0.10), (14.0, 8.0, 0.20), materials["floor"], theme_role="floor"))
     for row in range(4):
         for column in range(4):
@@ -2569,9 +2679,9 @@ def build_demo_site_rooms(
     for x in (-3.5, 3.5):
         groups["shadow"].append(add_box(f"Demo_Ceiling_Track_{x:+.1f}", (x, -12.0, 5.56), (0.06, 6.9, 0.06), materials["shadow"], bevel=0.010, theme_role="shadow"))
 
-    # 02 · Private consultation: the approved walnut library, two-chair table,
-    # clear-glass ritual set, pendant and one broad-leaf plant. Everything hugs
-    # the outer / partition walls so the 1.2 m circulation spine stays open.
+    # 02 · Privacy Room: a quiet reading table, library and one botanical form
+    # support a single privacy station. No artist, process, contact or imprint
+    # panels are placed in this room.
     private_table_center = (-4.50, -12.75)
     add_demo_shelving("Private_Consultation", -6.70, -12.05, materials, groups)
     add_demo_meeting_table("Private_Consultation", private_table_center, materials, groups, angle=math.pi / 2)
@@ -2579,7 +2689,7 @@ def build_demo_site_rooms(
     add_demo_pendant("Private_Consultation", private_table_center, materials, groups)
     add_lush_botanical(
         "Demo_Private_Botanical",
-        (-1.60, -9.05, 0),
+        (-5.55, -9.10, 0),
         materials,
         groups,
         seed=731,
@@ -2591,12 +2701,10 @@ def build_demo_site_rooms(
         leaf_subdivision_levels=0,
     )
 
-    # 03 · Imprint / contact lounge: one armchair and low marble table face an
-    # animated water wall. A mineral concrete planter distinguishes this room
-    # without adding clutter or narrowing the doorway.
+    # 03 · Info & Contact Room: the animated water wall and one botanical form
+    # keep the room atmospheric. The writing desk and artist/process panels are
+    # added with the interactive site-information layer below.
     add_demo_waterfall("Contact_Water_Feature", 6.78, -11.18, materials, groups, feature_scale=0.82)
-    add_demo_sofa("Contact_Lounge_Armchair", (4.05, -14.50), math.pi, materials, groups, width=1.12)
-    add_demo_coffee_table("Contact_Lounge_Coffee_Table", (4.05, -13.08), materials, groups, scale_factor=0.82)
     add_lush_botanical(
         "Demo_Contact_Botanical",
         (5.62, -14.58, 0),
@@ -2611,24 +2719,14 @@ def build_demo_site_rooms(
         leaf_subdivision_levels=0,
     )
 
-    # The former west-wall artwork is intentionally omitted because the
-    # walnut consultation library now owns that wall. Real work remains on the
-    # north and south walls, clear of the portal and furniture silhouettes.
-    # North-wall works sit in the solid outer bays.  Their inner frame edges are
-    # beyond x=-4.65 / x=+4.65, safely clear of the 2.12 m entrance portals.
-    add_demo_artwork("DEMO_ART_PRIVATE_NORTH", "north", (-5.70, -8.18, 2.84), 6, 1.46 * STANDARD_ARTWORK_SCALE, materials, groups)
-    add_demo_artwork("DEMO_ART_CONTACT_NORTH", "north", (5.70, -8.18, 2.84), 2, 1.46 * STANDARD_ARTWORK_SCALE, materials, groups)
-    # Sit just proud of the south-wall finish; the structural face is at
-    # y=-15.65. This preserves the genuine image texture instead of burying it
-    # inside the wall surface.
-    add_demo_artwork("DEMO_ART_PRIVATE_SOUTH", "south", (-3.48, -15.59, 3.28), 4, 2.05 * STANDARD_ARTWORK_SCALE, materials, groups)
-    add_demo_artwork("DEMO_ART_CONTACT_SOUTH", "south", (3.48, -15.59, 3.18), 5, 2.05 * STANDARD_ARTWORK_SCALE, materials, groups)
-
+    # Secondary rooms now explain privacy or practice. Genuine artwork remains
+    # concentrated in the Gallery Hall, where every work has room to breathe.
     for index, (location, target) in enumerate((
-        ((-5.05, -10.15, 5.05), (-5.70, -8.18, 2.84)),
-        ((-2.15, -14.45, 5.05), (-3.48, -15.59, 3.28)),
-        ((2.55, -12.10, 5.05), (3.48, -15.59, 3.18)),
-        ((5.25, -10.05, 5.05), (5.70, -8.18, 2.84)),
+        ((-2.15, -9.30, 4.75), (-0.72, -10.08, 1.34)),
+        ((-4.85, -11.30, 4.75), (-4.50, -12.75, 1.20)),
+        ((1.70, -13.30, 4.85), (1.72, -15.64, 2.20)),
+        ((3.55, -13.25, 4.85), (3.34, -15.64, 2.20)),
+        ((5.10, -11.85, 4.60), (5.08, -13.18, 1.20)),
     ), start=1):
         light = add_light(
             f"Demo_Room_Spot_{index:02d}", "SPOT", location, target,
@@ -2674,8 +2772,8 @@ def build_demo_site_rooms(
     # Curated room anchors double as keyboard/mobile shortcuts.
     for order, (name, location, target, label, room_id) in enumerate((
         ("VIEW_Demo_Gallery_Hall", (0, -5.90, CURATED_EYE_HEIGHT), (0, 6.70, 2.72), "01 · Gallery Hall", "gallery-hall"),
-        ("VIEW_Demo_Private_Room", (-3.50, -8.45, CURATED_EYE_HEIGHT), (-4.40, -12.90, 2.00), "02 · Private Room", "private-room"),
-        ("VIEW_Demo_Contact_Room", (2.35, -9.05, CURATED_EYE_HEIGHT), (4.28, -13.15, 1.76), "03 · Imprint & Contact", "contact-room"),
+        ("VIEW_Demo_Private_Room", (-3.50, -8.45, CURATED_EYE_HEIGHT), (-1.05, -10.10, 1.42), "02 · Privacy Room", "private-room"),
+        ("VIEW_Demo_Contact_Room", (2.35, -9.05, CURATED_EYE_HEIGHT), (4.72, -13.30, 1.62), "03 · Info & Contact Room", "contact-room"),
     ), start=40):
         view = add_view_anchor(name, location, target, label=label, kind="demo_room", order=order)
         target_object = add_empty(
@@ -2748,13 +2846,12 @@ def add_navigation_metadata(scene: bpy.types.Scene) -> None:
         add_collider("COLLIDER_Demo_Private_Chair_West", (-5.22, -12.75, 0.55), (0.68, 0.68, 1.10)),
         add_collider("COLLIDER_Demo_Private_Chair_East", (-3.78, -12.75, 0.55), (0.68, 0.68, 1.10)),
         add_collider("COLLIDER_Demo_Private_Shelving", (-6.62, -12.05, 2.40), (0.46, 5.45, 4.80)),
-        add_collider("COLLIDER_Demo_Private_Plant", (-1.60, -9.05, 0.46), (0.84, 0.84, 0.92)),
+        add_collider("COLLIDER_Demo_Private_Plant", (-5.55, -9.10, 0.46), (0.84, 0.84, 0.92)),
         add_collider("COLLIDER_Demo_Contact_Water", (6.18, -11.18, 0.55), (1.35, 2.92, 1.10)),
-        add_collider("COLLIDER_Demo_Contact_Armchair", (4.05, -14.50, 0.60), (1.32, 1.08, 1.20)),
-        add_collider("COLLIDER_Demo_Contact_Coffee", (4.05, -13.08, 0.35), (1.23, 0.67, 0.69)),
+        add_collider("COLLIDER_Demo_Contact_Writing_Desk", (5.15, -13.18, 0.63), (1.62, 2.20, 1.26)),
+        add_collider("COLLIDER_Demo_Contact_Desk_Chair", (5.92, -13.18, 0.56), (0.76, 0.82, 1.12)),
         add_collider("COLLIDER_Demo_Contact_Plant", (5.62, -14.58, 0.38), (0.70, 0.70, 0.76)),
-        add_collider("COLLIDER_Demo_Privacy_Lectern", (-0.61, -9.58, 0.70), (1.14, 1.12, 1.40)),
-        add_collider("COLLIDER_Demo_Imprint_Lectern", (0.61, -14.24, 0.70), (1.14, 1.12, 1.40)),
+        add_collider("COLLIDER_Demo_Privacy_Lectern", (-0.72, -10.08, 0.70), (1.28, 1.28, 1.40)),
     ]
     for collider in demo_colliders:
         collider["demo_only"] = True
@@ -3132,7 +3229,7 @@ def build_scene() -> bpy.types.Scene:
     scene.frame_set(1)
 
     scene["experience_name"] = "Danny Hirsch Arts — Material Orbit"
-    scene["experience_version"] = 3
+    scene["experience_version"] = 4
     scene["architecture_truth"] = "Blender-modeled spatial interpretation; not a 3D scan"
     scene["artwork_truth"] = "Six portals are genuine surface-detail photographs, not complete work simulations"
     scene["wartrobe_truth"] = "wARTrobe focal surface uses genuine complete front photograph gallery-04"
@@ -3145,12 +3242,12 @@ def build_scene() -> bpy.types.Scene:
     scene["waterfall_animation_duration_seconds"] = 2.0
     scene["waterfall_animation_frame_range"] = [1, 49]
     scene["waterfall_animation_strategy"] = "six overlapping organic flow veils and two droplet streams over one tapered membrane; eight seamless transform clips"
-    scene["waterfall_room"] = "03 · Imprint / Contact Lounge"
+    scene["waterfall_room"] = "03 · Info & Contact Room"
     scene["botanical_animation_clip_count"] = 4
     scene["botanical_animation_strategy"] = "four isolated hero leaves with sub-two-degree seamless breeze; static foliage remains batched"
     scene["demo_ambient_fill_count"] = 2
     scene["demo_ambient_fill_strategy"] = "one warm punctual fill per secondary room for mobile-safe material readability"
-    scene["material_board_revision"] = "2026-07-27-four-board-room-refinement"
+    scene["material_board_revision"] = "2026-07-29-purpose-led-room-refinement"
     scene["approved_material_presets_json"] = json.dumps(MATERIAL_BOARD_PRESETS, separators=(",", ":"))
     scene["room_material_plan_json"] = json.dumps({
         "gallery-hall": ["rough_plaster", "dark_walnut", "black_marble", "brushed_bronze", "dark_leather", "matte_black"],

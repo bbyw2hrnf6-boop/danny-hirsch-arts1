@@ -7,6 +7,7 @@ const heroVideoSources = Array.from(heroVideo?.querySelectorAll("source[data-src
 const heroContent = document.querySelector(".hero-content");
 const menuToggle = document.querySelector(".menu-toggle");
 const siteNav = document.querySelector(".site-nav");
+const spatialToggle = document.querySelector("[data-open-spatial]");
 const themeToggle = document.querySelector(".theme-toggle");
 const ambientToggle = document.querySelector(".ambient-toggle");
 const scrollProgress = document.querySelector(".scroll-progress");
@@ -38,6 +39,8 @@ const roomEnter = document.querySelector("[data-room-enter]");
 const roomExperience = document.querySelector("[data-room-experience]");
 const roomExperienceStage = document.querySelector("[data-room-experience-stage]");
 const roomExperienceClose = document.querySelector("[data-room-close]");
+const roomExperienceClassic = document.querySelector("[data-room-classic]");
+const roomExperienceFullscreen = document.querySelector("[data-room-fullscreen]");
 const roomExperiencePrev = document.querySelector("[data-room-prev]");
 const roomExperienceNext = document.querySelector("[data-room-next]");
 const roomExperienceLabel = document.querySelector("[data-room-view-label]");
@@ -140,8 +143,8 @@ let roomExperienceIndex = 1;
 let roomExperienceTrigger = null;
 let roomExperiencePointer = null;
 let roomExperiencePointerFrame = 0;
-const galleryModuleUrl = "./DannyHirschArtsGallery3D.js?v=20260729-performance-01";
-const galleryModelUrl = "assets/cinematic/danny-gallery-360-ktx2.glb?v=20260729-performance-01";
+const galleryModuleUrl = "./DannyHirschArtsGallery3D.js?v=20260729-room-ux-02";
+const galleryModelUrl = "assets/cinematic/danny-gallery-360-optimized.glb?v=20260729-room-ux-02";
 
 const loadGalleryModule = () => {
   if (!galleryModulePromise) {
@@ -709,9 +712,11 @@ const setGallerySitePanel = (panel) => {
   if (!gallerySitePanel) return;
   if (!panel) {
     gallerySitePanel.hidden = true;
+    delete gallerySitePanel.dataset.panelId;
     return;
   }
   gallerySitePanel.hidden = false;
+  gallerySitePanel.dataset.panelId = panel.id || "information";
   if (gallerySiteKicker) gallerySiteKicker.textContent = panel.kicker || "Spatial exhibition";
   if (gallerySiteTitle) gallerySiteTitle.textContent = panel.title || "Room information";
   if (gallerySiteBody) gallerySiteBody.textContent = panel.body || "";
@@ -1008,6 +1013,11 @@ const openRoomExperience = ({ trigger = null, spatial = false } = {}) => {
 
 const closeRoomExperience = () => {
   if (!roomExperience?.open) return;
+  const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fullscreenElement === roomExperienceStage) {
+    const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+    exitFullscreen?.call(document).catch?.(() => {});
+  }
   body.classList.remove("room-experience-open");
   if (ambientStartedFromRoom) stopAmbient({ dispose: true });
   galleryRoomController?.setActive?.(false);
@@ -1022,7 +1032,36 @@ const closeRoomExperience = () => {
   returnTarget?.focus({ preventScroll: true });
 };
 
+const syncRoomFullscreen = () => {
+  if (!roomExperienceFullscreen) return;
+  const active = (document.fullscreenElement || document.webkitFullscreenElement) === roomExperienceStage;
+  roomExperienceFullscreen.setAttribute("aria-pressed", String(active));
+  roomExperienceFullscreen.setAttribute("aria-label", active ? "Exit full screen" : "Enter full screen");
+  const label = roomExperienceFullscreen.querySelector("b");
+  if (label) label.textContent = active ? "Exit full screen" : "Full screen";
+};
+
+const toggleRoomFullscreen = async () => {
+  if (!roomExperienceStage) return;
+  const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+  try {
+    if (fullscreenElement === roomExperienceStage) {
+      const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+      await exitFullscreen?.call(document);
+    } else {
+      const requestFullscreen = roomExperienceStage.requestFullscreen || roomExperienceStage.webkitRequestFullscreen;
+      await requestFullscreen?.call(roomExperienceStage, { navigationUI: "hide" });
+    }
+  } catch (error) {
+    // Browsers can reject fullscreen when policy or platform restrictions apply.
+  }
+  syncRoomFullscreen();
+};
+
 roomEnter?.addEventListener("click", () => openRoomExperience({ trigger: roomEnter, spatial: false }));
+spatialToggle?.addEventListener("pointerenter", warmSpatialGallery, { once: true, passive: true });
+spatialToggle?.addEventListener("focus", warmSpatialGallery, { once: true });
+spatialToggle?.addEventListener("click", () => openRoomExperience({ trigger: spatialToggle, spatial: true }));
 experienceClassic?.addEventListener("click", () => {
   experienceChoiceResolved = true;
   hideExperienceChoice();
@@ -1041,6 +1080,14 @@ experienceChoice?.addEventListener("keydown", (event) => {
 });
 galleryLoadingContinue?.addEventListener("click", dismissGalleryFallbackNotice);
 roomExperienceClose?.addEventListener("click", closeRoomExperience);
+roomExperienceClassic?.addEventListener("click", closeRoomExperience);
+roomExperienceFullscreen?.addEventListener("click", toggleRoomFullscreen);
+if (roomExperienceFullscreen) {
+  const fullscreenSupported = Boolean(roomExperienceStage?.requestFullscreen || roomExperienceStage?.webkitRequestFullscreen);
+  roomExperienceFullscreen.hidden = !fullscreenSupported;
+}
+document.addEventListener("fullscreenchange", syncRoomFullscreen);
+document.addEventListener("webkitfullscreenchange", syncRoomFullscreen);
 roomExperiencePrev?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex - 1));
 roomExperienceNext?.addEventListener("click", () => setRoomExperienceView(roomExperienceIndex + 1));
 galleryViewPrev?.addEventListener("click", () => galleryRoomController?.goToPreviousView?.());

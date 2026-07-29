@@ -387,6 +387,7 @@ body[data-theme="light"] .legal-brand img {
   gap: 2px;
 }
 
+.spatial-toggle,
 .theme-toggle,
 .ambient-toggle {
   min-height: 40px;
@@ -404,6 +405,32 @@ body[data-theme="light"] .legal-brand img {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+.spatial-toggle {
+  margin-right: 5px;
+  padding-right: 17px;
+  border-right: 1px solid var(--line-strong);
+}
+
+.spatial-glyph {
+  border: 1px solid currentColor;
+  transform: rotate(30deg) skewY(-8deg) scale(0.72);
+}
+
+.spatial-glyph::before,
+.spatial-glyph::after,
+.spatial-glyph i {
+  position: absolute;
+  background: currentColor;
+  content: "";
+}
+
+.spatial-glyph::before { top: 50%; right: -1px; left: -1px; height: 1px; }
+.spatial-glyph::after { top: -1px; bottom: -1px; left: 50%; width: 1px; }
+.spatial-glyph i { inset: 4px; opacity: 0.18; }
+
+.spatial-toggle:hover .spatial-glyph,
+.spatial-toggle:focus-visible .spatial-glyph { color: var(--gold); }
 
 .control-glyph {
   position: relative;
@@ -2585,8 +2612,10 @@ body[data-theme="light"] .inquiry-form textarea {
 
   .brand { width: clamp(112px, 33vw, 134px); }
   .site-controls { gap: 3px; }
+  .spatial-toggle,
   .theme-toggle,
   .ambient-toggle { width: 36px; min-width: 36px; height: 36px; min-height: 36px; padding: 0; border: 1px solid currentColor; border-radius: 50%; opacity: 0.7; }
+  .spatial-toggle { margin-right: 0; }
   .control-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .control-glyph { width: 14px; height: 14px; }
   .menu-toggle { width: 38px; height: 38px; }
@@ -2703,6 +2732,7 @@ body[data-theme="light"] .inquiry-form textarea {
 @media (max-width: 390px) {
   .site-header { gap: 5px; }
   .brand { width: 104px; }
+  .spatial-toggle,
   .theme-toggle,
   .ambient-toggle { width: 33px; min-width: 33px; height: 33px; min-height: 33px; }
   .menu-toggle { width: 35px; height: 35px; }

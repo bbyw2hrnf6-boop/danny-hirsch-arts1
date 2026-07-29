@@ -76,6 +76,8 @@ const state = () => evaluate(`(() => {
   const ambientButton = document.querySelector('[data-gallery-ambient]');
   const sidebarRect = sidebar?.getBoundingClientRect();
   const sidebarScroll = sidebar?.querySelector('.room-experience__sidebar-scroll');
+  const sitePanel = document.querySelector('[data-gallery-site-panel]');
+  const fullscreenButton = document.querySelector('[data-room-fullscreen]');
   const sidebarVisible = Boolean(sidebar && !sidebar.hidden && sidebarRect?.width && sidebarRect?.height);
   const sidebarButtonRects = [...(sidebar?.querySelectorAll('button') || [])].map((button) => button.getBoundingClientRect());
   return {
@@ -86,6 +88,16 @@ const state = () => evaluate(`(() => {
     controller: controller?.getState?.(),
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     panelHidden: document.querySelector('[data-gallery-site-panel]')?.hidden,
+    panel: {
+      id: sitePanel?.dataset.panelId || null,
+      title: sitePanel?.querySelector('[data-gallery-site-title]')?.textContent || null,
+      link: sitePanel?.querySelector('[data-gallery-site-link]')?.getAttribute('href') || null
+    },
+    fullscreen: {
+      supported: Boolean(document.querySelector('[data-room-experience-stage]')?.requestFullscreen),
+      active: document.fullscreenElement === document.querySelector('[data-room-experience-stage]'),
+      pressed: fullscreenButton?.getAttribute('aria-pressed') || null
+    },
     ambientPressed: ambientButton?.getAttribute('aria-pressed'),
     artCard: {
       proximity: artCard?.dataset.proximity || null,
@@ -160,6 +172,32 @@ for (const room of ['gallery-hall', 'private-room', 'contact-room']) {
   await capture(join(outputDirectory, `dha-demo-${room}.png`));
 }
 
+await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToSitePanel('privacy'); true");
+await waitFor("document.querySelector('[data-gallery-site-panel]')?.dataset.panelId === 'privacy'", 6000);
+report.desktopPrivacyPanel = await state();
+await capture(join(outputDirectory, 'dha-demo-privacy-panel.png'));
+
+await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToSitePanel('inquiry'); true");
+await waitFor("document.querySelector('[data-gallery-site-panel]')?.dataset.panelId === 'inquiry'", 6000);
+report.desktopContactPanel = await state();
+await capture(join(outputDirectory, 'dha-demo-contact-panel.png'));
+
+report.fullscreenRequested = await evaluate(`(async () => {
+  const button = document.querySelector('[data-room-fullscreen]');
+  if (!button || button.hidden) return false;
+  button.click();
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  return document.fullscreenElement === document.querySelector('[data-room-experience-stage]');
+})()`);
+report.desktopFullscreen = await state();
+if (report.fullscreenRequested) await evaluate("document.exitFullscreen(); true");
+
+await evaluate("document.querySelector('[data-room-classic]').click(); true");
+await pause(300);
+report.classicSwitchClosedRoom = await evaluate("!document.querySelector('[data-room-experience]').open");
+await evaluate("document.querySelector('[data-open-spatial]').click(); true");
+report.headerSpatialSwitchReopened = await waitFor("document.querySelector('[data-room-experience]').open && document.querySelector('[data-room-experience]').classList.contains('is-demo-mode')", 5000);
+
 await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToNextView(); true");
 await pause(1550);
 await waitFor("document.querySelector('[data-gallery-art-image]')?.complete && document.querySelector('[data-gallery-art-image]').naturalWidth > 0", 3000);
@@ -185,7 +223,8 @@ await waitFor("document.querySelector('[data-room-experience]').open && document
 await waitFor("document.querySelector('[data-room-experience]').classList.contains('is-webgl-ready')");
 await pause(850);
 await evaluate("document.querySelector('[data-gallery-webgl]').__galleryController.goToDemoRoom('contact-room'); true");
-await waitFor("Math.abs(document.querySelector('[data-gallery-webgl]').__galleryController.getState().camera[0] - 2.65) < 0.05", 7000);
+await waitFor("document.querySelector('[data-gallery-webgl]').__galleryController.getState().activeNavigationId === 'contact-room'", 7000);
+await pause(1550);
 report.mobileContact = await state();
 await capture(join(outputDirectory, 'dha-demo-contact-room-mobile.png'));
 

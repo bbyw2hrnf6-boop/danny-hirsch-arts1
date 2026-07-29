@@ -23,8 +23,8 @@
     <link rel="preload" as="font" href="assets/fonts/manrope-variable.woff2" type="font/woff2" crossorigin>
     <link rel="preload" as="image" href="assets/optimized/images/hero.webp" type="image/webp" fetchpriority="high">
     <script>document.documentElement.classList.add('has-js');</script>
-    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260729-performance-01">
-    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260729-performance-01">
+    <link rel="stylesheet" href="DannyHirschArtsHomepage.css?v=20260729-room-ux-02">
+    <link rel="stylesheet" href="DannyHirschArtsCinematic.css?v=20260729-room-ux-02">
     <script type="importmap">
       {"imports":{"three":"./assets/vendor/three/three.module.min.js","three/addons/":"./assets/vendor/three/addons/"}}
     </script>
@@ -47,6 +47,10 @@
       </nav>
 
       <div class="site-controls" aria-label="Display and sound controls">
+        <button class="spatial-toggle" type="button" data-open-spatial aria-label="Open the interactive 3D exhibition">
+          <span class="control-glyph spatial-glyph" aria-hidden="true"><i></i></span>
+          <span class="control-label">3D Gallery</span>
+        </button>
         <button class="theme-toggle" type="button" aria-label="Switch to light gallery theme" aria-pressed="false">
           <span class="control-glyph theme-glyph" aria-hidden="true"></span>
           <span class="control-label">Light</span>
@@ -595,6 +599,12 @@
         <header class="room-experience__header">
           <div><p>Private Room · 360° gallery</p><h2 id="room-experience-title">Walk into the work.</h2></div>
           <div class="room-experience__header-actions">
+            <button class="room-experience__view-switch" type="button" data-room-classic aria-label="Switch to the classic website">
+              <span aria-hidden="true">↙</span><b>Classic site</b>
+            </button>
+            <button class="room-experience__fullscreen" type="button" data-room-fullscreen aria-label="Enter full screen" aria-pressed="false">
+              <span aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>Full screen</b>
+            </button>
             <button class="room-experience__ambient" type="button" data-gallery-ambient aria-label="Start lounge ambience" aria-pressed="false">
               <span class="room-experience__ambient-icon" aria-hidden="true"><i></i><i></i><i></i></span>
               <b data-gallery-ambient-label>Lounge</b>
@@ -661,16 +671,15 @@
           <div class="room-experience__sidebar-scroll" id="gallery-spatial-navigation">
             <p>Rooms</p>
             <button type="button" data-index="01" data-gallery-demo-room="gallery-hall">Gallery Hall</button>
-            <button type="button" data-index="02" data-gallery-demo-room="private-room">Private Room</button>
-            <button type="button" data-index="03" data-gallery-demo-room="contact-room">Meet &amp; Contact</button>
+            <button type="button" data-index="02" data-gallery-demo-room="private-room">Privacy Room</button>
+            <button type="button" data-index="03" data-gallery-demo-room="contact-room">Info &amp; Contact</button>
             <p>Explore</p>
             <button type="button" data-index="04" data-gallery-demo-art>Artwork Index</button>
-            <button type="button" data-index="05" data-gallery-demo-panel="about">About</button>
-            <button type="button" data-index="06" data-gallery-demo-panel="process">Process</button>
-            <button type="button" data-index="07" data-gallery-demo-panel="inquiry">Inquiry</button>
-            <p>Legal</p>
+            <button type="button" data-index="05" data-gallery-demo-panel="about">About Artist</button>
+            <button type="button" data-index="06" data-gallery-demo-panel="process">Making the Art</button>
+            <button type="button" data-index="07" data-gallery-demo-panel="inquiry">Contact Artist</button>
+            <p>Site information</p>
             <button type="button" data-index="08" data-gallery-demo-panel="privacy">Privacy</button>
-            <button type="button" data-index="09" data-gallery-demo-panel="imprint">Imprint</button>
           </div>
         </nav>
 
@@ -733,7 +742,7 @@
       </div>
     </div>
 
-    <script src="DannyHirschArtsLoungeAudio.js?v=20260729-performance-01" defer></script>
-    <script src="DannyHirschArtsHomepage.js?v=20260729-performance-01" defer></script>
+    <script src="DannyHirschArtsLoungeAudio.js?v=20260729-room-ux-02" defer></script>
+    <script src="DannyHirschArtsHomepage.js?v=20260729-room-ux-02" defer></script>
   </body>
 </html>

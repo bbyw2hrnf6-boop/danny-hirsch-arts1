@@ -209,12 +209,18 @@ const wrapCanvasText = (context, text, x, y, maxWidth, lineHeight, maxLines = 4)
 
 const createLabelTexture = (data, lightTheme, sitePanel = false) => {
   const canvas = document.createElement('canvas');
-  canvas.width = sitePanel ? 1200 : 1000;
-  canvas.height = sitePanel ? 760 : 700;
-  const context = canvas.getContext('2d');
+  // A modest resolution increase plus larger type is substantially sharper at
+  // oblique gallery angles without the large GPU-memory cost of 2K/4K signs.
+  canvas.width = sitePanel ? 1280 : 1152;
+  canvas.height = sitePanel ? 800 : 768;
+  const context = canvas.getContext('2d', { alpha: false });
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.textBaseline = 'alphabetic';
   const paper = lightTheme ? '#e9e2d7' : '#171612';
-  const ink = lightTheme ? '#171611' : '#eee7dc';
-  const gold = lightTheme ? '#80602f' : '#bd965b';
+  const ink = lightTheme ? '#12110e' : '#f5efe5';
+  const mutedInk = lightTheme ? '#39362f' : '#d6cec1';
+  const gold = lightTheme ? '#725020' : '#d1a868';
   context.fillStyle = paper;
   context.fillRect(0, 0, canvas.width, canvas.height);
   const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -224,21 +230,25 @@ const createLabelTexture = (data, lightTheme, sitePanel = false) => {
   context.fillStyle = gradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = gold;
-  context.font = `700 ${sitePanel ? 29 : 25}px Manrope, sans-serif`;
-  context.letterSpacing = '4px';
-  context.fillText(String(data.kicker || data.year || 'DANNY HIRSCH ARTS').toUpperCase(), 64, 78);
+  context.font = `700 ${sitePanel ? 31 : 28}px Manrope, Arial, sans-serif`;
+  context.letterSpacing = '3px';
+  context.fillText(String(data.kicker || data.year || 'DANNY HIRSCH ARTS').toUpperCase(), 72, 84);
   context.letterSpacing = '0px';
   context.fillStyle = ink;
-  context.font = `400 ${sitePanel ? 72 : 62}px "Instrument Serif", Georgia, serif`;
-  let cursorY = wrapCanvasText(context, data.title || 'Untitled', 64, 164, canvas.width - 128, sitePanel ? 76 : 66, 2) + 20;
-  context.fillStyle = lightTheme ? '#4c4840' : '#bdb5aa';
-  context.font = `500 ${sitePanel ? 28 : 24}px Manrope, sans-serif`;
-  cursorY = wrapCanvasText(context, data.body || data.description || '', 64, cursorY, canvas.width - 128, sitePanel ? 40 : 34, sitePanel ? 4 : 3) + 26;
+  context.font = `400 ${sitePanel ? 80 : 76}px "Instrument Serif", Georgia, serif`;
+  let cursorY = wrapCanvasText(context, data.title || 'Untitled', 72, 180, canvas.width - 144, sitePanel ? 84 : 80, 2) + 24;
+  context.fillStyle = mutedInk;
+  context.font = `600 ${sitePanel ? 31 : 27}px Manrope, Arial, sans-serif`;
+  // Artwork plaques privilege title and factual data. The longer description
+  // stays in the crisp accessible HTML dossier that appears on focus.
+  if (sitePanel) {
+    cursorY = wrapCanvasText(context, data.body || '', 72, cursorY, canvas.width - 144, 44, 4) + 28;
+  }
   context.strokeStyle = 'rgba(91,69,39,.34)';
-  context.lineWidth = 2;
+  context.lineWidth = 3;
   context.beginPath();
-  context.moveTo(64, cursorY);
-  context.lineTo(canvas.width - 64, cursorY);
+  context.moveTo(72, cursorY);
+  context.lineTo(canvas.width - 72, cursorY);
   context.stroke();
   if (!sitePanel) {
     const facts = [
@@ -248,24 +258,26 @@ const createLabelTexture = (data, lightTheme, sitePanel = false) => {
     facts.forEach(([label, value], index) => {
       const column = index % 2;
       const row = Math.floor(index / 2);
-      const x = 64 + column * (canvas.width - 128) / 2;
-      const y = cursorY + 54 + row * 92;
+      const x = 72 + column * (canvas.width - 144) / 2;
+      const y = cursorY + 64 + row * 118;
       context.fillStyle = gold;
-      context.font = '700 17px Manrope, sans-serif';
+      context.font = '700 21px Manrope, Arial, sans-serif';
       context.fillText(label, x, y);
       context.fillStyle = ink;
-      context.font = '500 21px Manrope, sans-serif';
-      wrapCanvasText(context, value || '—', x, y + 30, (canvas.width - 160) / 2, 27, 2);
+      context.font = '600 27px Manrope, Arial, sans-serif';
+      wrapCanvasText(context, value || '—', x, y + 38, (canvas.width - 180) / 2, 34, 2);
     });
   } else {
     context.fillStyle = gold;
-    context.font = '700 21px Manrope, sans-serif';
-    context.fillText('APPROACH · FOCUS · OPEN', 64, canvas.height - 64);
+    context.font = '700 23px Manrope, Arial, sans-serif';
+    context.fillText('APPROACH · FOCUS · OPEN', 72, canvas.height - 68);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.flipY = false;
-  texture.anisotropy = 4;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
   texture.needsUpdate = true;
   return texture;
 };
@@ -305,7 +317,9 @@ const createNavigationTexture = (items, lightTheme, activeId) => {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.flipY = false;
-  texture.anisotropy = 4;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
   texture.needsUpdate = true;
   return texture;
 };
@@ -764,26 +778,26 @@ export function initWalkableGallery3D(options = {}) {
       const labelMap = navigation
         ? createNavigationTexture(navigationItems, lightTheme, activeNavigationId)
         : createLabelTexture(data, lightTheme, sitePanel);
-      // Museum text must remain readable under every virtual spotlight. In the
-      // bright room, use an unlit print surface so exposure cannot bleach its
-      // ink; the dark room keeps a restrained physical paper response.
-      entry.material = lightTheme
-        ? new THREE.MeshBasicMaterial({
-          color: '#ffffff',
-          map: labelMap,
-          side: THREE.DoubleSide,
-          toneMapped: false
-        })
-        : new THREE.MeshPhysicalMaterial({
-          color: '#ffffff',
-          map: labelMap,
-          roughness: 0.42,
-          metalness: 0.02,
-          clearcoat: 0.16,
-          clearcoatRoughness: 0.28,
-          envMapIntensity: 0.42,
-          side: THREE.DoubleSide
-        });
+      // West-facing lectern/laptop UVs are authored from the opposite side of
+      // their plane. Rotate their print once here so visitors never see a
+      // mirrored or upside-down policy/contact screen.
+      if (sitePanel && (userData.site_panel_id === 'privacy' || userData.lectern_facing === 'west')) {
+        labelMap.center.set(0.5, 0.5);
+        labelMap.rotation = Math.PI;
+      } else if (sitePanel && (userData.site_panel_id === 'inquiry' || userData.contact_object === 'laptop')) {
+        labelMap.wrapS = THREE.RepeatWrapping;
+        labelMap.repeat.x = -1;
+        labelMap.offset.x = 1;
+      }
+      labelMap.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+      // Printed museum copy is unlit in both themes. It remains pin-sharp and
+      // colour-stable instead of being softened or bleached by spot exposure.
+      entry.material = new THREE.MeshBasicMaterial({
+        color: '#ffffff',
+        map: labelMap,
+        side: THREE.DoubleSide,
+        toneMapped: false
+      });
       entry.object.material = entry.material;
       entry.object.visible = (sitePanel || navigation) ? demoMode : true;
     });
