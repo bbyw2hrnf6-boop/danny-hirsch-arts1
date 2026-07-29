@@ -72,7 +72,7 @@ Add `-- --render-video` to the threshold command to also rebuild both browser fi
 
 The exported scene includes subtle looping foliage and waterfall motion plus a floor-level bronze route toward the inquiry area. Its material board is authored in `MATERIAL_BOARD_PRESETS`: rough plaster `#3A3631`, dark walnut `#4A3222`, dark leather `#1E1B19`, clear-coated black marble `#0F0F10`, brushed bronze `#B08A4E`, matte black metal, clear glass, and concrete planters. `assets/cinematic/danny-gallery-360.glb` is the editable Blender export; `assets/cinematic/danny-gallery-360-ktx2.glb` is the production runtime build with Meshopt geometry and KTX2/Basis textures.
 
-The interactive version uses **The Room Remembers**: temporary pigment and leaf traces follow movement, nearby architectural light borrows a restrained hint from the viewed work, and three visited surfaces compose a temporary memory wall. The artwork itself is never recoloured. The HTML dossier includes a genuine-photography surface lens, a clear physical-size reference, museum focus, a guided exhibition, touch-floor auto-walk, gyroscope look, haptics, adaptive pixel density and opt-in listener-relative sound zones. Memory and traces are deliberately session-only and clear when the room is left.
+The interactive version keeps the artwork itself untouched while nearby architectural light borrows a restrained hint from the viewed work. The HTML dossier includes a genuine-photography surface lens, a clear physical-size reference, museum focus, a guided exhibition, touch-floor auto-walk, gyroscope look, haptics, adaptive pixel density and opt-in listener-relative sound zones.
 
 Generate photographic relief interpretations for the runtime material pass, then rebuild the compressed delivery model after a Blender export:
 
@@ -81,7 +81,7 @@ python3 blender/generate_pbr_maps.py
 scripts/optimize-gallery-ktx2.sh
 ```
 
-The relief, normal and roughness maps are derived from the approved local photographs; they are not represented as measured laboratory scans. The KTX pipeline requires KTX-Software 4.x (`ktx` and `toktx` on `PATH`) and uses glTF Transform 4.3.0. Desktop receives the higher-detail normal/roughness pass and a one-time room reflection probe. Lower-power devices retain KTX2 artwork and material colour, the authored Blender lighting, small ambient motion, capped pixel density and the lighter procedural micro-normal fallback.
+The relief, normal and roughness maps are derived from the approved local photographs; they are not represented as measured laboratory scans. The KTX pipeline requires KTX-Software 4.x (`ktx` and `toktx` on `PATH`) and uses glTF Transform 4.3.0. Capable desktop devices receive the higher-detail normal/roughness pass and a one-time room reflection probe. Compact and lower-power devices retain KTX2 artwork and material colour, the authored Blender lighting, subtle ambient motion, capped pixel density and the lighter procedural micro-normal fallback. The renderer targets full-rate input while visitors move and a lower idle frame rate while the room is simply being viewed.
 
 The six side-room surfaces use genuine local macro/detail photographs and are labelled as details, not simulated full paintings. Replace them with straight-on complete-work photography later if realistic framed scale is required. The wARTrobe focal object uses its genuine complete front photograph.
 

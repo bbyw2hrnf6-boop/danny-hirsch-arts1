@@ -81,8 +81,6 @@ const galleryLensImage = document.querySelector("[data-gallery-lens-image]");
 const galleryScale = document.querySelector("[data-gallery-scale]");
 const galleryScaleCopy = document.querySelector("[data-gallery-scale-copy]");
 const galleryGuided = document.querySelector("[data-gallery-guided]");
-const galleryMemoryStatus = document.querySelector("[data-gallery-memory-status]");
-const galleryMemoryCount = document.querySelector("[data-gallery-memory-count]");
 const galleryTransition = document.querySelector("[data-gallery-transition]");
 const galleryTransitionLabel = document.querySelector("[data-gallery-transition-label]");
 const gallerySitePanel = document.querySelector("[data-gallery-site-panel]");
@@ -128,6 +126,7 @@ let privateRoomController = null;
 let privateRoomImportObserver = null;
 let galleryRoomController = null;
 let galleryRoomLoadingPromise = null;
+let galleryModulePromise = null;
 let galleryLoadingHideTimer = null;
 let galleryLoadingAnnouncementBand = -1;
 let galleryFocusedArtwork = null;
@@ -141,6 +140,31 @@ let roomExperienceIndex = 1;
 let roomExperienceTrigger = null;
 let roomExperiencePointer = null;
 let roomExperiencePointerFrame = 0;
+const galleryModuleUrl = "./DannyHirschArtsGallery3D.js?v=20260729-performance-01";
+const galleryModelUrl = "assets/cinematic/danny-gallery-360-ktx2.glb?v=20260729-performance-01";
+
+const loadGalleryModule = () => {
+  if (!galleryModulePromise) {
+    galleryModulePromise = import(galleryModuleUrl).catch((error) => {
+      galleryModulePromise = null;
+      throw error;
+    });
+  }
+  return galleryModulePromise;
+};
+
+const warmSpatialGallery = () => {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (reducedMotion.matches || connection?.saveData) return;
+  loadGalleryModule().catch(() => {});
+  if (document.querySelector('link[data-gallery-model-prefetch]')) return;
+  const prefetch = document.createElement("link");
+  prefetch.rel = "prefetch";
+  prefetch.href = galleryModelUrl;
+  prefetch.type = "model/gltf-binary";
+  prefetch.dataset.galleryModelPrefetch = "";
+  document.head.append(prefetch);
+};
 
 const storage = {
   get(key, session = false) {
@@ -863,12 +887,12 @@ const ensureGalleryRoom = () => {
 
   if (!roomExperience.classList.contains("is-gallery-loading")) beginGalleryLoading();
   setGalleryArtwork(null);
-  galleryRoomLoadingPromise = import("./DannyHirschArtsGallery3D.js?v=20260728-memory-02")
+  galleryRoomLoadingPromise = loadGalleryModule()
     .then(({ initWalkableGallery3D }) => {
       galleryRoomController = initWalkableGallery3D({
         root: roomExperience,
         mount: galleryMount,
-        modelUrl: "assets/cinematic/danny-gallery-360-ktx2.glb?v=20260728-memory-02",
+        modelUrl: galleryModelUrl,
         theme: body.dataset.theme,
         onLoading: ({ progress, percent, loaded, total, phase: loadingPhase }) => {
           const actualPercent = Number.isFinite(percent)
@@ -885,7 +909,7 @@ const ensureGalleryRoom = () => {
             state: "loading",
             percent: actualPercent,
             title: compiling ? "Warming light and reflections" : assembling ? "Composing the room" : "Loading architecture and artwork",
-            status: compiling ? "Preparing compressed surfaces and the room memory" : assembling ? "Applying materials, light, and movement" : "Receiving the Blender-built gallery",
+            status: compiling ? "Preparing compressed surfaces and reflections" : assembling ? "Applying materials, light, and movement" : "Receiving the Blender-built gallery",
             phase: assembling ? "03 / 03" : "02 / 03",
             detail: compiling ? "The final shader and reflection pass prevents stutter on your first steps." : assembling ? "The scene is downloaded. Its spatial layers are now being prepared by the graphics processor." : transferred,
             announce: assembling,
@@ -916,11 +940,6 @@ const ensureGalleryRoom = () => {
             const now = ambientContext.currentTime;
             ambientMaster.gain.setTargetAtTime(galleryFocusMode ? 0.034 : 0.05, now, 0.55);
           }
-        },
-        onMemoryChange: ({ count, ready: memoryReady }) => {
-          if (galleryMemoryStatus) galleryMemoryStatus.hidden = !galleryDemoActive && count === 0;
-          if (galleryMemoryCount) galleryMemoryCount.textContent = memoryReady ? "Memory formed" : `${count} / 3`;
-          galleryMemoryStatus?.classList.toggle("is-complete", Boolean(memoryReady));
         },
         onSpatialAudio: (snapshot) => {
           lastSpatialAudioSnapshot = snapshot;
@@ -1009,6 +1028,9 @@ experienceClassic?.addEventListener("click", () => {
   hideExperienceChoice();
   heroContent?.querySelector("a, button")?.focus({ preventScroll: true });
 });
+experienceSpatial?.addEventListener("pointerenter", warmSpatialGallery, { once: true, passive: true });
+experienceSpatial?.addEventListener("focus", warmSpatialGallery, { once: true });
+experienceSpatial?.addEventListener("touchstart", warmSpatialGallery, { once: true, passive: true });
 experienceSpatial?.addEventListener("click", () => {
   experienceChoiceResolved = true;
   hideExperienceChoice();

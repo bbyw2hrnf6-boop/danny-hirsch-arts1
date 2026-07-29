@@ -1832,35 +1832,6 @@ body[data-theme="light"] .room-experience__controls > span {
   background: #c6a36b;
 }
 
-.room-experience__memory-status {
-  position: absolute;
-  top: max(126px, calc(7vw + env(safe-area-inset-top)));
-  right: max(24px, calc(4vw + env(safe-area-inset-right)));
-  z-index: 8;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: rgba(244, 239, 230, 0.64);
-  pointer-events: none;
-}
-
-.room-experience__memory-status[hidden] { display: none; }
-.room-experience__memory-status > span {
-  width: 24px;
-  height: 11px;
-  border: 1px solid rgba(198, 163, 107, 0.6);
-  border-radius: 100% 0 100% 0;
-  transform: rotate(-18deg);
-}
-.room-experience__memory-status p {
-  font-size: 0.46rem;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-.room-experience__memory-status b { color: #c6a36b; font-weight: inherit; }
-.room-experience__memory-status.is-complete > span { box-shadow: 0 0 18px rgba(198, 163, 107, 0.5); }
-
 .room-experience__transition {
   position: absolute;
   inset: 0;
@@ -3005,8 +2976,7 @@ body[data-theme="light"] .wartrobe-stage__legend {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .room-experience__transition,
-  .room-experience__memory-status { display: none !important; }
+  .room-experience__transition { display: none !important; }
   .hero-cinematic__film,
   .private-room-webgl,
   .room-experience__webgl {
@@ -4262,13 +4232,6 @@ body[data-theme="light"] .room-experience.is-webgl-ready .room-experience__demo-
 }
 
 @media (max-width: 430px) {
-  .room-experience__memory-status {
-    top: max(86px, calc(68px + env(safe-area-inset-top)));
-    right: max(10px, calc(6px + env(safe-area-inset-right)));
-  }
-  .room-experience__memory-status p { font-size: 0.38rem; }
-  .room-experience__memory-status > span { width: 18px; }
-
   .room-experience__motion-look {
     min-width: 140px;
   }
@@ -4534,6 +4497,30 @@ body[data-theme="light"] .room-experience.is-webgl-ready .room-experience__demo-
     clip-path: inset(50%);
     white-space: nowrap;
   }
+}
+
+/* Live backdrop blur forces the browser to re-composite large HUD panels for
+   every WebGL frame. Opaque gallery surfaces retain the visual hierarchy with
+   substantially less GPU work, especially on mobile and Retina screens. */
+.room-experience.is-webgl-ready :is(
+  .room-experience__demo-nav,
+  .room-experience__art,
+  .room-experience__site-panel,
+  .room-experience__tour,
+  .room-experience__dpad,
+  .room-experience__look-stick,
+  .room-experience__motion-look
+) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.room-experience.is-webgl-ready .room-experience__demo-nav {
+  background: linear-gradient(145deg, rgba(10, 10, 8, 0.985), rgba(5, 5, 4, 0.955));
+}
+
+.room-experience.is-webgl-ready :is(.room-experience__art, .room-experience__site-panel) {
+  background: linear-gradient(145deg, rgba(7, 8, 7, 0.985), rgba(17, 16, 13, 0.95));
 }
 
 @media (prefers-reduced-motion: reduce) {
